@@ -1,0 +1,1694 @@
+---
+title: "Cardiomyocyte analysis"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Cardiomyocyte analysis - Including ribosomal and mitochondrial genes
+
+```{r}
+data <- readRDS(paste0(myfolder, "rds_objects/HDCA_heart_sc_full_extended.rds"))
+```
+
+### Subset, process, clustering
+
+```{r, eval = !file.exists(paste0(myfolder, "rds_objects/15_sc_subset_cardiomyocytes.rds"))}
+# Subset the data to keep only CMs
+# subset <- data[,data$cell.types == "CM" | data$sub.cell.types == "cycling_CM"]
+# subset <- data[,data$clusters_louvain_oi == 4 | data$clusters_louvain_oi == 5 | data$clusters_louvain_oi == 7 |data$clusters_louvain_oi == 10 | data$clusters_louvain_oi == 16 | data$clusters_louvain_oi == 22 | data$clusters_louvain_oi == 26 | data$clusters_louvain_oi == 34]
+subset <- data[,data$cell.types == "cardiomyocyte"]
+
+# Process the data
+# subset <- NormalizeData(subset)
+subset <- FindVariableFeatures(subset, nfeatures = 2000)
+subset <- ScaleData(subset, do.scale = TRUE, do.center = TRUE, vars.to.regress = c("nCount_RNA", "nFeature_RNA", "percent_ribo", "percent_mito", "percent_hb", "percent_hsp", "S.Score", "G2M.Score"))
+subset <- RunPCA(subset, npcs = 50)
+subset <- RunHarmony(subset, dims.use = 1:50,
+                   group.by.vars = c("sampleID"),
+                   reduction = "pca",
+                   project.dim = F,
+                   reduction.save = "harmony_subset")
+subset <- RunUMAP(subset,
+                dims = 1:50, # 30
+                reduction = "harmony_subset",
+                n.neighbors = 10,
+                metric = "cosine",
+                min.dist = 0.3,
+                spread = 1,
+                repulsion.strength = 1,
+                negative.sample.rate = 5,
+                n.epochs = 100,
+                n.threads=7,
+                reduction.key = "subset",
+                reduction.name = "umap_subset")
+
+# Compute k nearest neighbours
+knn <- RcppHNSW::hnsw_knn(
+  X = subset@reductions$harmony_subset@cell.embeddings[,1:50],
+  k = 10, distance = "cosine")
+
+i <- rep(1:nrow(knn$idx), ncol(knn$idx)) ; j <- c(knn$idx) ; p <- c(knn$dist>0)*1
+nn <- as(sparseMatrix(i = i, j = j,  x = p, dims = c(nrow(knn$idx), nrow(knn$idx)),
+       dimnames = list(colnames(subset), colnames(subset))), "dgCMatrix")
+
+# Create an undirected graph based on the neighbor matrix.
+g <- igraph::graph_from_adjacency_matrix(nn,mode = "undirected")
+set.seed(1)
+cl <- igraph::cluster_louvain(g, resolution = 1.7) # 1.5
+subset$clusters_subset <- factor(cl$membership)
+
+DimPlot(subset, reduction = "umap_subset", group.by = "clusters_subset", label = T) + NoLegend() + labs(title = "Cardiomyocyte subclusters")
+
+gc()
+
+# 3D plotting of UMAP
+subset <- RunUMAP(subset,
+                dims = 1:30,
+                reduction = "harmony_subset",
+                n.neighbors = 10,
+                metric = "cosine",
+                min.dist = 0.1,
+                spread = 0.3,
+                repulsion.strength = 1,
+                negative.sample.rate = 50,
+                n.epochs = 200,
+                n.threads=7,
+                reduction.key = "subset_3D",
+                reduction.name = "umap_subset_3D",
+                n.components = 3)
+```
+
+#### Save images and data
+
+```{r}
+# 3D umap
+# The saveWidget function seems to give an error without this variable specified.
+Sys.setenv(RSTUDIO_PANDOC="/Users/juliafoyer/opt/anaconda3/envs/scRNAseq2021/bin/")
+
+df <- data.frame(subset@reductions$umap_subset_3D@cell.embeddings)
+df <- data.frame(df,seurat_clusters=subset$clusters_subset,sampleid = subset$sampleID,age=subset$age)
+colnames(df)[1:3] <- c("UMAP_1","UMAP_2","UMAP_3")
+pal <- c(scales::hue_pal()(8),RColorBrewer::brewer.pal(9,"Set1"),RColorBrewer::brewer.pal(8,"Set2") )
+
+p_State <- plot_ly(df,x = ~UMAP_1, y = ~UMAP_2, z=~UMAP_3,color = ~seurat_clusters,
+                   colors = pal, size=.5) %>%  add_markers() %>%
+  layout(scene = list(xaxis = list(title = 'UMAP_1'), yaxis = list(title = 'UMAP_2'),zaxis = list(title = 'UMAP_3')))
+htmlwidgets::saveWidget(p_State, paste0(myfolder,"cardiomyocytes/umap_3d_clusters.html"))
+
+# Plot on the old UMAP
+png(paste0(myfolder, "cardiomyocytes/clusters_cardiomyocytes_big_umap.png"), width = 7000, height = 7000, res = 600)
+DimPlot(subset, reduction = "umap_oi", group.by = "clusters_subset") + NoLegend() + labs(title = "Subclustered cardiomyocytes over the nonsubsetted UMAP")
+dev.off()
+
+# Plot on the new UMAP
+png(paste0(myfolder, "cardiomyocytes/clusters_subsetted_cardiomyocytes_umap.png"), width = 5000, height = 5000, res = 600)
+DimPlot(subset, reduction = "umap_subset", group.by = "clusters_subset", label = T) + NoLegend() + labs(title = "Cardiomyocyte subclusters")
+dev.off()
+
+png(paste0(myfolder, "cardiomyocytes/clusters_subsetted_cardiomyocytes_umap_splitby_ageroundup.png"), width = 15000, height = 5000, res = 600)
+DimPlot(subset, reduction = "umap_subset", group.by = "clusters_subset", split.by = "age_round_up", ncol = 4) + NoLegend() + labs(title = "Cardiomyocyte subclusters by age (rounded)")
+dev.off()
+
+png(paste0(myfolder, "cardiomyocytes/clusters_subsetted_cardiomyocytes_umap_splitby_age.png"), width = 7000, height = 5000, res = 600)
+DimPlot(subset, reduction = "umap_subset", group.by = "clusters_subset", split.by = "age", ncol = 4) + NoLegend() + labs(title = "Cardiomyocyte subclusters by age")
+dev.off()
+
+# Age
+png(paste0(myfolder, "cardiomyocytes/age_cardiomyocytes.png"), width = 7000, height = 7000, res = 600)
+DimPlot(subset, reduction = "umap_subset", group.by = "age") + labs(title = "Age distribution over the cardiomyocyte UMAP")
+dev.off()
+
+# nFeatures
+png(paste0(myfolder, "cardiomyocytes/nFeatures_cardiomyocytes.png"), width = 7000, height = 7000, res = 600)
+FeaturePlot(subset, reduction = "umap_subset", features = "nFeature_RNA") + labs(title = "Number of genes over the cardiomyocyte UMAP")
+dev.off()
+
+# nCounts
+png(paste0(myfolder, "cardiomyocytes/nCounts_cardiomyocytes.png"), width = 7000, height = 7000, res = 600)
+FeaturePlot(subset, reduction = "umap_subset", features = "nCount_RNA") + labs(title = "Number of UMIs over the cardiomyocyte UMAP")
+dev.off()
+
+# Rough clusters
+png(paste0(myfolder, "cardiomyocytes/rough_clusters_cardiomyocytes.png"), width = 7000, height = 7000, res = 600)
+DimPlot(subset, reduction = "umap_subset", group.by = "clusters_louvain_oi") + labs(title = "Rough clusters on the new CM umap")
+dev.off()
+
+# Save the subsetted object
+saveRDS(subset, paste0(myfolder, "rds_objects/HDCA_heart_sc_subset_cardiomyocytes.rds"))
+```
+
+### DE analysis
+
+```{r}
+# Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
+sample_size <- table(subset$clusters_subset)
+sample_size[sample_size > 150] <- 150
+sample_size
+
+# Randomly sample the cells that will be included when calculating DGE (same number of cells as selected above). Samples without replacement, so each cell only can be included once.
+DGE_cells <- lapply(names(sample_size), function(x){
+  set.seed(1)
+  sample(colnames(subset) [subset$clusters_subset == x], size = sample_size[x])
+  })
+DGE_cells <- unlist(DGE_cells)
+
+# Select all data that relates to the sampled DGE cells.
+DGE_DATA <- subset[, DGE_cells]
+
+# Set the identity of the object to "clusters_subset".
+DGE_DATA <- SetIdent(DGE_DATA, value = "clusters_subset")
+
+#Find differentially expressed genes based on groups defined by "clusters_subset".
+# The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).
+detable <- FindAllMarkers(DGE_DATA,
+                          only.pos = T,
+                          logfc.threshold = .1,
+                          assay = "RNA",
+                          min.pct = 0.05)
+
+# Only keep DEGs that have a p-value below 0.05.
+detable <- detable[detable$p_val < 0.05,]
+
+# Adding two extra columns giving the difference (and log difference) between pct1 and pct2.
+# pct1 is the percentage of cells in the specific cluster that express this gene.
+# pct2 is the percentage of cells in all other clusters that express this gene.
+detable$pct.diff <- detable$pct.1 - detable$pct.2
+detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
+
+# Pick the 60 genes with the lowest p value for each age group, then 40 highest based on pct.diff, then 20 highest based on log.pct.diff.
+# This gives a total of 140 genes (20 per cluster).
+detable %>%
+  group_by(cluster) %>%
+  top_n(-60, p_val) %>%
+  # top_n(40, pct.diff) %>%
+  top_n(20, avg_logFC)  ->
+  top20
+
+# Save the detable as a csv file.
+# write.csv2(top20, paste0(myfolder, "cardiomyocytes/detable_top20_cardiomyocytes.csv"))
+# write.csv2(detable, paste0(myfolder, "documents/detable_cardiomyocytes.csv"))
+
+write.csv2(detable, paste0(myfolder, "cardiomyocytes/detable_cardiomyocytes.csv"))
+
+# Unclear what this does since there is no documentation for getcluster(). But my guess is that the genes get matched to one specific cluster somehow, and the factor is leveled based on cluster number.
+ord <- factor(sapply(unique(as.character(top20$gene)), function(x){niceRplots::getcluster(DGE_DATA, x, "clusters_subset")}))
+
+pdf(paste0(myfolder, "cardiomyocytes/top20_markers_cardiomyocytes.pdf"), width = 18, height = length(ord)/6+1)
+par(mfrow=c(1,1), mar=c(3,6,2,5))
+plot_dots(DGE_DATA,
+          unique(as.character(top20$gene))[order(as.numeric(as.character(ord)))],
+          clustering = "clusters_subset",
+          show_grid = T,
+          main = "top cluster markers",
+          cex.main=1,
+          font.main=1,
+          cex.col = 1,
+          srt = 0,
+          cex.row = 1.1)
+dev.off()
+
+
+# # Save DEG dotplot in pdf format
+# d1 <- DotPlot(DGE_DATA, features = unique(top20$gene) %>% rev()) +
+#   coord_flip() +
+#   scale_colour_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) + labs(y = "cluster")
+# 
+# # in PDF
+# pdf(paste0(myfolder, "cardiomyocytes/top20_markers_cardiomyocytes.pdf"), width = 10, height = 80)
+# d1
+# dev.off()
+```
+
+### CM temporal DE analysis 230602
+
+```{r}
+myfolder <- "/Users/juliafoyer/ST/HDCA_heart/single_cell/results/temporal/"
+```
+
+```{r}
+# Create groups based on both clusters and ages and save to the object as a factor.
+groups <- paste0("cl_", subset$clusters_subset, '_age_', as.character(subset$age_groups) )
+subset$subgroups <- factor(groups, levels = mixedsort(unique(groups)))
+sample_size <- table(subset$subgroups)
+sample_size[ sample_size > 100 ] <- 100
+
+DGE_cells <- lapply(names(sample_size), function(x){
+  set.seed(1)
+  sample( colnames(subset) [ subset$subgroups == x ] , size = sample_size[x])
+  })
+DGE_cells <- unlist(DGE_cells)
+
+DGE_DATA <- subset[, DGE_cells]
+
+# Next time, try increasing max.cells.per.ident to 200
+# We set return.thres (p-val) to 1 to include everything and try to avoid an error that made the function crash because of not enough cells in age group 10. Filtering can be done later. logfc.threshold could also be modified and filtered later.
+detable_pat <- lapply(unique(DGE_DATA$clusters_subset),DGE_DATA=DGE_DATA, function(x,DGE_DATA){
+  message(x)
+  temp <- DGE_DATA[,DGE_DATA$clusters_subset == x]
+  print(temp)
+  temp <- SetIdent( temp , value = "age_groups")
+  detable <- 0
+  try(detable <- FindAllMarkers(temp,
+                                only.pos = T,
+                                logfc.threshold = .1,
+                                assay = "RNA",
+                                min.pct = 0.05,
+                                return.thresh = 1),
+      silent = TRUE)
+
+  if(detable != 0){
+    return( cbind(detable,cell_cluster= x) )}
+})
+detable <- do.call(rbind,detable_pat)
+
+detable <- detable[ detable$p_val < 0.05,  ]
+detable$pct.diff <- detable$pct.1 - detable$pct.2
+detable$log.pct.diff <- log2( (detable$pct.1+1) / (detable$pct.2+1) )
+# write.csv2(detable, paste0(myfolder, "Temporal_DE/CM_detable_for_each_cluster_over_time.csv"))
+
+# Save results as a dot plot
+detable$groups <- paste0(detable$cell_cluster,detable$cluster)
+
+detable %>%
+  group_by(groups) %>%
+  top_n(-60, p_val) %>%
+  # top_n(40, pct.diff) %>%
+  top_n(20, avg_logFC) ->
+  top20
+
+# ord <- factor(sapply(unique(as.character(top5$gene)),function(x){getcluster(DGE_DATA, x, "subgroups")}))
+ord <- getcluster(data = DGE_DATA, genes = unique(as.character(top20$gene)), clustering = "subgroups")
+ord
+
+pdf( paste0(myfolder, "Temporal_DE/CM_DGE_temporal.pdf"),width = 60,height = length(ord)/6+3)
+mypar(1,1,mar=c(14,10,3,5))
+plot_dots(DGE_DATA, unique(names(ord)[order(ord)]), clustering = "subgroups", show_grid = T,main = "top cluster markers over time",cex.main=1,font.main=1,cex.col = 1,srt = 90,cex.row = 1.1)
+abline(v=cumsum(c(table(sub( "_age_.*","",names(table(DGE_DATA$subgroups))))))+0.5)
+dev.off()
+```
+
+### DGE Without RP and MT genes
+
+```{r}
+myfolder <- "/Users/juliafoyer/ST/HDCA_heart/single_cell/results/HDCA_heart_sc_analysis_it9/"
+subset <- readRDS(paste0(myfolder, "rds_objects/HDCA_heart_sc_subset_cardiomyocytes.rds"))
+```
+
+```{r}
+subset <- subset[!grepl("^MT-", rownames(subset)),]
+subset <- subset[!grepl("^RP[LS]", rownames(subset)),]
+```
+
+
+```{r}
+# Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
+sample_size <- table(subset$clusters_subset)
+sample_size[sample_size > 150] <- 150
+sample_size
+
+# Randomly sample the cells that will be included when calculating DGE (same number of cells as selected above). Samples without replacement, so each cell only can be included once.
+DGE_cells <- lapply(names(sample_size), function(x){
+  set.seed(1)
+  sample(colnames(subset) [subset$clusters_subset == x], size = sample_size[x])
+  })
+DGE_cells <- unlist(DGE_cells)
+
+# Select all data that relates to the sampled DGE cells.
+DGE_DATA <- subset[, DGE_cells]
+
+# Set the identity of the object to "clusters_subset".
+DGE_DATA <- SetIdent(DGE_DATA, value = "clusters_subset")
+
+#Find differentially expressed genes based on groups defined by "clusters_subset".
+# The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).
+detable <- FindAllMarkers(DGE_DATA,
+                          only.pos = T,
+                          logfc.threshold = .1,
+                          assay = "RNA",
+                          min.pct = 0.05)
+
+# Only keep DEGs that have a p-value below 0.05.
+detable <- detable[detable$p_val < 0.05,]
+
+# Adding two extra columns giving the difference (and log difference) between pct1 and pct2.
+# pct1 is the percentage of cells in the specific cluster that express this gene.
+# pct2 is the percentage of cells in all other clusters that express this gene.
+detable$pct.diff <- detable$pct.1 - detable$pct.2
+detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
+
+# Pick the 60 genes with the lowest p value for each age group, then 40 highest based on pct.diff, then 20 highest based on log.pct.diff.
+# This gives a total of 140 genes (20 per cluster).
+detable %>%
+  group_by(cluster) %>%
+  top_n(-60, p_val) %>%
+  # top_n(40, pct.diff) %>%
+  top_n(20, avg_logFC)  ->
+  top20
+
+# Save the detable as a csv file.
+# write.csv2(top20, paste0(myfolder, "cardiomyocytes/detable_top20_cardiomyocytes.csv"))
+# write.csv2(detable, paste0(myfolder, "documents/detable_cardiomyocytes.csv"))
+
+write.csv2(detable, paste0(myfolder, "cardiomyocytes/no_rp_mt_DE/detable_cardiomyocytes.csv"))
+
+# Unclear what this does since there is no documentation for getcluster(). But my guess is that the genes get matched to one specific cluster somehow, and the factor is leveled based on cluster number.
+ord <- factor(sapply(unique(as.character(top20$gene)), function(x){niceRplots::getcluster(DGE_DATA, x, "clusters_subset")}))
+
+pdf(paste0(myfolder, "cardiomyocytes/no_rp_mt_DE/top20_markers_cardiomyocytes.pdf"), width = 18, height = length(ord)/6+1)
+par(mfrow=c(1,1), mar=c(3,6,2,5))
+plot_dots(DGE_DATA,
+          unique(as.character(top20$gene))[order(as.numeric(as.character(ord)))],
+          clustering = "clusters_subset",
+          show_grid = T,
+          main = "top cluster markers",
+          cex.main=1,
+          font.main=1,
+          cex.col = 1,
+          srt = 0,
+          cex.row = 1.1)
+dev.off()
+
+
+# # Save DEG dotplot in pdf format
+# d1 <- DotPlot(DGE_DATA, features = unique(top20$gene) %>% rev()) +
+#   coord_flip() +
+#   scale_colour_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) + labs(y = "cluster")
+# 
+# # in PDF
+# pdf(paste0(myfolder, "cardiomyocytes/top20_markers_cardiomyocytes.pdf"), width = 10, height = 80)
+# d1
+# dev.off()
+```
+
+## Cardiomyocyte analysis - clustering and DGE without RP and MT genes
+
+```{r}
+data <- readRDS(paste0(myfolder, "rds_objects/HDCA_heart_sc_full_extended.rds"))
+```
+
+### Subset, process, clustering
+
+* Keep all cells annotated as cardiomyocyte
+* Remove mitochondrial protein coding genes (^MT-)
+* Remove ribosomal protein coding genes (^RP[LS])
+* Calculate variable features for cardiomyocyte cells
+* Scale data while regressing out "nCount_RNA", "nFeature_RNA", "percent_ribo", "percent_mito", "percent_hb", "percent_hsp", "S.Score" and "G2M.Score
+* Run PCA on scaled data (50 PCs)
+* Run harmony (batch correction, 50 PCs)
+* Compute UMAP (50 PCs)
+* Construct knn adjacency matrix with hnsw_knn
+* Cluster cells using cluster_louvain
+
+```{r, eval = !file.exists(paste0(myfolder, "rds_objects/15_sc_subset_cardiomyocytes.rds"))}
+# Subset the data to keep only CMs
+# subset <- data[,data$cell.types == "CM" | data$sub.cell.types == "cycling_CM"]
+# subset <- data[,data$clusters_louvain_oi == 4 | data$clusters_louvain_oi == 5 | data$clusters_louvain_oi == 7 |data$clusters_louvain_oi == 10 | data$clusters_louvain_oi == 16 | data$clusters_louvain_oi == 22 | data$clusters_louvain_oi == 26 | data$clusters_louvain_oi == 34]
+subset <- data[,data$cell.types == "cardiomyocyte"]
+
+subset <- subset[!grepl("^MT-", rownames(subset)),]
+subset <- subset[!grepl("^RP[LS]", rownames(subset)),]
+
+# Process the data
+# subset <- NormalizeData(subset)
+# subset <- FindVariableFeatures(subset, nfeatures = 2000)
+# TEST -> switched to top 3000 most variable genes
+subset <- FindVariableFeatures(subset, nfeatures = 3000)
+subset <- ScaleData(subset, do.scale = TRUE, do.center = TRUE, vars.to.regress = c("nCount_RNA", "nFeature_RNA", "percent_ribo", "percent_mito", "percent_hb", "percent_hsp", "S.Score", "G2M.Score"))
+subset <- RunPCA(subset, npcs = 50)
+subset <- RunHarmony(subset, dims.use = 1:50,
+                   group.by.vars = c("sampleID"),
+                   reduction = "pca",
+                   project.dim = FALSE,
+                   reduction.save = "harmony_subset")
+subset <- RunUMAP(subset,
+                dims = 1:50, # 30
+                reduction = "harmony_subset",
+                n.neighbors = 30,
+                metric = "cosine",
+                min.dist = 0.3,
+                spread = 1,
+                repulsion.strength = 1,
+                negative.sample.rate = 5,
+                n.epochs = 100,
+                n.threads=7,
+                reduction.key = "subset",
+                reduction.name = "umap_subset")
+
+# Compute k nearest neighbours
+knn <- RcppHNSW::hnsw_knn(
+  X = subset@reductions$harmony_subset@cell.embeddings[,1:50],
+  k = 30, distance = "cosine")
+
+i <- rep(1:nrow(knn$idx), ncol(knn$idx)) ; j <- c(knn$idx) ; p <- c(knn$dist>0)*1
+nn <- as(sparseMatrix(i = i, j = j,  x = p, dims = c(nrow(knn$idx), nrow(knn$idx)),
+       dimnames = list(colnames(subset), colnames(subset))), "dgCMatrix")
+
+# Create an undirected graph based on the neighbor matrix.
+g <- igraph::graph_from_adjacency_matrix(nn,mode = "undirected")
+set.seed(123)
+cl <- igraph::cluster_louvain(g, resolution = 1.4) # 1.7, 1.5
+subset$clusters_subset <- factor(cl$membership)
+
+DimPlot(subset, reduction = "umap_subset", group.by = "clusters_subset", label = T) + NoLegend() + labs(title = "Cardiomyocyte subclusters")
+
+gc()
+
+# 3D plotting of UMAP
+subset <- RunUMAP(subset,
+                dims = 1:30,
+                reduction = "harmony_subset",
+                n.neighbors = 10,
+                metric = "cosine",
+                min.dist = 0.1,
+                spread = 0.3,
+                repulsion.strength = 1,
+                negative.sample.rate = 50,
+                n.epochs = 200,
+                n.threads=7,
+                reduction.key = "subset_3D",
+                reduction.name = "umap_subset_3D",
+                n.components = 3)
+```
+
+#### Subcluster SAN (cluster 7)
+
+```{r}
+SAN <- subset[, as.character(subset$clusters_subset) == "7"] %>% 
+  RunUMAP(dims = 1:50,
+          reduction = "harmony_subset",
+          n.neighbors = 30,
+          metric = "cosine",
+          min.dist = 0.3,
+          spread = 1,
+          repulsion.strength = 1,
+          negative.sample.rate = 5,
+          n.epochs = 100,
+          n.threads=7,
+          reduction.key = "subset",
+          reduction.name = "umap_subset_SAN")
+
+# Compute k nearest neighbours
+knn <- RcppHNSW::hnsw_knn(
+  X = SAN@reductions$harmony_subset@cell.embeddings[, 1:50],
+  k = 30, distance = "cosine")
+
+i <- rep(1:nrow(knn$idx), ncol(knn$idx)) ; j <- c(knn$idx) ; p <- c(knn$dist>0)*1
+nn <- as(sparseMatrix(i = i, j = j,  x = p, dims = c(nrow(knn$idx), nrow(knn$idx)),
+       dimnames = list(colnames(SAN), colnames(SAN))), "dgCMatrix")
+
+# Create an undirected graph based on the neighbor matrix.
+g <- igraph::graph_from_adjacency_matrix(nn, mode = "undirected")
+set.seed(123)
+cl <- igraph::cluster_louvain(g, resolution = 0.5)
+SAN$clusters_subset_SAN <- factor(cl$membership)
+
+DimPlot(SAN, reduction = "umap_subset_SAN", group.by = "clusters_subset_SAN", label = TRUE) + NoLegend()
+
+```
+
+```{r}
+SAN <- SetIdent(SAN, value = "clusters_subset_SAN")
+de_markers_SAN <- FindAllMarkers(SAN, only.pos = TRUE, logfc.threshold = 0.5) %>% 
+  filter(p_val_adj < 0.01)
+
+DotPlot(SAN, features = de_markers_SAN %>% group_by(cluster) %>% 
+          slice_head(n = 10) %>% pull(gene) %>% unique()) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) &
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) &
+  scale_y_discrete(limits = rev) &
+  labs(y = "Cluster", x = "Genes")
+```
+
+#### Subcluster (cluster 19)
+
+```{r}
+cl19 <- subset[, as.character(subset$clusters_subset) == "19"] %>% 
+  RunUMAP(dims = 1:50,
+          reduction = "harmony_subset",
+          n.neighbors = 30,
+          metric = "cosine",
+          min.dist = 0.3,
+          spread = 1,
+          repulsion.strength = 1,
+          negative.sample.rate = 5,
+          n.epochs = 100,
+          n.threads=7,
+          reduction.key = "subset",
+          reduction.name = "umap_subset_cl19")
+
+# Compute k nearest neighbours
+knn <- RcppHNSW::hnsw_knn(
+  X = cl19@reductions$harmony_subset@cell.embeddings[, 1:50],
+  k = 30, distance = "cosine")
+
+i <- rep(1:nrow(knn$idx), ncol(knn$idx)) ; j <- c(knn$idx) ; p <- c(knn$dist>0)*1
+nn <- as(sparseMatrix(i = i, j = j,  x = p, dims = c(nrow(knn$idx), nrow(knn$idx)),
+       dimnames = list(colnames(cl19), colnames(cl19))), "dgCMatrix")
+
+# Create an undirected graph based on the neighbor matrix.
+g <- igraph::graph_from_adjacency_matrix(nn, mode = "undirected")
+set.seed(123)
+cl <- igraph::cluster_louvain(g, resolution = 0.5)
+cl19$clusters_subset_cl19 <- factor(cl$membership)
+
+DimPlot(cl19, reduction = "umap_subset_cl19", group.by = "clusters_subset_cl19", label = TRUE) + NoLegend()
+
+```
+
+```{r}
+cl19 <- SetIdent(cl19, value = "clusters_subset_cl19")
+de_markers_cl19 <- FindAllMarkers(cl19, only.pos = TRUE, logfc.threshold = 0.5) %>% 
+  filter(p_val_adj < 0.01)
+
+DotPlot(cl19, features = de_markers_cl19 %>% group_by(cluster) %>% 
+          slice_head(n = 10) %>% pull(gene) %>% unique()) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) &
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) &
+  scale_y_discrete(limits = rev) &
+  labs(y = "Cluster", x = "Genes")
+```
+
+#### Subcluster (cluster 4)
+
+```{r}
+cl4 <- subset[, as.character(subset$clusters_subset) == "4"] %>% 
+  RunUMAP(dims = 1:50,
+          reduction = "harmony_subset",
+          n.neighbors = 30,
+          metric = "cosine",
+          min.dist = 0.3,
+          spread = 1,
+          repulsion.strength = 1,
+          negative.sample.rate = 5,
+          n.epochs = 100,
+          n.threads=7,
+          reduction.key = "subset",
+          reduction.name = "umap_subset_cl4")
+
+# Compute k nearest neighbours
+knn <- RcppHNSW::hnsw_knn(
+  X = cl4@reductions$harmony_subset@cell.embeddings[, 1:50],
+  k = 30, distance = "cosine")
+
+i <- rep(1:nrow(knn$idx), ncol(knn$idx)) ; j <- c(knn$idx) ; p <- c(knn$dist>0)*1
+nn <- as(sparseMatrix(i = i, j = j,  x = p, dims = c(nrow(knn$idx), nrow(knn$idx)),
+       dimnames = list(colnames(cl4), colnames(cl4))), "dgCMatrix")
+
+# Create an undirected graph based on the neighbor matrix.
+g <- igraph::graph_from_adjacency_matrix(nn, mode = "undirected")
+set.seed(123)
+cl <- igraph::cluster_louvain(g, resolution = 0.5)
+cl4$clusters_subset_cl4 <- factor(cl$membership)
+
+DimPlot(cl4, reduction = "umap_subset_cl4", group.by = "clusters_subset_cl4", label = TRUE) + NoLegend()
+
+```
+
+```{r}
+cl19 <- SetIdent(cl19, value = "clusters_subset_cl19")
+de_markers_cl19 <- FindAllMarkers(cl19, only.pos = TRUE, logfc.threshold = 0.5) %>% 
+  filter(p_val_adj < 0.01)
+
+DotPlot(cl19, features = de_markers_cl19 %>% group_by(cluster) %>% 
+          slice_head(n = 10) %>% pull(gene) %>% unique()) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) &
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) &
+  scale_y_discrete(limits = rev) &
+  labs(y = "Cluster", x = "Genes")
+```
+
+#### Save images and data
+
+```{r}
+# 3D umap
+# The saveWidget function seems to give an error without this variable specified.
+Sys.setenv(RSTUDIO_PANDOC="/Users/juliafoyer/opt/anaconda3/envs/scRNAseq2021/bin/")
+
+df <- data.frame(subset@reductions$umap_subset_3D@cell.embeddings)
+df <- data.frame(df,seurat_clusters=subset$clusters_subset,sampleid = subset$sampleID,age=subset$age)
+colnames(df)[1:3] <- c("UMAP_1","UMAP_2","UMAP_3")
+pal <- c(scales::hue_pal()(8),RColorBrewer::brewer.pal(9,"Set1"),RColorBrewer::brewer.pal(8,"Set2") )
+
+p_State <- plot_ly(df,x = ~UMAP_1, y = ~UMAP_2, z=~UMAP_3,color = ~seurat_clusters,
+                   colors = pal, size=.5) %>%  add_markers() %>%
+  layout(scene = list(xaxis = list(title = 'UMAP_1'), yaxis = list(title = 'UMAP_2'),zaxis = list(title = 'UMAP_3')))
+htmlwidgets::saveWidget(p_State, paste0(myfolder,"cardiomyocytes_Ludvig/no_rp_mt_clustering/umap_3d_clusters.html"))
+
+# Plot on the old UMAP
+jpeg(filename = paste0(myfolder,"cardiomyocytes_Ludvig/no_rp_mt_clustering/clusters_cardiomyocytes_big_umap.jpg"), 
+     width = 2000, height = 2000, res = 300)
+DimPlot(subset, reduction = "umap_oi", group.by = "clusters_subset") + 
+  NoLegend() + 
+  labs(title = "Subclustered cardiomyocytes - original UMAP")
+dev.off()
+
+# Plot on the new UMAP
+jpeg(filename = paste0(myfolder, "cardiomyocytes_Ludvig/no_rp_mt_clustering/clusters_subsetted_cardiomyocytes_umap.jpg"), 
+     width = 2000, height = 2000, res = 300)
+DimPlot(subset, reduction = "umap_subset", group.by = "clusters_subset", label = TRUE) + 
+  NoLegend() + 
+  labs(title = "Cardiomyocyte subclusters")
+dev.off()
+
+jpeg(filename = paste0(myfolder, "cardiomyocytes_Ludvig/no_rp_mt_clustering/clusters_subsetted_cardiomyocytes_umap_splitby_ageroundup.jpg"), 
+     width = 3500, height = 2000, res = 300)
+DimPlot(subset, reduction = "umap_subset", group.by = "clusters_subset", split.by = "age_round_up", ncol = 4) + 
+  NoLegend() + 
+  labs(title = "Cardiomyocyte subclusters by age (rounded)")
+dev.off()
+
+jpeg(filename = paste0(myfolder, "cardiomyocytes_Ludvig/no_rp_mt_clustering/clusters_subsetted_cardiomyocytes_umap_splitby_age.jpg"), 
+     width = 3000, height = 2500, res = 300)
+DimPlot(subset, reduction = "umap_subset", group.by = "clusters_subset", split.by = "age", ncol = 4) + 
+  NoLegend() + 
+  labs(title = "Cardiomyocyte subclusters by age")
+dev.off()
+
+# Age
+jpeg(filename = paste0(myfolder, "cardiomyocytes_Ludvig/no_rp_mt_clustering/age_cardiomyocytes.jpg"), 
+    width = 2000, height = 2000, res = 300)
+DimPlot(subset, reduction = "umap_subset", group.by = "age") + 
+  labs(title = "Age distribution - CM UMAP")
+dev.off()
+
+# nFeatures
+jpeg(filename = paste0(myfolder, "cardiomyocytes_Ludvig/no_rp_mt_clustering/nFeatures_cardiomyocytes.jpg"), 
+     width = 2000, height = 2000, res = 300)
+FeaturePlot(subset, reduction = "umap_subset", features = "nFeature_RNA") + 
+  labs(title = "Number of unique genes - CM UMAP")
+dev.off()
+
+# nCounts
+jpeg(paste0(myfolder, "cardiomyocytes_Ludvig/no_rp_mt_clustering/nCounts_cardiomyocytes.jpg"), 
+     width = 2000, height = 2000, res = 300)
+FeaturePlot(subset, reduction = "umap_subset", features = "nCount_RNA") + 
+  labs(title = "Number of UMIs - CM UMAP")
+dev.off()
+
+# Rough clusters
+jpeg(filename = paste0(myfolder, "cardiomyocytes_Ludvig/no_rp_mt_clustering/rough_clusters_cardiomyocytes.jpg"), 
+    width = 2000, height = 2000, res = 300)
+DimPlot(subset, reduction = "umap_subset", group.by = "clusters_louvain_oi") + 
+  labs(title = "Rough clusters - CM UMAP")
+dev.off()
+
+# Save the subsetted object
+saveRDS(subset, paste0(myfolder, "rds_objects/HDCA_heart_sc_subset_cardiomyocytes_no_rb_mt_LL.rds"))
+```
+
+#### Add SAN, cl4 and cl19 subclusters
+
+```{r}
+SAN_split <- SAN[[]] %>% 
+  select(clusters_subset_SAN) %>% 
+  rename(clusters_subset_split = clusters_subset_SAN)
+cl4_split <- cl4[[]] %>% 
+  select(clusters_subset_cl4) %>% 
+  rename(clusters_subset_split = clusters_subset_cl4)
+cl19_split <- cl19[[]] %>% 
+  select(clusters_subset_cl19) %>% 
+  rename(clusters_subset_split = clusters_subset_cl19)
+
+all_split <- bind_rows(SAN_split, cl4_split) %>% 
+  bind_rows(cl19_split)
+
+new_ids <- subset[[]] %>% select(clusters_subset)
+new_ids[, "clusters_subset_split"] <- all_split[colnames(subset), 
+                                                "clusters_subset_split", drop = TRUE]
+new_ids <- new_ids %>% 
+  mutate_if(is.factor, as.character) %>% 
+  mutate(clusters_subset_split = case_when(!is.na(clusters_subset_split) ~ paste0(clusters_subset, "-", clusters_subset_split),
+                                           TRUE ~ clusters_subset))
+
+subset$clusters_subset_split <- new_ids$clusters_subset_split
+
+p <- DimPlot(subset, reduction = "umap_subset", group.by = "clusters_subset_split", label = TRUE) + 
+  NoLegend() + 
+  labs(title = "Cardiomyocyte subclusters")
+p
+
+jpeg(filename = paste0(myfolder, "cardiomyocytes_Ludvig/no_rp_mt_clustering/clusters_subsetted_and_split_cardiomyocytes_umap.jpg"), 
+     width = 2000, height = 2000, res = 300)
+p
+dev.off()
+```
+
+
+### DE analysis
+
+```{r}
+subset <- SetIdent(subset, value = "clusters_subset")
+de_markers <- FindAllMarkers(subset, logfc.threshold = 0.25, 
+                             only.pos = TRUE, 
+                             min.pct = 0.05)
+
+write.csv2(de_markers %>% filter(p_val_adj < 0.01), paste0(myfolder, "cardiomyocytes_Ludvig/no_rp_mt_clustering/detable_cardiomyocytes.csv"))
+openxlsx::write.xlsx(de_markers %>% filter(p_val_adj < 0.01),
+                     file = paste0(myfolder, "cardiomyocytes_Ludvig/no_rp_mt_clustering/detable_cardiomyocytes.xlsx"))
+```
+
+```{r}
+
+an <- c("")
+
+ann <- c("1" = "vCM, MYH7|NLGN1|PCDH7",
+         "2" = "CM, FTH1|RACK1|SNHG29",
+         "3" = "Low-quality CM, MYL7|CSRP3|ACTC1",
+         "4" = "purkinje & pre-purkinje, CSMD1|BRINP3|PLXNA4",
+         "5" = "Stress response, HSPB1|HSPB7|HSPB3",
+         "6" = "CM KCNQ5|SLC8A1|INPP4B",
+         "7" = "SAN, SPON1|ROBO2|TBX3",
+         "8" = "aCM, PLCB1|COL2A1|RELN",
+         "9" = "vCM, MYL2|MYH7|S100A4|HEY2",
+         "10" = "aCM conduit, RELN|ZNF385B|PAM",
+         "11" = "Cycling G2M, UBE2C|KPNA2|CCNB1",
+         "12" = "aCM conduit, RELN|ZNF385B|PAM",
+         "13" = "vCM, SORBS2|SLC8A1|MYH7",
+         "14" = "Endothelial, ADGRL4|TIE1|TM4SF18",
+         "15" = "Stress response, JUND|JUN|JUN",
+         "16" = "Fibroblast-like, COL1A1|COL1A2|COL6A3",
+         "17" = "Myeloids",
+         "18" = "Cycling G2M CM, ASPM|KNL1|CIT",
+         "19" = "SAN, CACNA1D|RGS6|LRRC4C",
+         "20" = "Cycling G2M CM, CDK1|UBE2C|PBK",
+         "21" = "Cycling CM, H1-1|H1-4|H1-3",
+         "22" = "RBCs",
+         "23" = "Myeloids",
+         "24" = "SEMA4A+ PRKCG|TRIM72|LSMEM1",
+         "25" = "Epithelial/lung? PRSS16|SIX1|FOXN1|PAX1")
+```
+
+## FEA
+
+```{r}
+library(gprofiler2)
+
+GeneSets <- de_markers %>% 
+  filter(p_val_adj < 0.01, avg_logFC > 0.5) %>% 
+  group_by(cluster) %>% 
+  group_split()
+
+pathways <- lapply(seq_along(GeneSets), function(i) {
+  print(i)
+  set <- GeneSets[[i]]
+  res <- gost(query = set$gene, organism = "hsapiens", sources = c("GO:BP", "REAC"))
+  return(res$result)
+})
+pathways <- setNames(pathways, nm = paste0(1:25))
+  
+openxlsx::write.xlsx(pathways,
+                     file = paste0(myfolder, "cardiomyocytes_Ludvig/no_rp_mt_clustering/pathways_cardiomyocytes.xlsx"))
+```
+
+#### DE heatmap
+
+```{r}
+top10_markers <- de_markers %>% 
+  group_by(cluster) %>% 
+  slice_head(n = 5) %>% 
+  pull(gene)
+
+p <- DotPlot(subset, features = unique(top10_markers)) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) &
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) &
+  scale_y_discrete(limits = rev) &
+  labs(y = "Cluster", x = "Genes")
+
+jpeg(paste0(myfolder, "cardiomyocytes_Ludvig/no_rp_mt_clustering/dotplot_de_genes.jpg"), 
+     width = 7000, height = 2500, res = 300)
+print(p)
+dev.off()
+```
+
+
+```{r}
+# Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
+sample_size <- table(subset$clusters_subset)
+sample_size[sample_size > 150] <- 150
+sample_size
+
+# Randomly sample the cells that will be included when calculating DGE (same number of cells as selected above). Samples without replacement, so each cell only can be included once.
+DGE_cells <- lapply(names(sample_size), function(x){
+  set.seed(1)
+  sample(colnames(subset) [subset$clusters_subset == x], size = sample_size[x])
+  })
+DGE_cells <- unlist(DGE_cells)
+
+# Select all data that relates to the sampled DGE cells.
+DGE_DATA <- subset[, DGE_cells]
+
+# Set the identity of the object to "clusters_subset".
+DGE_DATA <- SetIdent(DGE_DATA, value = "clusters_subset")
+
+#Find differentially expressed genes based on groups defined by "clusters_subset".
+# The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).
+detable <- FindAllMarkers(DGE_DATA,
+                          only.pos = TRUE,
+                          logfc.threshold = .1,
+                          assay = "RNA",
+                          min.pct = 0.05)
+
+# Only keep DEGs that have a p-value below 0.05.
+detable <- detable[detable$p_val < 0.05,]
+
+# Adding two extra columns giving the difference (and log difference) between pct1 and pct2.
+# pct1 is the percentage of cells in the specific cluster that express this gene.
+# pct2 is the percentage of cells in all other clusters that express this gene.
+detable$pct.diff <- detable$pct.1 - detable$pct.2
+detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
+
+# Pick the 60 genes with the lowest p value for each age group, then 40 highest based on pct.diff, then 20 highest based on log.pct.diff.
+# This gives a total of 140 genes (20 per cluster).
+detable %>%
+  group_by(cluster) %>%
+  top_n(-60, p_val) %>%
+  # top_n(40, pct.diff) %>%
+  top_n(20, avg_logFC)  ->
+  top20
+
+# Save the detable as a csv file.
+# write.csv2(top20, paste0(myfolder, "cardiomyocytes/detable_top20_cardiomyocytes.csv"))
+# write.csv2(detable, paste0(myfolder, "documents/detable_cardiomyocytes.csv"))
+
+write.csv2(detable, paste0(myfolder, "cardiomyocytes/no_rp_mt_clustering/detable_cardiomyocytes.csv"))
+
+# Unclear what this does since there is no documentation for getcluster(). But my guess is that the genes get matched to one specific cluster somehow, and the factor is leveled based on cluster number.
+ord <- factor(sapply(unique(as.character(top20$gene)), function(x){niceRplots::getcluster(DGE_DATA, x, "clusters_subset")}))
+
+pdf(paste0(myfolder, "cardiomyocytes/no_rp_mt_clustering/top20_markers_cardiomyocytes.pdf"), width = 18, height = length(ord)/6+1)
+par(mfrow=c(1,1), mar=c(3,6,2,5))
+plot_dots(DGE_DATA,
+          unique(as.character(top20$gene))[order(as.numeric(as.character(ord)))],
+          clustering = "clusters_subset",
+          show_grid = T,
+          main = "top cluster markers",
+          cex.main=1,
+          font.main=1,
+          cex.col = 1,
+          srt = 0,
+          cex.row = 1.1)
+dev.off()
+
+
+# # Save DEG dotplot in pdf format
+# d1 <- DotPlot(DGE_DATA, features = unique(top20$gene) %>% rev()) +
+#   coord_flip() +
+#   scale_colour_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) + labs(y = "cluster")
+# 
+# # in PDF
+# pdf(paste0(myfolder, "cardiomyocytes/top20_markers_cardiomyocytes.pdf"), width = 10, height = 80)
+# d1
+# dev.off()
+```
+
+
+## Endothelial cells analysis
+
+```{r}
+data <- readRDS(paste0(myfolder, "rds_objects/HDCA_heart_sc_annotated.rds"))
+```
+
+
+### Subset, process, clustering
+
+```{r, eval = !file.exists(paste0(myfolder, "rds_objects/15_sc_subset_cardiomyocytes.rds"))}
+# Subset the data to keep only endothelial cells
+subset <- data[,data$cell.types == "endothelial"]
+
+# Process the data
+# subset <- NormalizeData(subset)
+subset <- FindVariableFeatures(subset, nfeatures = 2000)
+subset <- ScaleData(subset, do.scale = TRUE, do.center = TRUE, vars.to.regress = c("nCount_RNA", "nFeature_RNA", "percent_ribo", "percent_mito", "percent_hb", "percent_hsp", "S.Score", "G2M.Score"))
+subset <- RunPCA(subset, npcs = 50)
+subset <- RunHarmony(subset,
+                   group.by.vars = c("sampleID"),
+                   reduction = "pca",
+                   project.dim = F,
+                   reduction.save = "harmony_subset")
+
+subset <- RunUMAP(subset,
+                dims = 1:50,
+                reduction = "harmony_subset",
+                n.neighbors = 10, # Maybe 20 looks better
+                metric = "cosine",
+                min.dist = 0.3,
+                spread = 1,
+                repulsion.strength = 1,
+                negative.sample.rate = 5,
+                n.epochs = 100,
+                reduction.key = "subset",
+                reduction.name = "umap_subset")
+
+# Compute k nearest neighbours
+knn <- RcppHNSW::hnsw_knn(subset@reductions$harmony_subset@cell.embeddings[,1:50],
+                          k = 10,
+                          distance = "cosine")
+
+# Get row indices for creating the sparse matrix
+i <- rep(1:nrow(knn$idx), ncol(knn$idx))
+
+# Get column indices for creating the sparse matrix
+j <- c(knn$idx)
+
+# Get the values for the sparse matrix. (All true neighbors will get a value of 1. For each cell, the cell itself should be excluded from the list of it's own neighbors, as the distance should be 0, or extremely close to 0.)
+p <- c(knn$dist>0)*1
+
+# Create a sparse matrix containing information of the nearest neighbors for all cells.
+nn <- as(sparseMatrix(i = i, j = j,  x = p, dims = c(nrow(knn$idx), nrow(knn$idx)),
+       dimnames = list(colnames(subset), colnames(subset))), "dgCMatrix")
+
+# Create an undirected graph based on the neighbor matrix.
+g <- igraph::graph_from_adjacency_matrix(nn,mode = "undirected")
+
+# Create clusters based on the graph, using the louvain method.
+set.seed(1)
+cl <- igraph::cluster_louvain(g, resolution = 1.37) # 1.3, 1.37 is quite good, 1.2
+
+# add the clusters to the metadata
+subset$clusters_subset <- factor(cl$membership)
+
+DimPlot(subset, reduction = "umap_subset", group.by = "clusters_subset", label = T) + labs(title = "Endothelial subclusters")
+
+gc()
+
+# 3D plotting of UMAP
+subset <- RunUMAP(subset,
+                dims = 1:50,
+                reduction = "harmony_subset",
+                n.neighbors = 10,
+                metric = "cosine",
+                min.dist = 0.3,
+                spread = 1,
+                repulsion.strength = 1,
+                negative.sample.rate = 5,
+                n.epochs = 100,
+                reduction.key = "subset",
+                reduction.name = "umap_subset_3D",
+                n.components = 3)
+```
+
+#### Save images and data
+
+```{r}
+# 3D umap
+
+# The saveWidget function seems to give an error without this variable specified.
+Sys.setenv(RSTUDIO_PANDOC="/Users/juliafoyer/opt/anaconda3/envs/scRNAseq2021/bin/")
+
+df <- data.frame(subset@reductions$umap_subset_3D@cell.embeddings)
+df <- data.frame(df,seurat_clusters=subset$clusters_subset,sampleid = subset$sampleID,age=subset$age)
+colnames(df)[1:3] <- c("UMAP_1","UMAP_2","UMAP_3")
+pal <- c(scales::hue_pal()(8),RColorBrewer::brewer.pal(9,"Set1"),RColorBrewer::brewer.pal(8,"Set2") )
+
+p_State <- plot_ly(df,x = ~UMAP_1, y = ~UMAP_2, z=~UMAP_3,color = ~seurat_clusters,
+                   colors = pal, size=.5) %>%  add_markers() %>%
+  layout(scene = list(xaxis = list(title = 'UMAP_1'), yaxis = list(title = 'UMAP_2'),zaxis = list(title = 'UMAP_3')))
+# htmlwidgets::saveWidget(p_State, paste0(myfolder,"images/endothelial/umap_3d.html"))
+htmlwidgets::saveWidget(p_State, paste0(myfolder,"endothelial/endothelial_umap_3d.html"))
+
+# Plot on the old UMAP
+png(paste0(myfolder, "endothelial/clusters_endothelial_big_umap.png"), width = 7000, height = 7000, res = 600)
+DimPlot(subset, reduction = "umap_oi", group.by = "clusters_subset") + labs(title = "Subclustered endothelial cells over the nonsubsetted UMAP")
+dev.off()
+
+# Plot on the new UMAP
+png(paste0(myfolder, "endothelial/clusters_subsetted_endothelial_umap.png"), width = 6000, height = 5000, res = 600)
+DimPlot(subset, reduction = "umap_subset", group.by = "clusters_subset", label = T) + labs(title = "Endothelial subclusters")
+dev.off()
+
+png(paste0(myfolder, "endothelial/clusters_subsetted_endothelial_umap_splitby_ageroundup.png"), width = 15000, height = 5000, res = 600)
+DimPlot(subset, reduction = "umap_subset", group.by = "clusters_subset", split.by = "age_round_up", ncol = 4) + NoLegend() + labs(title = "Endothelial subclusters by age (rounded)")
+dev.off()
+
+# Age
+png(paste0(myfolder, "endothelial/clusters_subsetted_endothelial_umap_splitby_age.png"), width = 7000, height = 5000, res = 600)
+DimPlot(subset, reduction = "umap_subset", group.by = "clusters_subset", split.by = "age", ncol = 4) + NoLegend() + labs(title = "Endothelial subclusters by age")
+dev.off()
+
+png(paste0(myfolder, "endothelial/age_endothelial.png"), width = 7000, height = 7000, res = 600)
+DimPlot(subset, reduction = "umap_subset", group.by = "age") + labs(title = "Age distribution over the endothelial UMAP")
+dev.off()
+
+# nFeatures
+png(paste0(myfolder, "endothelial/nFeatures_endothelial.png"), width = 7000, height = 7000, res = 600)
+FeaturePlot(subset, reduction = "umap_subset", features = "nFeature_RNA") + labs(title = "Number of genes over the endothelial UMAP")
+dev.off()
+
+# nCounts
+png(paste0(myfolder, "endothelial/nCounts_endothelial.png"), width = 7000, height = 7000, res = 600)
+FeaturePlot(subset, reduction = "umap_subset", features = "nCount_RNA") + labs(title = "Number of UMIs over the endothelial UMAP")
+dev.off()
+
+# Rough clusters
+png(paste0(myfolder, "endothelial/rough_clusters_endothelial.png"), width = 7000, height = 7000, res = 600)
+DimPlot(subset, reduction = "umap_subset", group.by = "clusters_louvain_oi") + labs(title = "Rough clusters on the new endothelial umap")
+dev.off()
+
+# Save the subsetted object
+saveRDS(subset, paste0(myfolder, "rds_objects/HDCA_heart_sc_subset_endothelial.rds"))
+```
+
+### DE analysis
+
+```{r}
+# Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
+sample_size <- table(subset$clusters_subset)
+sample_size[sample_size > 150] <- 150
+sample_size
+
+# Randomly sample the cells that will be included when calculating DGE (same number of cells as selected above).
+# Samples without replacement, so each cell only can be included once.
+DGE_cells <- lapply(names(sample_size), function(x){
+  set.seed(1)
+  sample(colnames(subset) [subset$clusters_subset == x], size = sample_size[x])
+  })
+DGE_cells <- unlist(DGE_cells)
+
+# Select all data that relates to the sampled DGE cells.
+DGE_DATA <- subset[, DGE_cells]
+
+# Set the identity of the object to "clusters_subset".
+DGE_DATA <- SetIdent(DGE_DATA, value = "clusters_subset")
+
+#Find differentially expressed genes based on groups defined by "clusters_subset".
+# The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).
+detable <- FindAllMarkers(DGE_DATA,
+                          only.pos = T,
+                          logfc.threshold = .1,
+                          assay = "RNA",
+                          min.pct = 0.05)
+
+# Only keep DEGs that have a p-value below 0.05.
+detable <- detable[detable$p_val < 0.05,]
+
+# Adding two extra columns giving the difference (and log difference) between pct1 and pct2.
+# pct1 is the percentage of cells in the specific cluster that express this gene.
+# pct2 is the percentage of cells in all other clusters that express this gene.
+detable$pct.diff <- detable$pct.1 - detable$pct.2
+detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
+
+library(dplyr)
+
+# Pick the 60 genes with the lowest p value for each age group, then 40 highest based on pct.diff, then 20 highest based on log.pct.diff.
+# This gives a total of 140 genes (20 per cluster).
+# detable %>%
+#   group_by(cluster) %>%
+#   top_n(-60, p_val) %>%
+#   top_n(40, pct.diff) %>%
+#   top_n(20, log.pct.diff) ->
+#   top20
+
+detable %>%
+  group_by(cluster) %>%
+  top_n(-60, p_val) %>%
+  # top_n(40, pct.diff) %>%
+  top_n(20, avg_logFC)  ->
+  top20
+
+# Save the detable as a csv file.
+write.csv2(detable, paste0(myfolder, "endothelial/detable_endothelial.csv"))
+
+ord <- factor(sapply(unique(as.character(top20$gene)), function(x){niceRplots::getcluster(DGE_DATA, x, "clusters_subset")}))
+
+pdf(paste0(myfolder, "endothelial/top20_markers_endothelial.pdf"), width = 10, height = length(ord)/6+1)
+par(mfrow=c(1,1), mar=c(3,6,2,5))
+plot_dots(DGE_DATA,
+          unique(as.character(top20$gene))[order(as.numeric(as.character(ord)))],
+          clustering = "clusters_subset",
+          show_grid = T,
+          main = "top cluster markers",
+          cex.main=1,
+          font.main=1,
+          cex.col = 1,
+          srt = 0,
+          cex.row = 1.1)
+dev.off()
+```
+
+### EC temporal DE analysis 230602
+
+```{r}
+myfolder <- "/Users/juliafoyer/ST/HDCA_heart/single_cell/results/temporal/"
+```
+
+```{r}
+# Create groups based on both clusters and ages and save to the object as a factor.
+groups <- paste0("cl_", subset$clusters_subset, '_age_', as.character(subset$age_groups) )
+subset$subgroups <- factor(groups, levels = mixedsort(unique(groups)))
+sample_size <- table(subset$subgroups)
+sample_size[ sample_size > 100 ] <- 100
+
+DGE_cells <- lapply(names(sample_size), function(x){
+  set.seed(1)
+  sample( colnames(subset) [ subset$subgroups == x ] , size = sample_size[x])
+  })
+DGE_cells <- unlist(DGE_cells)
+
+DGE_DATA <- subset[, DGE_cells]
+
+# Next time, try increasing max.cells.per.ident to 200
+# We set return.thres (p-val) to 1 to include everything and try to avoid an error that made the function crash because of not enough cells in age group 10. Filtering can be done later. logfc.threshold could also be modified and filtered later.
+detable_pat <- lapply(unique(DGE_DATA$clusters_subset),DGE_DATA=DGE_DATA, function(x,DGE_DATA){
+  message(x)
+  temp <- DGE_DATA[,DGE_DATA$clusters_subset == x]
+  print(temp)
+  temp <- SetIdent( temp , value = "age_groups")
+  detable <- 0
+  try(detable <- FindAllMarkers(temp,
+                                only.pos = T,
+                                logfc.threshold = .1,
+                                assay = "RNA",
+                                min.pct = 0.05,
+                                return.thresh = 1),
+      silent = TRUE)
+
+  if(detable != 0){
+    return( cbind(detable,cell_cluster= x) )}
+})
+detable <- do.call(rbind,detable_pat)
+
+detable <- detable[ detable$p_val < 0.05,  ]
+detable$pct.diff <- detable$pct.1 - detable$pct.2
+detable$log.pct.diff <- log2( (detable$pct.1+1) / (detable$pct.2+1) )
+write.csv2(detable, paste0(myfolder, "Temporal_DE/EC_detable_for_each_cluster_over_time.csv"))
+
+# Save results as a dot plot
+detable$groups <- paste0(detable$cell_cluster,detable$cluster)
+
+detable %>%
+  group_by(groups) %>%
+  top_n(-60, p_val) %>%
+  # top_n(40, pct.diff) %>%
+  top_n(20, avg_logFC) ->
+  top20
+
+# ord <- factor(sapply(unique(as.character(top5$gene)),function(x){getcluster(DGE_DATA, x, "subgroups")}))
+ord <- getcluster(data = DGE_DATA, genes = unique(as.character(top20$gene)), clustering = "subgroups")
+ord
+
+pdf( paste0(myfolder, "Temporal_DE/EC_DGE_temporal.pdf"),width = 60,height = length(ord)/6+3)
+mypar(1,1,mar=c(14,10,3,5))
+plot_dots(DGE_DATA, unique(names(ord)[order(ord)]), clustering = "subgroups", show_grid = T,main = "top cluster markers over time",cex.main=1,font.main=1,cex.col = 1,srt = 90,cex.row = 1.1)
+abline(v=cumsum(c(table(sub( "_age_.*","",names(table(DGE_DATA$subgroups))))))+0.5)
+dev.off()
+```
+
+
+## Fibroblast analysis
+
+```{r}
+data <- readRDS(paste0(myfolder, "rds_objects/HDCA_heart_sc_filtered_annotated.rds"))
+```
+
+### Subset, process, clustering
+
+```{r, eval = !file.exists(paste0(myfolder, "rds_objects/15_sc_subset_cardiomyocytes.rds"))}
+# Subset the data to keep only fibroblasts
+subset <- data[,data$cell.types == "fibroblast"]
+
+# Process the data
+subset <- NormalizeData(subset)
+
+subset <- FindVariableFeatures(subset, nfeatures = 2000)
+
+subset <- ScaleData(subset, do.scale = TRUE, do.center = TRUE, vars.to.regress = c("nCount_RNA", "nFeature_RNA", "percent_ribo", "percent_mito", "percent_hb", "percent_hsp", "S.Score", "G2M.Score"))
+
+subset <- RunPCA(subset, npcs = 50)
+
+subset <- RunHarmony(subset,
+                   group.by.vars = c("sampleID"),
+                   reduction = "pca",
+                   project.dim = F,
+                   reduction.save = "harmony_subset")
+
+subset <- RunUMAP(subset,
+                dims = 1:50,
+                reduction = "harmony_subset",
+                n.neighbors = 10,
+                metric = "cosine",
+                min.dist = 0.3,
+                spread = 1,
+                repulsion.strength = 1,
+                negative.sample.rate = 5,
+                n.epochs = 100,
+                reduction.key = "subset",
+                reduction.name = "umap_subset")
+
+# Compute k nearest neighbours
+knn <- RcppHNSW::hnsw_knn(subset@reductions$harmony_subset@cell.embeddings[,1:50],
+                          k = 10,
+                          distance = "cosine")
+
+# Get row indices for creating the sparse matrix
+i <- rep(1:nrow(knn$idx), ncol(knn$idx))
+
+# Get column indices for creating the sparse matrix
+j <- c(knn$idx)
+
+# Get the values for the sparse matrix. (All true neighbors will get a value of 1. For each cell, the cell itself should be excluded from the list of it's own neighbors, as the distance should be 0, or extremely close to 0.)
+p <- c(knn$dist>0)*1
+
+# Create a sparse matrix containing information of the nearest neighbors for all cells.
+nn <- as(sparseMatrix(i = i, j = j,  x = p, dims = c(nrow(knn$idx), nrow(knn$idx)),
+       dimnames = list(colnames(subset), colnames(subset))), "dgCMatrix")
+
+# Create an undirected graph based on the neighbor matrix.
+g <- igraph::graph_from_adjacency_matrix(nn,mode = "undirected")
+
+# Create clusters based on the graph, using the louvain method.
+set.seed(1)
+cl <- igraph::cluster_louvain(g, resolution = 1.5)
+
+# add the clusters to the metadata
+subset$clusters_subset <- factor(cl$membership)
+
+DimPlot(subset, reduction = "umap_subset", group.by = "clusters_subset", label = T) + NoLegend() + labs(title = "Fibroblast subclusters")
+DimPlot(subset, reduction = "umap_subset", group.by = "clusters_subset", label = T) + labs(title = "Fibroblast subclusters")
+
+gc()
+
+# 3D plotting of UMAP
+subset <- RunUMAP(subset,
+                dims = 1:50,
+                reduction = "harmony_subset",
+                n.neighbors = 10,
+                metric = "cosine",
+                min.dist = 0.3,
+                spread = 1,
+                repulsion.strength = 1,
+                negative.sample.rate = 5,
+                n.epochs = 100,
+                reduction.key = "subset",
+                reduction.name = "umap_subset_3D",
+                n.components = 3)
+```
+
+#### Save images and data
+
+```{r}
+# 3D umap
+
+# The saveWidget function seems to give an error without this variable specified.
+Sys.setenv(RSTUDIO_PANDOC="/Users/juliafoyer/opt/anaconda3/envs/scRNAseq2021/bin/")
+
+df <- data.frame(subset@reductions$umap_subset_3D@cell.embeddings)
+df <- data.frame(df,seurat_clusters=subset$clusters_subset,sampleid = subset$sampleID,age=subset$age)
+colnames(df)[1:3] <- c("UMAP_1","UMAP_2","UMAP_3")
+pal <- c(scales::hue_pal()(8),RColorBrewer::brewer.pal(9,"Set1"),RColorBrewer::brewer.pal(8,"Set2") )
+
+p_State <- plot_ly(df,x = ~UMAP_1, y = ~UMAP_2, z=~UMAP_3,color = ~seurat_clusters,
+                   colors = pal, size=.5) %>%  add_markers() %>%
+  layout(scene = list(xaxis = list(title = 'UMAP_1'), yaxis = list(title = 'UMAP_2'),zaxis = list(title = 'UMAP_3')))
+htmlwidgets::saveWidget(p_State, paste0(myfolder,"fibroblasts/umap_3d_fibroblast.html"))
+
+# Plot on the old UMAP
+png(paste0(myfolder, "fibroblasts/clusters_fibroblast_big_umap.png"), width = 7000, height = 7000, res = 600)
+DimPlot(subset, reduction = "umap_oi", group.by = "clusters_subset", label = T) + labs(title = "Subclustered fibroblasts over the nonsubsetted UMAP")
+dev.off()
+
+# Plot on the new UMAP
+png(paste0(myfolder, "fibroblasts/clusters_subsetted_fibroblast_umap.png"), width = 5000, height = 5000, res = 600)
+DimPlot(subset, reduction = "umap_subset", group.by = "clusters_subset", label = T) + NoLegend() + labs(title = "Fibroblast subclusters")
+dev.off()
+
+png(paste0(myfolder, "fibroblasts/clusters_subsetted_fibroblast_umap_splitby_ageroundup.png"), width = 15000, height = 5000, res = 600)
+DimPlot(subset, reduction = "umap_subset", group.by = "clusters_subset", split.by = "age_round_up", ncol = 4) + NoLegend() + labs(title = "Fibroblast subclusters by age (rounded)")
+dev.off()
+
+# Age
+png(paste0(myfolder, "fibroblasts/clusters_subsetted_fibroblast_umap_splitby_age.png"), width = 7000, height = 5000, res = 600)
+DimPlot(subset, reduction = "umap_subset", group.by = "clusters_subset", split.by = "age", ncol = 4) + NoLegend() + labs(title = "Fibroblast subclusters by age")
+dev.off()
+
+png(paste0(myfolder, "fibroblasts/age_fibroblast.png"), width = 7000, height = 7000, res = 600)
+DimPlot(subset, reduction = "umap_subset", group.by = "age") + labs(title = "Age distribution over the fibroblast UMAP")
+dev.off()
+
+# nFeatures
+png(paste0(myfolder, "fibroblasts/nFeatures_fibroblast.png"), width = 7000, height = 7000, res = 600)
+FeaturePlot(subset, reduction = "umap_subset", features = "nFeature_RNA") + labs(title = "Number of genes over the fibroblast UMAP")
+dev.off()
+
+# nCounts
+png(paste0(myfolder, "fibroblasts/nCounts_fibroblast.png"), width = 7000, height = 7000, res = 600)
+FeaturePlot(subset, reduction = "umap_subset", features = "nCount_RNA") + labs(title = "Number of UMIs over the fibroblast UMAP")
+dev.off()
+
+png(paste0(myfolder, "fibroblasts/cycling_score.png"), width = 14000, height = 7000, res = 600)
+p1 <- FeaturePlot(subset, reduction = "umap_subset", features = "S.Score")
+p2 <- FeaturePlot(subset, reduction = "umap_subset", features = "G2M.Score")
+p1 | p2
+dev.off()
+
+# Rough clusters
+png(paste0(myfolder, "fibroblasts/rough_clusters_fibroblast.png"), width = 7000, height = 7000, res = 600)
+DimPlot(subset, reduction = "umap_subset", group.by = "clusters_louvain_oi") + labs(title = "Rough clusters on the new fibroblast umap")
+dev.off()
+
+# Save the subsetted object
+saveRDS(subset, paste0(myfolder, "/rds_objects/HDCA_heart_sc_subset_fibroblasts.rds"))
+```
+
+
+### DE analysis
+
+```{r}
+# Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
+sample_size <- table(subset$clusters_subset)
+sample_size[sample_size > 150] <- 150
+sample_size
+
+# Randomly sample the cells that will be included when calculating DGE (same number of cells as selected above).
+# Samples without replacement, so each cell only can be included once.
+DGE_cells <- lapply(names(sample_size), function(x){
+  set.seed(1)
+  sample(colnames(subset) [subset$clusters_subset == x], size = sample_size[x])
+  })
+DGE_cells <- unlist(DGE_cells)
+
+# Select all data that relates to the sampled DGE cells.
+DGE_DATA <- subset[, DGE_cells]
+
+# Set the identity of the object to "clusters_subset".
+DGE_DATA <- SetIdent(DGE_DATA, value = "clusters_subset")
+
+#Find differentially expressed genes based on groups defined by "clusters_subset".
+# The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).
+detable <- FindAllMarkers(DGE_DATA,
+                          only.pos = T,
+                          logfc.threshold = .1,
+                          assay = "RNA",
+                          min.pct = 0.05)
+
+# Only keep DEGs that have a p-value below 0.05.
+detable <- detable[detable$p_val < 0.05,]
+
+# Adding two extra columns giving the difference (and log difference) between pct1 and pct2.
+# pct1 is the percentage of cells in the specific cluster that express this gene.
+# pct2 is the percentage of cells in all other clusters that express this gene.
+detable$pct.diff <- detable$pct.1 - detable$pct.2
+detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
+
+# Pick the 60 genes with the lowest p value for each age group, then 40 highest based on pct.diff, then 20 highest based on log.pct.diff.
+# This gives a total of 140 genes (20 per cluster).
+# detable %>%
+#   group_by(cluster) %>%
+#   top_n(-60, p_val) %>%
+#   top_n(40, pct.diff) %>%
+#   top_n(20, log.pct.diff) ->
+#   top20
+
+detable %>%
+  group_by(cluster) %>%
+  top_n(-60, p_val) %>%
+  # top_n(40, pct.diff) %>%
+  top_n(20, avg_logFC)  ->
+  top20
+
+# Save the detable as a csv file.
+write.csv2(detable, paste0(myfolder, "fibroblasts/detable_fibroblast.csv"))
+
+# Unclear what this does since there is no documentation for getcluster(). But my guess is that the genes get matched to one specific cluster somehow, and the factor is leveled based on cluster number.
+ord <- factor(sapply(unique(as.character(top20$gene)), function(x){niceRplots::getcluster(DGE_DATA, x, "clusters_subset")}))
+
+pdf(paste0(myfolder, "fibroblasts/top20_markers_fibroblast.pdf"), width = 10, height = length(ord)/6+1)
+par(mfrow=c(1,1), mar=c(3,6,2,5))
+plot_dots(DGE_DATA,
+          unique(as.character(top20$gene))[order(as.numeric(as.character(ord)))],
+          clustering = "clusters_subset",
+          show_grid = T,
+          main = "top cluster markers",
+          cex.main=1,
+          font.main=1,
+          cex.col = 1,
+          srt = 0,
+          cex.row = 1.1)
+dev.off()
+```
+
+### FB temporal DE analysis 230602
+
+```{r}
+myfolder <- "/Users/juliafoyer/ST/HDCA_heart/single_cell/results/temporal/"
+```
+
+```{r}
+# Create groups based on both clusters and ages and save to the object as a factor.
+groups <- paste0("cl_", subset$clusters_subset, '_age_', as.character(subset$age_groups) )
+subset$subgroups <- factor(groups, levels = mixedsort(unique(groups)))
+sample_size <- table(subset$subgroups)
+sample_size[ sample_size > 100 ] <- 100
+
+DGE_cells <- lapply(names(sample_size), function(x){
+  set.seed(1)
+  sample( colnames(subset) [ subset$subgroups == x ] , size = sample_size[x])
+  })
+DGE_cells <- unlist(DGE_cells)
+
+DGE_DATA <- subset[, DGE_cells]
+
+# Next time, try increasing max.cells.per.ident to 200
+# We set return.thres (p-val) to 1 to include everything and try to avoid an error that made the function crash because of not enough cells in age group 10. Filtering can be done later. logfc.threshold could also be modified and filtered later.
+detable_pat <- lapply(unique(DGE_DATA$clusters_subset),DGE_DATA=DGE_DATA, function(x,DGE_DATA){
+  message(x)
+  temp <- DGE_DATA[,DGE_DATA$clusters_subset == x]
+  print(temp)
+  temp <- SetIdent( temp , value = "age_groups")
+  detable <- 0
+  try(detable <- FindAllMarkers(temp,
+                                only.pos = T,
+                                logfc.threshold = .1,
+                                assay = "RNA",
+                                min.pct = 0.05,
+                                return.thresh = 1),
+      silent = TRUE)
+
+  if(detable != 0){
+    return( cbind(detable,cell_cluster= x) )}
+})
+detable <- do.call(rbind,detable_pat)
+
+detable <- detable[ detable$p_val < 0.05,  ]
+detable$pct.diff <- detable$pct.1 - detable$pct.2
+detable$log.pct.diff <- log2( (detable$pct.1+1) / (detable$pct.2+1) )
+write.csv2(detable, paste0(myfolder, "Temporal_DE/FB_detable_for_each_cluster_over_time.csv"))
+
+# Save results as a dot plot
+detable$groups <- paste0(detable$cell_cluster,detable$cluster)
+
+detable %>%
+  group_by(groups) %>%
+  top_n(-60, p_val) %>%
+  # top_n(40, pct.diff) %>%
+  top_n(20, avg_logFC) ->
+  top20
+
+# ord <- factor(sapply(unique(as.character(top5$gene)),function(x){getcluster(DGE_DATA, x, "subgroups")}))
+ord <- getcluster(data = DGE_DATA, genes = unique(as.character(top20$gene)), clustering = "subgroups")
+ord
+
+pdf( paste0(myfolder, "Temporal_DE/FB_DGE_temporal.pdf"),width = 60,height = length(ord)/6+3)
+mypar(1,1,mar=c(14,10,3,5))
+plot_dots(DGE_DATA, unique(names(ord)[order(ord)]), clustering = "subgroups", show_grid = T,main = "top cluster markers over time",cex.main=1,font.main=1,cex.col = 1,srt = 90,cex.row = 1.1)
+abline(v=cumsum(c(table(sub( "_age_.*","",names(table(DGE_DATA$subgroups))))))+0.5)
+dev.off()
+```
+
+## For figures - 230505
+
+```{r}
+myfolder <- "/Users/juliafoyer/ST/HDCA_heart/single_cell/results/figure_images/"
+```
+
+```{r}
+subset <- readRDS("/Users/juliafoyer/ST/HDCA_heart/single_cell/results/HDCA_heart_sc_analysis_it8/rds_objects/HDCA_heart_sc_subset_endothelial.rds")
+```
+
+```{r}
+pdf(file = paste0(myfolder, "Endothelial_clusters.pdf"), width = 15, height = 15, bg = "transparent")
+DimPlot(object = subset, reduction = "umap_subset", group.by = "clusters_subset", raster = F, pt.size = 1) + NoLegend()
+dev.off()
+
+pdf(file = paste0(myfolder, "Endothelial_clusters_with_numbers.pdf"), width = 15, height = 15, bg = "transparent")
+DimPlot(object = subset, reduction = "umap_subset", group.by = "clusters_subset", raster = F, pt.size = 1, label = T)
+dev.off()
+
+pdf(file = paste0(myfolder, "Endothelial_clusters_with_legend.pdf"), width = 15, height = 15, bg = "transparent")
+DimPlot(object = subset, reduction = "umap_subset", group.by = "clusters_subset", raster = F, pt.size = 1, label = F)
+dev.off()
+```
+
+```{r}
+subset <- readRDS("/Users/juliafoyer/ST/HDCA_heart/single_cell/results/HDCA_heart_sc_analysis_it8/rds_objects/HDCA_heart_sc_subset_fibroblasts.rds")
+```
+
+```{r}
+pdf(file = paste0(myfolder, "Fibroblast_clusters.pdf"), width = 15, height = 15, bg = "transparent")
+DimPlot(object = subset, reduction = "umap_subset", group.by = "clusters_subset", raster = F, pt.size = 1) + NoLegend()
+dev.off()
+
+pdf(file = paste0(myfolder, "Fibroblast_clusters_with_numbers.pdf"), width = 15, height = 15, bg = "transparent")
+DimPlot(object = subset, reduction = "umap_subset", group.by = "clusters_subset", raster = F, pt.size = 1, label = T)
+dev.off()
+
+pdf(file = paste0(myfolder, "Fibroblast_clusters_with_legend.pdf"), width = 15, height = 15, bg = "transparent")
+DimPlot(object = subset, reduction = "umap_subset", group.by = "clusters_subset", raster = F, pt.size = 1, label = F)
+dev.off()
+```
+
+```{r}
+data <- readRDS(paste0(myfolder, "rds_objects/HDCA_heart_sc_full.rds"))
+```
+
+```{r}
+pdf(file = paste0(myfolder, "Clusters_modified.pdf"), width = 15, height = 15, bg = "transparent")
+DimPlot(data, reduction = "umap_oi", group.by = "clusters_louvain_oi", raster = F, pt.size = 1)
+dev.off()
+
+pdf(file = paste0(myfolder, "Clusters_modified_with_numbers.pdf"), width = 15, height = 15, bg = "transparent")
+DimPlot(data, reduction = "umap_oi", group.by = "clusters_louvain_oi", raster = F, label = T, pt.size = 1)
+dev.off()
+
+pdf(file = paste0(myfolder, "Annotation_modified.pdf"), width = 15, height = 15, bg = "transparent")
+DimPlot(data, reduction = "umap_oi", group.by = "cell.types", raster = F, pt.size = 1)
+dev.off()
+```
+
+```{r}
+subset <- readRDS(paste0(myfolder, "rds_objects/HDCA_heart_sc_subset_cardiomyocytes_extended.rds"))
+```
+
+```{r}
+pdf(file = paste0(myfolder, "Cardiomyocyte_clusters.pdf"), width = 15, height = 15, bg = "transparent")
+DimPlot(object = subset, reduction = "umap_subset", group.by = "clusters_subset", raster = F, pt.size = 1) + NoLegend()
+dev.off()
+
+pdf(file = paste0(myfolder, "Cardiomyocyte_clusters_with_numbers.pdf"), width = 15, height = 15, bg = "transparent")
+DimPlot(object = subset, reduction = "umap_subset", group.by = "clusters_subset", raster = F, pt.size = 1, label = T)
+dev.off()
+
+pdf(file = paste0(myfolder, "Cardiomyocyte_clusters_with_legend.pdf"), width = 15, height = 15, bg = "transparent")
+DimPlot(object = subset, reduction = "umap_subset", group.by = "clusters_subset", raster = F, pt.size = 1, label = F)
+dev.off()
+```
+
+## Combining annotation levels
+
+```{r}
+data <- readRDS(paste0(myfolder, "rds_objects/HDCA_heart_sc_full.rds"))
+CMs <- readRDS(paste0(myfolder, "rds_objects/HDCA_heart_sc_subset_cardiomyocytes_extended.rds"))
+FBs <- readRDS(paste0(myfolder, "rds_objects/HDCA_heart_sc_subset_fibroblasts.rds"))
+ECs <- readRDS(paste0(myfolder, "rds_objects/HDCA_heart_sc_subset_endothelial.rds"))
+```
+
+```{r}
+CM_index <- match(colnames(CMs), colnames(data))
+CM_clusters <- CMs@meta.data$clusters_subset
+
+E_index <- match(colnames(ECs), colnames(data))
+E_clusters <- ECs@meta.data$clusters_subset
+
+F_index <- match(colnames(FBs), colnames(data))
+F_clusters <- FBs@meta.data$clusters_subset
+```
+
+```{r}
+df <- data.frame(matrix(ncol = 2, nrow = length(colnames(data))))
+colnames(df) <- c("high_level_cluster", "deep_level_cluster")
+df$high_level_cluster <- data@meta.data$high_level_clusters
+```
+
+```{r}
+for (i in 1:length(CM_index)){
+  ind <- CM_index[i]
+  # df$CM_cluster[ind] <- CM_clusters[i]
+  df$deep_level_cluster[ind] <- paste0("Cardiomyocyte_cl_", CM_clusters[i])
+}
+
+for (i in 1:length(E_index)){
+  ind <- E_index[i]
+  # df$E_cluster[ind] <- E_clusters[i]
+  df$deep_level_cluster[ind] <- paste0("Endothelial_cl_", E_clusters[i])
+}
+
+for (i in 1:length(F_index)){
+  ind <- F_index[i]
+  # df$F_cluster[ind] <- F_clusters[i]
+  df$deep_level_cluster[ind] <- paste0("Fibroblast_cl_", F_clusters[i])
+}
+
+df$deep_level_cluster <- ifelse(is.na(df$deep_level_cluster), paste0("High_level_cl_", df$high_level_cluster), df$deep_level_cluster)
+```
+
+```{r}
+data$deep_level_clusters <- df$deep_level_cluster
+table(data$deep_level_clusters)
+```
+
+```{r}
+saveRDS(data, paste0(myfolder, "rds_objects/HDCA_heart_sc_deep_level_clustering.rds"))
+```
+
+
+## Stereoscope preparations
+
+```{r}
+out_path <- "/Users/juliafoyer/ST/HDCA_heart/stereoscope/stereoscope_high_level_clustering_230522/"
+data <- readRDS(paste0(myfolder, "rds_objects/HDCA_heart_sc_full.rds"))
+```
+
+### Get the 5000 most highly variable genes
+
+```{r}
+data <- FindVariableFeatures(data, nfeatures = 5000)
+
+var.features <- data@assays$RNA@var.features
+
+file <- paste0(out_path, "HDCA_heart_sc_var.features_5000.txt")
+write.table(x = var.features, file = file, quote = FALSE, row.names = FALSE, col.names = FALSE)
+```
+
+### Save the count matrix
+
+```{r}
+# counts <- t(data@assays$RNA@counts)
+counts <- data@assays$RNA@counts
+row.names(counts)
+
+dim(counts) # Modify the code below based on this
+
+file <- paste0(out_path, "HDCA_heart_sc_cnt_data.tsv")
+counts_dense <- t(as.matrix(counts[,1:10000]))
+write.table(counts_dense, file = file, sep = "\t", row.names = T, quote = F)
+for (i in 2:7) {
+  last <- i * 10000
+  first <- last - 9999
+  counts_dense <- t(as.matrix(counts[,first:last]))
+  write.table(counts_dense, file = file, sep = "\t", append=TRUE, row.names = T, quote = F, col.names = F)
+}
+counts_dense <- t(as.matrix(counts[,70001:74206]))
+write.table(counts_dense, file = file, sep = "\t", append=TRUE, row.names = T, quote = F, col.names = F)
+```
+
+### Save the annotation files
+
+#### High level clusters
+
+```{r}
+annotation <- data[["high_level_clusters"]]
+colnames(annotation) <- "bio_celltype"
+
+file <- paste0(out_path, "HDCA_heart_sc_annotation.tsv")
+fwrite(annotation, row.names = TRUE, file = file, sep = "\t")
+```
+
+#### Deep level clusters
+
+
+
+

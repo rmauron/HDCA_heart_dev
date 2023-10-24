@@ -1,0 +1,565 @@
+---
+title: "02_2_HDCA_heart_endothelial_analysis"
+author: "Julia Foyer, Ludvig Larsson & Raphaël Mauron"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# HDCA heart endothelial analysis
+
+In this script, a subset of the *high level* data generated in the script `01_HDCA_heart_QC_and_high_level_analysis.Rmd` is selected and processed again and is part of the *deep level* analysis.
+
+## Settings
+
+### Set library path
+
+```{r setup, include=FALSE}
+.libPaths("/home/rstudio/project/renv/library/R-4.3/aarch64-unknown-linux-gnu/")
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+### Load Libraries
+
+```{r, message = FALSE}
+library(Seurat)
+library(Matrix)
+library(dplyr)
+library(harmony)
+library(ggplot2)
+library(patchwork)
+library(openxlsx)
+library(plotly)
+```
+
+
+### Set environment variables
+
+```{r}
+# Set the directory 
+myfolder <- "/home/rstudio/project/output/HDCA_heart_sc_analysis_docker/"
+```
+
+
+### Load global functions
+
+```{r}
+source("/home/rstudio/project/code/global_functions.R")
+```
+
+
+### Load filtered data
+
+```{r}
+data <- readRDS(paste0(myfolder, "rds_objects/HDCA_heart_sc_full_extended.rds"))
+```
+
+
+### Set seed
+
+```{r}
+set.seed(1)
+```
+
+
+## Subset, process, clustering
+
+* Keep all cells annotated as endothelial
+* Calculate variable features
+* Scale data while regressing out "nCount_RNA", "nFeature_RNA", "percent_ribo", "percent_mito", "percent_hb", "percent_hsp", "S.Score" and "G2M.Score
+* Run PCA on scaled data (50 PCs)
+* Run harmony (batch correction, 50 PCs)
+* Compute UMAP (50 PCs)
+* Construct knn adjacency matrix with hnsw_knn
+* Cluster cells using cluster_louvain
+
+```{r, message=FALSE}
+# Subset the data to keep only endothelial cells
+EN <- data[,data$cell.types == "Endocardial EC"   | #3
+            data$cell.types == "Microvascular EC" | #12
+            data$cell.types == "Valve-related EC" | #21
+            data$cell.types == "SEMA4Ahigh EC"    | #24
+            data$cell.types == "Macrovascular EC" | #28
+            data$cell.types == "Lymphatic EC"     | #32
+            data$cell.types == "TMSB10high_2"     ] #33
+           
+
+# Remove all genes with 0 counts
+EN <- EN[rowSums(GetAssayData(EN, slot = "counts")) > 0, ]
+
+
+# Process the data
+EN <- EN %>% 
+  NormalizeData() %>% 
+  FindVariableFeatures(nfeatures = 3000) %>% 
+  ScaleData(vars.to.regress = c("nCount_RNA", "nFeature_RNA", 
+                                "percent_ribo", "percent_mito", 
+                                "percent_hb", "percent_hsp", 
+                                "S.Score", "G2M.Score")) 
+
+
+EN <- RunPCA(EN, npcs = 50, seed.use = 42)
+
+set.seed(15)
+EN <- RunHarmony(EN,
+                 group.by.vars = c("sampleID"),
+                 reduction = "pca",
+                 project.dim = F,
+                 reduction.save = "harmony_subset")
+
+EN <- RunUMAP(EN,
+              dims = 1:50,
+              reduction = "harmony_subset",
+              n.neighbors = 20, # Maybe 20 looks better, was set to 10
+              metric = "cosine",
+              min.dist = 0.3,
+              spread = 1,
+              repulsion.strength = 1,
+              negative.sample.rate = 5,
+              n.epochs = 100,
+              reduction.key = "subset",
+              reduction.name = "umap_subset",
+              seed.use = 42)
+
+gc()
+
+# Compute k nearest neighbours
+set.seed(1)
+nn <- CreateNNAdjacencyMatrix(data = EN, reduction = "harmony_subset", k = 10, dims = 1:50)
+
+# add the clusters to the metadata
+cl <- LouvainClustering(nn = nn, seed = 1, resolution = 1.15) # change resolution
+EN$clusters_subset <- factor(cl)
+
+
+pdf(paste0(myfolder, "endothelial/endothelial_subclusters.pdf"), width = 10, height = 10)
+DimPlot(EN, reduction = "umap_subset", group.by = "clusters_subset", label = T) + labs(title = "Endothelial subclusters")
+dev.off()
+
+gc()
+```
+
+
+## UMAP 3D
+
+```{r}
+EN <- RunUMAP(EN,
+                dims = 1:50,
+                reduction = "harmony_subset",
+                n.neighbors = 10,
+                metric = "cosine",
+                min.dist = 0.3,
+                spread = 1,
+                repulsion.strength = 1,
+                negative.sample.rate = 5,
+                n.epochs = 100,
+                reduction.key = "subset",
+                reduction.name = "umap_subset_3d",
+                seed.use = 42,
+                n.components = 3)
+gc()
+
+df_EN <- data.frame(EN@reductions$umap_subset_3d@cell.embeddings)
+df_EN <- data.frame(df_EN, seurat_clusters=EN$clusters_subset, sampleid = EN$sampleID , age = EN$age)
+colnames(df_EN)[1:3] <- c("UMAP_1", "UMAP_2", "UMAP_3")
+pal <- c(scales::hue_pal()(8), RColorBrewer::brewer.pal(9, "Set1"), RColorBrewer::brewer.pal(8, "Set2"))
+
+p <- plot_ly(df_EN, 
+             x = ~UMAP_1, y = ~UMAP_2, z = ~UMAP_3,
+             color = ~seurat_clusters,
+             colors = pal,
+             size = 0.5) %>%
+  add_markers() %>%
+  layout(scene = list(xaxis = list(title = "UMAP_1"), yaxix = list(title = "UMAP_2"), zaxis = list(title = "UMAP_3")))
+
+htmlwidgets::saveWidget(p, paste0(myfolder, "endothelial/umap3d.html"))
+```
+
+
+## Run DEG for all clusters
+
+```{r, message=FALSE}
+EN <- SetIdent(EN, value = "clusters_subset")
+de_markers <- FindAllMarkers(EN, logfc.threshold = 0.25,
+                             only.pos = TRUE, 
+                             min.pct = 0.05)
+
+openxlsx::write.xlsx(de_markers %>% filter(p_val_adj < 0.01),
+                     file = paste0(myfolder, "endothelial/detable_endothelial.xlsx"))
+```
+
+
+### DE dotplot
+
+```{r}
+top20_markers <- de_markers %>% 
+  group_by(cluster) %>% 
+  slice_head(n = 20) %>% 
+  pull(gene)
+
+EN <- SetIdent(EN, value = "clusters_subset")
+
+p <- DotPlot(EN, features = unique(top20_markers)) +
+  coord_flip() +  # This flips the plot vertically
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  labs(x = "Cluster", y = "Genes")  # Flipped labels
+
+pdf(paste0(myfolder, "endothelial/dotplot_de_genes.pdf"), width = 10, height = 100)
+print(p)
+dev.off()
+
+rm(p)
+gc()
+```
+
+
+## Export Endothelial object
+
+```{r}
+saveRDS(EN, file = paste0(myfolder, "rds_objects/endothelial01.rds"))
+```
+
+```{r}
+EN <- readRDS(file = paste0(myfolder, "rds_objects/endothelial01.rds"))
+```
+
+
+
+#### Age groups
+
+##### Create the age groups
+
+5-6 weeks
+7-8 weeks
+9-11 weeks
+12-14 weeks
+
+```{r}
+# age1 <- EN[,EN$age <= 6]
+# age2 <- EN[,EN$age == 7 | EN$age == 8 | EN$age == 8.5]
+# age3 <- EN[,EN$age == 9 | EN$age == 10 | EN$age == 11.5]
+# age4 <- EN[,EN$age >= 12]
+```
+
+
+###### Check cell group (age) with the fewest cells
+
+```{r}
+# a1 <- sum(table(age1$sampleID))
+# a2 <- sum(table(age2$sampleID))
+# a3 <- sum(table(age3$sampleID))
+# a4 <- sum(table(age4$sampleID))
+# min_cell <- min(a1, a2, a3, a4)
+# min_cell
+# rm(a1, a2, a3, a4)
+```
+
+
+##### Select random subsets of the same size
+
+To 1668 cells (same size as the smallest age group, i.e., age3).
+
+```{r}
+# set.seed(1) ; age1 <- age1[, sample(colnames(age1), size = min_cell)]
+# set.seed(1) ; age2 <- age2[, sample(colnames(age2), size = min_cell)]
+# set.seed(1) ; age3 <- age3[, sample(colnames(age3), size = min_cell)]
+# set.seed(1) ; age4 <- age4[, sample(colnames(age4), size = min_cell)]
+# 
+# ages <- c(age1, age2, age3, age4)
+# 
+# rm(age1, age2, age3, age4)
+# gc()
+```
+
+
+##### Save images temporal clusters
+
+```{r}
+# pdf(file = paste0(myfolder, "endothelial/Clusters_age_5_to_6_weeks_full_size.pdf"), width = 15, height = 15, bg = "transparent") # 10
+# DimPlot(ages[[1]][, as.character(ages[[1]]$high_level_clusters_removed) %in% levels(ages[[1]]$high_level_clusters_removed)], reduction = "umap_subset", group.by = "clusters_subset", raster = F, pt.size = 1) + NoLegend()
+# dev.off()
+# 
+# pdf(file = paste0(myfolder, "endothelial/Clusters_age_7_to_8_weeks_full_size.pdf"), width = 15, height = 15, bg = "transparent")
+# DimPlot(ages[[2]][, as.character(ages[[2]]$high_level_clusters_removed) %in% levels(ages[[2]]$high_level_clusters_removed)], reduction = "umap_subset", group.by = "clusters_subset", raster = F, pt.size = 1) + NoLegend()
+# dev.off()
+# 
+# pdf(file = paste0(myfolder, "endothelial/Clusters_age_9_to_11_weeks_full_size.pdf"), width = 15, height = 15, bg = "transparent")
+# DimPlot(ages[[3]][, as.character(ages[[3]]$high_level_clusters_removed) %in% levels(ages[[3]]$high_level_clusters_removed)], reduction = "umap_subset", group.by = "clusters_subset", raster = F, pt.size = 1) + NoLegend()
+# dev.off()
+# 
+# pdf(file = paste0(myfolder, "endothelial/Clusters_age_12_to_14_weeks_full_size.pdf"), width = 15, height = 15, bg = "transparent")
+# DimPlot(ages[[4]][, as.character(ages[[4]]$high_level_clusters_removed) %in% levels(ages[[4]]$high_level_clusters_removed)], reduction = "umap_subset", group.by = "clusters_subset", raster = F, pt.size = 1) + NoLegend()
+# dev.off()
+```
+
+
+### Save images and data
+
+```{r}
+# Plot on the old UMAP
+pdf(paste0(myfolder, "endothelial/clusters_endothelial_big_umap.pdf"), width = 10, height = 10)
+DimPlot(EN, reduction = "umap_oi", group.by = "clusters_subset") + labs(title = "Subclustered endothelial cells over the nonsubsetted UMAP")
+dev.off()
+
+# Rough clusters
+pdf(paste0(myfolder, "endothelial/rough_clusters_endothelial.pdf"), width = 10, height = 10)
+DimPlot(EN, reduction = "umap_subset", group.by = "clusters_louvain_oi") + labs(title = "Rough clusters on the new endothelial umap")
+dev.off()
+
+# nCounts
+pdf(paste0(myfolder, "endothelial/nCounts_endothelial.pdf"), width = 10, height = 10)
+FeaturePlot(EN, reduction = "umap_subset", features = "nCount_RNA", raster = FALSE)
+dev.off()
+
+# nFeatures
+pdf(paste0(myfolder, "endothelial/nFeatures_endothelial.pdf"), width = 10, height = 10)
+FeaturePlot(EN, reduction = "umap_subset", features = "nFeature_RNA", raster = FALSE)
+dev.off()
+```
+
+
+### Cell type proportion by age group in entire EN object
+
+```{r}
+age1 <- EN[,EN$age <= 6]
+age2 <- EN[,EN$age == 7 | EN$age == 8 | EN$age == 8.5]
+age3 <- EN[,EN$age == 9 | EN$age == 10 | EN$age == 11.5]
+age4 <- EN[,EN$age >= 12]
+
+EN_age <- c(age1, age2, age3, age4)
+rm(age1, age2, age3, age4)
+
+
+# create df by age grouping the number of cell per cluster
+cell_by_cluster_entire_1 <- as.data.frame(table(EN_age[[1]]@meta.data[["clusters_subset"]]))
+cell_by_cluster_entire_2 <- as.data.frame(table(EN_age[[2]]@meta.data[["clusters_subset"]]))
+cell_by_cluster_entire_3 <- as.data.frame(table(EN_age[[3]]@meta.data[["clusters_subset"]]))
+cell_by_cluster_entire_4 <- as.data.frame(table(EN_age[[4]]@meta.data[["clusters_subset"]]))
+
+# add the proportion of each cell type
+cell_by_cluster_entire_1$proportion <- cell_by_cluster_entire_1$Freq/sum(cell_by_cluster_entire_1$Freq)
+cell_by_cluster_entire_2$proportion <- cell_by_cluster_entire_2$Freq/sum(cell_by_cluster_entire_2$Freq)
+cell_by_cluster_entire_3$proportion <- cell_by_cluster_entire_3$Freq/sum(cell_by_cluster_entire_3$Freq)
+cell_by_cluster_entire_4$proportion <- cell_by_cluster_entire_4$Freq/sum(cell_by_cluster_entire_4$Freq)
+
+# export the df as .csv
+write.csv2(cell_by_cluster_entire_1, paste0(myfolder, "endothelial/cell_by_cluster_entire_1.csv"))
+write.csv2(cell_by_cluster_entire_2, paste0(myfolder, "endothelial/cell_by_cluster_entire_2.csv"))
+write.csv2(cell_by_cluster_entire_3, paste0(myfolder, "endothelial/cell_by_cluster_entire_3.csv"))
+write.csv2(cell_by_cluster_entire_4, paste0(myfolder, "endothelial/cell_by_cluster_entire_4.csv"))
+```
+
+
+### DEG rough EN - top20
+
+From the cells in EN, plot the DotPlot on the High Level origin of those cell (rough)
+
+```{r}
+# Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
+sample_size <- table(EN$clusters_subset)
+sample_size[sample_size > 150] <- 150
+sample_size
+
+# Randomly sample the cells that will be included when calculating DGE (same number of cells as selected above).
+# Samples without replacement, so each cell only can be included once.
+DGE_cells <- lapply(names(sample_size), function(x){ 
+  set.seed(1)
+  sample(colnames(EN)[EN$clusters_subset == x], size = sample_size[x])
+  })
+DGE_cells <- unlist(DGE_cells)
+
+# Select all data that relates to the sampled DGE cells.
+DGE_DATA <- data[, DGE_cells]
+
+#Find differential expressed genes based on groups defined by "high_level_clusters_removed".
+DGE_DATA <- SetIdent(DGE_DATA, value = "high_level_clusters_removed")
+
+# The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).
+detable <- FindAllMarkers(DGE_DATA,
+                          only.pos = TRUE,
+                          max.cells.per.ident = 300,
+                          logfc.threshold = .1,
+                          assay = "RNA",
+                          min.pct = 0.05)
+
+# Only keep DEG that have a p-value below 0.05.
+detable <- detable[detable$p_val < 0.05, ]
+
+# Adding two extra columns giving the difference (and log difference) between pct1 and pct2.
+# pct1 is the percentage of cells in the specific cluster that express this gene.
+# pct2 is the percentage of cells in all other clusters that express this gene.
+detable$pct.diff <- detable$pct.1 - detable$pct.2
+detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
+
+# Save the detable as a csv file.
+write.csv2(detable, paste0(myfolder, "endithelial/detable_rough_clusters.csv"))
+
+# Pick the 60 genes with the lowest p value for each age group, then 40 highest based on pct.diff, then 20 highest based on log.pct.diff.
+detable %>%
+  group_by(cluster) %>%
+  top_n(-60, p_val) %>%
+  top_n(40, pct.diff) %>%
+  top_n(20, log.pct.diff) ->
+  top20
+
+# Genes get matched to one specific cluster, and the factor is leveled based on cluster number.
+ord <- factor(sapply(unique(as.character(top20$gene)), function(x){niceRplots::getcluster(DGE_DATA, x, "high_level_clusters_removed")}))
+
+pdf(paste0(myfolder, "endothelial/DGE_rough_EN.pdf"), width = 15, height = length(ord)/6+1)
+par(mfrow=c(1,1), mar=c(3,6,2,5))
+DotPlot(DGE_DATA, features = unique(as.character(top20$gene))[order(as.numeric(as.character(ord)))]) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  #labs(x = "", y = "") +
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5))
+dev.off()
+
+rm(detable, DGE_DATA, top20, DGE_cells, ord, sample_size)
+```
+
+
+### DEG EN - top5 ordered
+
+```{r}
+values_to_keep <- c("1", "12", "3", "6", "18", "17", "7", "19", "15", "13", "10", "2", "5", "21", "16", "20", "11", "14")
+
+# Filter the data using the %in% operator
+data_EN <- EN[, EN$clusters_subset %in% values_to_keep]
+
+# Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
+sample_size <- table(data_EN$clusters_subset)
+sample_size[sample_size > 150] <- 150
+sample_size
+
+# Randomly sample the cells that will be included when calculating DGE (same number of cells as selected above).
+# Samples without replacement, so each cell only can be included once.
+DGE_cells <- lapply(names(sample_size), function(x){ 
+  set.seed(1)
+  sample(colnames(data_EN)[data_EN$clusters_subset == x], size = sample_size[x])
+  })
+DGE_cells <- unlist(DGE_cells)
+
+# Select all data that relates to the sampled DGE cells.
+DGE_DATA <- data_EN[, DGE_cells]
+
+# reorder the cell types desired
+DGE_DATA$clusters_subset <- factor(DGE_DATA$clusters_subset, 
+                                              levels = c("1", 
+                                                         "12", 
+                                                         "3", 
+                                                         "6", 
+                                                         "18", 
+                                                         "17", 
+                                                         "7", 
+                                                         "19", 
+                                                         "15", 
+                                                         "13", 
+                                                         "10", 
+                                                         "2", 
+                                                         "5", 
+                                                         "21", 
+                                                         "16", 
+                                                         "20", 
+                                                         "11", 
+                                                         "14"))
+
+#Find differential expressed genes based on groups defined by "clusters_subset_split".
+DGE_DATA <- SetIdent(DGE_DATA, value = "clusters_subset")
+
+# The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).
+detable <- FindAllMarkers(DGE_DATA,
+                          only.pos = TRUE,
+                          max.cells.per.ident = 300,
+                          logfc.threshold = .1,
+                          assay = "RNA",
+                          min.pct = 0.05)
+
+# Only keep DEG that have a p-value below 0.05.
+detable <- detable[detable$p_val < 0.05, ]
+
+# Adding two extra columns giving the difference (and log difference) between pct1 and pct2.
+# pct1 is the percentage of cells in the specific cluster that express this gene.
+# pct2 is the percentage of cells in all other clusters that express this gene.
+detable$pct.diff <- detable$pct.1 - detable$pct.2
+detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
+
+
+# Pick the 40 genes with the lowest p value for each cluster, then 20 highest based on pct.diff, then 5 highest based on avg_log2FC.
+detable %>%
+  group_by(cluster) %>%
+  top_n(-40, p_val) %>%
+  top_n(20, pct.diff) %>%
+  top_n(5, avg_log2FC) ->
+  top5
+
+
+pdf(paste0(myfolder, "endothelial/DEG_top5_EN_ordered.pdf"), width = 10, height = 17)
+par(mfrow=c(1,1), mar=c(3,6,2,5))
+DotPlot(DGE_DATA, features = top5 %>% pull(gene) %>% unique()) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 0.5))
+dev.off()
+
+gc()
+rm(detable, DGE_DATA, top5, DGE_cells, sample_size)
+```
+
+
+### DEG EN selection of markers
+
+```{r}
+# specific list of marker to project the dotplot on
+my_markers <- c("MYH7", "MYH6", "MYBPC3", "TNNI1", "MYOZ2", "FABP3", "TMSB10", "S100A11", "GNG11", "FABP4", "VWF", "CDH5", "PECAM1", "LYVE1", "NPR3", "BMPER", "POSTN", "APCDD1", "TWIST1", "DDR2", "TCF21", "COL1A1", "MYH11", "ENPEP", "ITLN1", "PCSK1N", "MPZ", "C1QC", "JCHAIN", "CD3E", "KLRB1", "HBA1", "HBE1", "UBE2C", "H1-1")
+
+p <- DotPlot(EN, features = my_markers) +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete() +
+  scale_y_discrete(limits = rev) +
+  labs(x = "", y = "") + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+
+pdf(paste0(myfolder, "endothelial/dotplot_markers_EN.pdf"), width = 13, height = 11)
+print(p)
+dev.off()
+
+rm(p)
+gc()
+```
+
+
+## Export endothelial cells metadata and Seurat object
+
+```{r}
+saveRDS(EN[[]], paste0(myfolder, "rds_objects/endothelial_metadata.rds"))
+saveRDS(EN, paste0(myfolder, "rds_objects/endothelial.rds"))
+```
+
+```{r}
+EN <- readRDS(file = paste0(myfolder, "rds_objects/endothelial.rds"))
+```
+
+
+================================================================================
+================================================================================
+================================================================================
+================================================================================
+================================================================================
+
+
+
+
+
+
+

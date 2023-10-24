@@ -1,1 +1,0 @@
-That is the code related to the heart part of the HDCA project.
