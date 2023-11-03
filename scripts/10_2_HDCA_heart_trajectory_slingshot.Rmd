@@ -1,0 +1,342 @@
+---
+title: "XX_HDCA_heart_innervation_trajectory_analysis"
+author: "Raphaël Mauron"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# HDCA heart innervation trajectory analysis
+
+## Settings
+
+### Set library path
+
+```{r setup, include=FALSE}
+.libPaths("/home/rstudio/project/renv/library/R-4.3/aarch64-unknown-linux-gnu/")
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+### Set environment variables
+
+```{r}
+# Set the directory 
+myfolder <- "/home/rstudio/project/output/HDCA_heart_sc_analysis_docker/"
+```
+
+
+### Load Libraries
+
+```{r, message = FALSE}
+library(Seurat)
+library(Matrix)
+library(dplyr)
+library(harmony)
+library(ggplot2)
+library(patchwork)
+library(openxlsx)
+library(plotly)
+library(slingshot)
+library(RColorBrewer)
+```
+
+
+### Load data
+
+```{r}
+IN_subset <- readRDS(paste0(myfolder, "rds_objects/innervation_selection.rds"))
+
+IN_subset$clusters_subset <- factor(IN_subset$clusters_subset, levels = c("1", "3", "4", "7", "8", "11", "12", "13", "17", "19")) 
+table(IN_subset$clusters_subset)
+```
+
+```{r}
+DimPlot(IN_subset, reduction = "umap_subset_sub", group.by = "clusters_subset", label = T)
+```
+
+```{r}
+FeaturePlot(IN_subset, reduction = "umap_subset_sub", features = "FOSB", order = T)
+```
+
+
+## Unsuppervised
+
+```{r}
+# Convert Seurat object into a SingleCellExperiment object
+IN_subset_sce <- as.SingleCellExperiment(x= IN_subset)
+
+# Create Slingshot object (getLineages & getCurves)
+sce <- slingshot(IN_subset_sce, clusterLabels = 'clusters_subset', reducedDim = 'UMAP_SUBSET_SUB')
+
+summary(sce$slingPseudotime_1)
+summary(sce$slingPseudotime_2)
+
+
+plot(reducedDims(sce)$UMAP_SUBSET_SUB, col = brewer.pal(n = 10, name = "Paired")[sce$clusters_subset], pch=16, asp = 1)
+lines(SlingshotDataSet(sce), lwd=2, col = 'black')
+
+pdf(file = paste0(myfolder, "trajectory/slingshot/IN_all_clusters_unsupervised.pdf"),  width = 10, height = 10)
+plot(reducedDims(sce)$UMAP_SUBSET_SUB, col = brewer.pal(n = 10, name = "Paired")[sce$clusters_subset], pch=16, asp = 1)
+lines(SlingshotDataSet(sce), lwd=2, type = 'lineages', col = 'black')
+dev.off()
+
+sce@colData@listData[["slingshot"]]@metadata[["lineages"]]
+```
+
+
+## Add start point
+
+```{r}
+lin1 <- getLineages(IN_subset_sce, clusterLabels = 'clusters_subset', reducedDim = 'UMAP_SUBSET_SUB', start.clus = '4')
+lin1
+```
+
+
+```{r}
+plot(reducedDims(sce)$UMAP_SUBSET_SUB, col = brewer.pal(n = 10, name = "Paired")[sce$clusters_subset], pch=16, asp = 1)
+lines(SlingshotDataSet(lin1), lwd = 2, col = 'black')
+
+lin1@colData@listData[["slingshot"]]@metadata[["lineages"]]
+```
+
+
+## Add start and end points
+
+```{r}
+lin2 <- getLineages(IN_subset_sce, clusterLabels = 'clusters_subset', reducedDim = 'UMAP_SUBSET_SUB', start.clus = c('7'), end.clus = c('13', '1'))
+lin2
+```
+
+```{r}
+pdf(file = paste0(myfolder, "trajectory/slingshot/IN_all_clusters_supervised.pdf"),  width = 10, height = 10)
+plot(reducedDims(sce)$UMAP_SUBSET_SUB, col = brewer.pal(n = 10, name = "Paired")[sce$clusters_subset], pch=16, asp = 1)
+lines(SlingshotDataSet(lin2), lwd = 2, col = 'black')
+dev.off()
+
+lin2@colData@listData[["slingshot"]]@metadata[["lineages"]]
+```
+
+
+## Clusters no 12
+
+```{r}
+IN_subset_no_12 <- IN_subset[, !IN_subset$clusters_subset == c(12)]
+IN_subset_no_12$clusters_subset <- factor(IN_subset_no_12$clusters_subset, levels = c("1", "3", "4", "7", "8", "11",  "13", "17", "19")) 
+table(IN_subset_no_12$clusters_subset)
+```
+
+
+### Unsuppervised
+
+```{r}
+# Convert Seurat object into a SingleCellExperiment object
+IN_1_sce <- as.SingleCellExperiment(x= IN_subset_no_12)
+
+# Create Slingshot object (getLineages & getCurves)
+sce <- slingshot(IN_1_sce, clusterLabels = 'clusters_subset', reducedDim = 'UMAP_SUBSET_SUB')
+
+summary(sce$slingPseudotime_1)
+summary(sce$slingPseudotime_2)
+
+
+plot(reducedDims(sce)$UMAP_SUBSET_SUB, col = brewer.pal(n = 10, name = "Paired")[sce$clusters_subset], pch=16, asp = 1)
+lines(SlingshotDataSet(sce), lwd=2, col = 'black')
+
+
+plot(reducedDims(sce)$UMAP_SUBSET_SUB, col = brewer.pal(n = 10, name = "Paired")[sce$clusters_subset], pch=16, asp = 1)
+lines(SlingshotDataSet(sce), lwd=2, type = 'lineages', col = 'black')
+```
+
+
+### Add start and end points
+
+```{r}
+lin2 <- getLineages(IN_1_sce, clusterLabels = 'clusters_subset', reducedDim = 'UMAP_SUBSET_SUB', start.clus = '17', end.clus = c('13', '1'))
+lin2
+
+crv1 <- getCurves(lin2)
+crv1
+```
+
+```{r}
+pdf(file = paste0(myfolder, "trajectory/slingshot/IN_no_12_supervised.pdf"),  width = 10, height = 10)
+plot(reducedDims(sce)$UMAP_SUBSET_SUB, col = brewer.pal(n = 10, name = "Paired")[sce$clusters_subset], pch=16, asp = 1)
+lines(SlingshotDataSet(lin2), lwd = 3, col = 'black')
+dev.off()
+
+lin2@colData@listData[["slingshot"]]@metadata[["lineages"]]
+```
+
+
+
+## Clusters "1", "3", "13", "17"
+
+```{r}
+IN_1 <- IN_subset[, !IN_subset$clusters_subset == c(4, 7, 8, 11, 12, 19)]
+IN_1$clusters_subset <- factor(IN_1$clusters_subset, levels = c("1", "3", "13", "17")) 
+table(IN_1$clusters_subset)
+```
+
+
+### Unsuppervised
+
+```{r}
+# Convert Seurat object into a SingleCellExperiment object
+IN_1_sce <- as.SingleCellExperiment(x= IN_1)
+
+# Create Slingshot object (getLineages & getCurves)
+sce <- slingshot(IN_1_sce, clusterLabels = 'clusters_subset', reducedDim = 'UMAP_SUBSET_SUB')
+
+summary(sce$slingPseudotime_1)
+summary(sce$slingPseudotime_2)
+
+
+plot(reducedDims(sce)$UMAP_SUBSET_SUB, col = brewer.pal(n = 10, name = "Paired")[sce$clusters_subset], pch=16, asp = 1)
+lines(SlingshotDataSet(sce), lwd=2, col = 'black')
+
+pdf(file = paste0(myfolder, "trajectory/slingshot/IN_1_3_13_17_unsupervised.pdf"),  width = 10, height = 10)
+plot(reducedDims(sce)$UMAP_SUBSET_SUB, col = brewer.pal(n = 10, name = "Paired")[sce$clusters_subset], pch=16, asp = 1)
+lines(SlingshotDataSet(sce), lwd=2, type = 'lineages', col = 'black')
+dev.off()
+
+sce@colData@listData[["slingshot"]]@metadata[["lineages"]]
+```
+
+
+### Add start and end points
+
+```{r}
+lin2 <- getLineages(IN_1_sce, clusterLabels = 'clusters_subset', reducedDim = 'UMAP_SUBSET_SUB', start.clus = '17', end.clus = c('1'))
+#lin2 <- getLineages(IN_1_sce, clusterLabels = 'clusters_subset', reducedDim = 'UMAP_SUBSET_SUB', start.clus = '17')
+lin2
+
+crv1 <- getCurves(lin2)
+crv1
+```
+
+```{r}
+pdf(file = paste0(myfolder, "trajectory/slingshot/IN_1_3_13_17_supervised.pdf"),  width = 10, height = 10)
+plot(reducedDims(sce)$UMAP_SUBSET_SUB, col = brewer.pal(n = 10, name = "Paired")[sce$clusters_subset], pch=16, asp = 1)
+lines(SlingshotDataSet(crv1), lwd = 2, col = 'black')
+dev.off()
+
+lin2@colData@listData[["slingshot"]]@metadata[["lineages"]]
+```
+
+
+
+## Clusters "3", "13", "17"
+
+```{r}
+IN_1_1 <- IN_subset[, !IN_subset$clusters_subset == c(1, 4, 7, 8, 11, 12, 19)]
+IN_1_1$clusters_subset <- factor(IN_1_1$clusters_subset, levels = c("3", "13", "17")) 
+table(IN_1_1$clusters_subset)
+```
+
+
+### Unsuppervised
+
+```{r}
+# Convert Seurat object into a SingleCellExperiment object
+IN_1_1_sce <- as.SingleCellExperiment(x= IN_1_1)
+
+# Create Slingshot object (getLineages & getCurves)
+sce <- slingshot(IN_1_1_sce, clusterLabels = 'clusters_subset', reducedDim = 'UMAP_SUBSET_SUB')
+
+summary(sce$slingPseudotime_1)
+summary(sce$slingPseudotime_2)
+
+
+plot(reducedDims(sce)$UMAP_SUBSET_SUB, col = brewer.pal(n = 10, name = "Paired")[sce$clusters_subset], pch=16, asp = 1)
+lines(SlingshotDataSet(sce), lwd=2, col = 'black')
+
+pdf(file = paste0(myfolder, "trajectory/slingshot/IN_3_13_17_unsupervised.pdf"),  width = 10, height = 10)
+plot(reducedDims(sce)$UMAP_SUBSET_SUB, col = brewer.pal(n = 10, name = "Paired")[sce$clusters_subset], pch=16, asp = 1)
+lines(SlingshotDataSet(sce), lwd=2, type = 'lineages', col = 'black')
+dev.off()
+
+sce@colData@listData[["slingshot"]]@metadata[["lineages"]]
+```
+
+
+### Add start and end points
+
+```{r}
+#lin2 <- getLineages(IN_1_sce, clusterLabels = 'clusters_subset', reducedDim = 'UMAP_SUBSET_SUB', start.clus = '17', end.clus = '13')
+lin2 <- getLineages(IN_1_1_sce, clusterLabels = 'clusters_subset', reducedDim = 'UMAP_SUBSET_SUB', start.clus = '17')
+lin2
+
+crv1 <- getCurves(lin2)
+crv1
+```
+
+```{r}
+pdf(file = paste0(myfolder, "trajectory/slingshot/IN_3_13_17_supervised.pdf"),  width = 10, height = 10)
+plot(reducedDims(sce)$UMAP_SUBSET_SUB, col = brewer.pal(n = 10, name = "Paired")[sce$clusters_subset], pch=16, asp = 1)
+lines(SlingshotDataSet(crv1), lwd = 2, col = 'black', show.constraints = TRUE)
+dev.off()
+
+lin2@colData@listData[["slingshot"]]@metadata[["lineages"]]
+```
+
+
+## Clusters "4", "7", "8", "11", "19"
+
+
+```{r}
+IN_2 <- IN_subset[, !IN_subset$clusters_subset == c(1, 3, 12, 13, 17)]
+IN_2$clusters_subset <- factor(IN_2$clusters_subset, levels = c("4", "7", "8", "11", "19")) 
+table(IN_2$clusters_subset)
+```
+
+
+### Unsuppervised
+
+```{r}
+# Convert Seurat object into a SingleCellExperiment object
+IN_2_sce <- as.SingleCellExperiment(x= IN_2)
+
+# Create Slingshot object (getLineages & getCurves)
+sce <- slingshot(IN_2_sce, clusterLabels = 'clusters_subset', reducedDim = 'UMAP_SUBSET_SUB')
+
+summary(sce$slingPseudotime_1)
+summary(sce$slingPseudotime_2)
+
+
+plot(reducedDims(sce)$UMAP_SUBSET_SUB, col = brewer.pal(n = 10, name = "Paired")[sce$clusters_subset], pch=16, asp = 1)
+lines(SlingshotDataSet(sce), lwd=2, col = 'black')
+
+pdf(file = paste0(myfolder, "trajectory/slingshot/IN_4_7_8_11_19_unsupervised.pdf"),  width = 10, height = 10)
+plot(reducedDims(sce)$UMAP_SUBSET_SUB, col = brewer.pal(n = 10, name = "Paired")[sce$clusters_subset], pch=16, asp = 1)
+lines(SlingshotDataSet(sce), lwd=2, type = 'lineages', col = 'black')
+dev.off()
+
+sce@colData@listData[["slingshot"]]@metadata[["lineages"]]
+```
+
+
+### Add start and end points
+
+```{r}
+lin2 <- getLineages(IN_2_sce, clusterLabels = 'clusters_subset', reducedDim = 'UMAP_SUBSET_SUB', start.clus = '7', end.clus = c('19'))
+lin2
+
+crv1 <- getCurves(lin2)
+crv1
+```
+
+```{r}
+pdf(file = paste0(myfolder, "trajectory/slingshot/IN_4_7_8_11_19_supervised.pdf"),  width = 10, height = 10)
+plot(reducedDims(sce)$UMAP_SUBSET_SUB, col = brewer.pal(n = 10, name = "Paired")[sce$clusters_subset], pch=16, asp = 1)
+lines(SlingshotDataSet(crv1), lwd = 2, col = 'black')
+dev.off()
+
+lin2@colData@listData[["slingshot"]]@metadata[["lineages"]]
+```
+
+
+
+
+
+
