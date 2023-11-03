@@ -5,4 +5,11 @@ Since several environments have been used along the project, below you will find
 
 ## Pipeline
 
-![HDCA_heart_pipeline drawio](https://github.com/rmauron/HDCA_heart_dev/assets/92672952/42a900d2-b0e5-436a-922e-7cd9bc3d3e24)
+![HDCA_heart_pipeline drawio](https://github.com/rmauron/HDCA_heart_dev/assets/92672952/920f353f-a53d-43e3-b185-5f8ed1678ef7)
+
+
+## Environments
+
+## Data
+
+## Citations
