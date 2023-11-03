@@ -5,6 +5,7 @@ Since several environments have been used along the project, below you will find
 
 ## Pipeline
 Find [here](./scripts) all the scripts required for the analysis.
+
 ![HDCA_heart_pipeline drawio](https://github.com/rmauron/HDCA_heart_dev/assets/92672952/920f353f-a53d-43e3-b185-5f8ed1678ef7)
 
 
