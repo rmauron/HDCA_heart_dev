@@ -11,6 +11,7 @@ All the scripts are found in the [script folder](./scripts).
 
 
 ## Environments
+The information regarding the environments used for the study are found in the [environments folder](./environments).
 
 ## Data
 
