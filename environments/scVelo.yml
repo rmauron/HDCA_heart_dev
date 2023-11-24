@@ -1,4 +1,4 @@
-name: cellrank
+name: scVelo
 channels:
   - conda-forge
   - bioconda
@@ -206,4 +206,4 @@ dependencies:
       - scvelo==0.3.0
       - texttable==1.7.0
       - yarl==1.9.2
-prefix: /opt/homebrew/Caskroom/miniconda/base/envs/cellrank
+prefix: /opt/homebrew/Caskroom/miniconda/base/envs/scVelo
