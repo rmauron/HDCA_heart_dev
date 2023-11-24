@@ -1,0 +1,1759 @@
+---
+title: "06_HDCA_heart_cell_type_colocalisation"
+author: "Raphaël Mauron"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# HDCA heart cell type colocalisation
+
+A specific environment as been created to run this script. The reason being we are using the package called ´semla´ (https://github.com/ludvigla/semla) which has dependencies and was not installed at the beginning of the overall analysis.
+To avoid any dependencies issues, it has been decided to run this code separately.
+
+You can run this script through the provided *conda environment*.
+
+## Set up and loading material
+
+### Knit setup
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+### Load library
+
+```{r}
+library(semla)
+library(dplyr)
+library(colorjam)
+library(pheatmap)
+library(igraph)
+```
+
+
+### Load custom function
+
+```{r}
+source("~/Documents/GitHub/semla_training/ColorMixPlot.R")
+source("~/Documents/GitHub/semla_training/ColorMixPlot3.R")
+```
+
+
+### Set working directory
+
+```{r}
+myfolder <- "~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/stereoscope/visualization/colocalization/"
+```
+
+
+### Load ST data
+
+```{r}
+ST <- readRDS("~/hdca_DevHeart/data/ST/220114_STdata_harmony_semla.rds")
+```
+
+
+### Add sectionID
+
+```{r}
+ST$sectionID <- GetCoordinates(ST)$sampleID
+```
+
+
+================================================================================
+================================================================================
+
+## Cell type co-localization
+
+### High Level
+
+#### Load stereoscope data and add as separate assay
+
+```{r}
+proportions <- read.table("~/hdca_DevHeart/data/ST/stereoscope/W.2023-09-25133054.715121_hl.tsv", header = TRUE, check.names = FALSE)
+
+proportions <- proportions %>% select(-c("6", "34"))
+
+
+# Check that all spot IDs are matched
+all(colnames(ST) == rownames(proportions))
+
+# Create and store assay
+ST[["stereoscope"]] <- CreateAssayObject(data = t(proportions))
+```
+
+
+#### Pairwise correlation
+
+#### Correlation matrix between ST and stereoscope assay
+
+```{r}
+corMat <- cor(GetAssayData(ST, assay = "stereoscope", slot = "data") |> t())
+dim(corMat)
+```
+
+
+#### Set diagonal to NA
+
+```{r}
+diag(corMat) <- NA
+```
+
+
+#### Visualization
+
+```{r}
+heatmap_colors <- colorRampPalette(RColorBrewer::brewer.pal(n = 11, name = "RdBu") |> rev())(50)
+
+#pdf(file = paste0(myfolder, "heatmaps/colocalization_hl_all.pdf"), width = 15, height = 15)
+pheatmap(corMat, border_color = NA, color = heatmap_colors)
+#dev.off()
+```
+
+
+#### Add the annotation
+
+```{r}
+annotation <- read.csv2("~/hdca_DevHeart/data/metadata/hl_annotation_2023-08-23.csv", header = 1, sep = ";")
+
+annotation$cluster <- gsub("_", "-", annotation$cluster)
+
+cells_clusters <- setNames(annotation$cell_type, nm = annotation$cluster)
+
+
+#data$cell.types <- cells_clusters[as.character(data$high_level_clusters)]
+#rm(annotation, cells_clusters)
+#gc()
+```
+
+
+#### Better control of the Heatmap with ggplot2
+
+```{r}
+# Cluster data for arrangement
+distMat <- dist(corMat, method = "euclidean") # Compoute distance matrix
+clusters <- hclust(distMat, method = "complete") # Cluster distance matrix
+cluster_levels <- colnames(corMat)[clusters$order] # Fetch rearranged cell type labels
+
+# Pivot corMat to long data format
+cors <- tidyr::pivot_longer(corMat |> 
+                              as.data.frame() |> 
+                              tibble::rownames_to_column(var = "celltype"), where(is.numeric))
+
+# Set factor levels
+cors <- cors |> 
+  mutate(name = factor(name, levels = cluster_levels),
+         celltype = factor(celltype, levels = cluster_levels))
+
+# Calculate the absolute max value to define the limits of the fill scale
+max_val_abs <- max(abs(corMat), na.rm = TRUE)
+
+p <- ggplot(cors, aes(x = celltype, y = name, fill = value)) +
+  geom_tile() + # Use geom_tile to create the heatmap
+  geom_text(aes(label = round(value, 2)), vjust = 1, size = 3) + # Add numerical values on top of each cells
+  scale_y_discrete(limits = rev) + # Flip y axis
+  scale_fill_gradientn(colours = heatmap_colors, limit = c(-max_val_abs, max_val_abs)) + # Set fill scale limits using max_val_abs
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle = 90)) + # Remove panel borders
+  labs(x = "cell type", y = "cell type")
+p
+
+pdf(file = paste0(myfolder, "heatmaps/colocalization_hl_all.pdf"), width = 15, height = 15)
+p
+dev.off()
+```
+
+
+#### Better control of the Heatmap with ggplot2
+
+```{r}
+# Cluster data for arrangement
+distMat <- dist(corMat, method = "euclidean") # Compoute distance matrix
+clusters <- hclust(distMat, method = "complete") # Cluster distance matrix
+cluster_levels <- colnames(corMat)[clusters$order] # Fetch rearranged cell type labels
+
+# Pivot corMat to long data format
+cors <- tidyr::pivot_longer(corMat |> 
+                              as.data.frame() |> 
+                              tibble::rownames_to_column(var = "celltype"), where(is.numeric))
+
+# Set factor levels
+cors <- cors |> 
+  mutate(name = factor(name, levels = cluster_levels),
+         celltype = factor(celltype, levels = cluster_levels))
+
+cors$celltype_names <- cells_clusters[as.character(cors$celltype)]
+cors$name_names <- cells_clusters[as.character(cors$name)]
+
+
+
+# Calculate the absolute max value to define the limits of the fill scale
+max_val_abs <- max(abs(corMat), na.rm = TRUE)
+
+p <- ggplot(cors, aes(x = celltype_names, y = name_names, fill = value)) +
+  geom_tile() + # Use geom_tile to create the heatmap
+  geom_text(aes(label = round(value, 2)), vjust = 1, size = 3) + # Add numerical values on top of each cells
+  scale_y_discrete(limits = rev) + # Flip y axis
+  scale_fill_gradientn(colours = heatmap_colors, limit = c(-max_val_abs, max_val_abs)) + # Set fill scale limits using max_val_abs
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle = 90)) + # Remove panel borders
+  labs(x = "cell type", y = "cell type")
+p
+
+pdf(file = paste0(myfolder, "heatmaps/colocalization_hl_all_celltype_names.pdf"), width = 15, height = 15)
+p
+dev.off()
+```
+
+
+#### Set default assay to `stereoscope´
+
+```{r}
+DefaultAssay(ST) <- "stereoscope"
+```
+
+
+### Cell type co-localization (age specific)
+
+```{r}
+ST_meta_data <- openxlsx::read.xlsx("~/hdca_DevHeart/data/ST/HDCA_heart_ST_sections_overview_chambers_present.xlsx")
+ST_meta_data$age <- as.numeric(gsub("[^0-9.]", "", ST_meta_data$Age))
+
+ST_meta_data <- select(ST_meta_data, Section, age)
+ST_meta_data
+```
+
+
+#### Annotate section with corresponding age
+
+```{r}
+section_age <- setNames(ST_meta_data$age, nm = ST_meta_data$Section)
+ST$age <- section_age[as.character(ST$sectionID)]
+```
+
+
+#### Creating age groups
+
+```{r}
+ST_age1 <- ST[,ST$age <= 7.5]
+ST_age2 <- ST[,ST$age == 8 | ST$age == 9]
+ST_age3 <- ST[,ST$age >= 10]
+```
+
+
+##### Sanity check
+
+```{r}
+table(ST_age1$age)
+table(ST_age2$age)
+table(ST_age3$age)
+```
+
+
+
+### ST_age1 - Pairwise correlation
+
+#### Correlation matrix between ST and stereoscope assay
+
+```{r}
+corMat <- cor(GetAssayData(ST_age1, assay = "stereoscope", slot = "data") |> t())
+dim(corMat)
+```
+
+
+#### Set diagonal to NA
+
+```{r}
+diag(corMat) <- NA
+```
+
+
+#### Visualization
+
+```{r}
+heatmap_colors <- colorRampPalette(RColorBrewer::brewer.pal(n = 11, name = "RdBu") |> rev())(50)
+
+#pdf(file = paste0(myfolder, "heatmaps/colocalization_hl_age1.pdf"), width = 15, height = 15)
+pheatmap(corMat, border_color = NA, color = heatmap_colors)
+#dev.off()
+```
+
+
+#### Better control of the Heatmap with ggplot2
+
+```{r}
+# Cluster data for arrangement
+distMat <- dist(corMat, method = "euclidean") # Compoute distance matrix
+clusters <- hclust(distMat, method = "complete") # Cluster distance matrix
+cluster_levels <- colnames(corMat)[clusters$order] # Fetch rearranged cell type labels
+
+# Pivot corMat to long data format
+cors <- tidyr::pivot_longer(corMat |> 
+                              as.data.frame() |> 
+                              tibble::rownames_to_column(var = "celltype"), where(is.numeric))
+
+# Set factor levels
+cors <- cors |> 
+  mutate(name = factor(name, levels = cluster_levels),
+         celltype = factor(celltype, levels = cluster_levels))
+
+# Calculate the absolute max value to define the limits of the fill scale
+max_val_abs <- max(abs(corMat), na.rm = TRUE)
+
+p <- ggplot(cors, aes(x = celltype, y = name, fill = value)) +
+  geom_tile() + # Use geom_tile to create the heatmap
+  geom_text(aes(label = round(value, 2)), vjust = 1, size = 3) + # Add numerical values on top of each cells
+  scale_y_discrete(limits = rev) + # Flip y axis
+  scale_fill_gradientn(colours = heatmap_colors, limit = c(-max_val_abs, max_val_abs)) + # Set fill scale limits using max_val_abs
+  theme(panel.grid = element_blank()) + # Remove panel borders
+  labs(x = "cell type", y = "cell type")
+p
+
+pdf(file = paste0(myfolder, "heatmaps/colocalization_hl_age1.pdf"), width = 15, height = 15)
+p
+dev.off()
+```
+
+
+### ST_age2 - Pairwise correlation
+
+#### Correlation matrix between ST and stereoscope assay
+
+```{r}
+corMat <- cor(GetAssayData(ST_age2, assay = "stereoscope", slot = "data") |> t())
+dim(corMat)
+```
+
+
+#### Set diagonal to NA
+
+```{r}
+diag(corMat) <- NA
+```
+
+
+#### Visualization
+
+```{r}
+heatmap_colors <- colorRampPalette(RColorBrewer::brewer.pal(n = 11, name = "RdBu") |> rev())(50)
+
+#pdf(file = paste0(myfolder, "heatmaps/colocalization_hl_age2.pdf"), width = 15, height = 15)
+pheatmap(corMat, border_color = NA, color = heatmap_colors)
+#dev.off()
+```
+
+
+#### Better control of the Heatmap with ggplot2
+
+```{r}
+# Cluster data for arrangement
+distMat <- dist(corMat, method = "euclidean") # Compoute distance matrix
+clusters <- hclust(distMat, method = "complete") # Cluster distance matrix
+cluster_levels <- colnames(corMat)[clusters$order] # Fetch rearranged cell type labels
+
+# Pivot corMat to long data format
+cors <- tidyr::pivot_longer(corMat |> 
+                              as.data.frame() |> 
+                              tibble::rownames_to_column(var = "celltype"), where(is.numeric))
+
+# Set factor levels
+cors <- cors |> 
+  mutate(name = factor(name, levels = cluster_levels),
+         celltype = factor(celltype, levels = cluster_levels))
+
+# Calculate the absolute max value to define the limits of the fill scale
+max_val_abs <- max(abs(corMat), na.rm = TRUE)
+
+p <- ggplot(cors, aes(x = celltype, y = name, fill = value)) +
+  geom_tile() + # Use geom_tile to create the heatmap
+  geom_text(aes(label = round(value, 2)), vjust = 1, size = 3) + # Add numerical values on top of each cells
+  scale_y_discrete(limits = rev) + # Flip y axis
+  scale_fill_gradientn(colours = heatmap_colors, limit = c(-max_val_abs, max_val_abs)) + # Set fill scale limits using max_val_abs
+  theme(panel.grid = element_blank()) + # Remove panel borders
+  labs(x = "cell type", y = "cell type")
+p
+
+pdf(file = paste0(myfolder, "heatmaps/colocalization_hl_age2.pdf"), width = 15, height = 15)
+p
+dev.off()
+```
+
+
+### ST_age3 - Pairwise correlation
+
+#### Correlation matrix between ST and stereoscope assay
+
+```{r}
+corMat <- cor(GetAssayData(ST_age3, assay = "stereoscope", slot = "data") |> t())
+dim(corMat)
+```
+
+
+#### Set diagonal to NA
+
+```{r}
+diag(corMat) <- NA
+```
+
+
+#### Visualization
+
+```{r}
+heatmap_colors <- colorRampPalette(RColorBrewer::brewer.pal(n = 11, name = "RdBu") |> rev())(50)
+
+#pdf(file = paste0(myfolder, "heatmaps/colocalization_hl_age3.pdf"), width = 15, height = 15)
+pheatmap(corMat, border_color = NA, color = heatmap_colors)
+#dev.off()
+```
+
+
+#### Better control of the Heatmap with ggplot2
+
+```{r}
+# Cluster data for arrangement
+distMat <- dist(corMat, method = "euclidean") # Compoute distance matrix
+clusters <- hclust(distMat, method = "complete") # Cluster distance matrix
+cluster_levels <- colnames(corMat)[clusters$order] # Fetch rearranged cell type labels
+
+# Pivot corMat to long data format
+cors <- tidyr::pivot_longer(corMat |> 
+                              as.data.frame() |> 
+                              tibble::rownames_to_column(var = "celltype"), where(is.numeric))
+
+# Set factor levels
+cors <- cors |> 
+  mutate(name = factor(name, levels = cluster_levels),
+         celltype = factor(celltype, levels = cluster_levels))
+
+# Calculate the absolute max value to define the limits of the fill scale
+max_val_abs <- max(abs(corMat), na.rm = TRUE)
+
+p <- ggplot(cors, aes(x = celltype, y = name, fill = value)) +
+  geom_tile() + # Use geom_tile to create the heatmap
+  geom_text(aes(label = round(value, 2)), vjust = 1, size = 3) + # Add numerical values on top of each cells
+  scale_y_discrete(limits = rev) + # Flip y axis
+  scale_fill_gradientn(colours = heatmap_colors, limit = c(-max_val_abs, max_val_abs)) + # Set fill scale limits using max_val_abs
+  theme(panel.grid = element_blank()) + # Remove panel borders
+  labs(x = "cell type", y = "cell type")
+p
+
+pdf(file = paste0(myfolder, "heatmaps/colocalization_hl_age3.pdf"), width = 15, height = 15)
+p
+dev.off()
+```
+
+
+
+### Deep Level
+
+#### Load stereoscope data and add as separate assay
+
+```{r}
+proportions <- read.table("~/hdca_DevHeart/data/ST/stereoscope/W.2023-10-28105405.918149_dl.tsv", header = TRUE, check.names = FALSE)
+
+proportions <- proportions %>% select(-c("HL_6", "HL_34"))
+
+# Check that all spot IDs are matched
+all(colnames(ST) == rownames(proportions))
+
+# Create and store assay
+ST[["stereoscope_dl"]] <- CreateAssayObject(data = t(proportions))
+```
+
+
+
+#### Pairwise correlation
+
+#### Correlation matrix between ST and stereoscope_dl assay
+
+```{r}
+corMat <- cor(GetAssayData(ST, assay = "stereoscope_dl", slot = "data") |> t())
+dim(corMat)
+```
+
+
+#### Set diagonal to NA
+
+```{r}
+diag(corMat) <- NA
+```
+
+
+#### Visualization
+
+```{r}
+heatmap_colors <- colorRampPalette(RColorBrewer::brewer.pal(n = 11, name = "RdBu") |> rev())(50)
+
+#pdf(file = paste0(myfolder, "heatmaps/colocalization_dl_all.pdf"), width = 15, height = 15)
+pheatmap(corMat, border_color = NA, color = heatmap_colors)
+#dev.off()
+```
+
+
+#### Better control of the Heatmap with ggplot2
+
+```{r}
+# Cluster data for arrangement
+distMat <- dist(corMat, method = "euclidean") # Compoute distance matrix
+clusters <- hclust(distMat, method = "complete") # Cluster distance matrix
+cluster_levels <- colnames(corMat)[clusters$order] # Fetch rearranged cell type labels
+
+# Pivot corMat to long data format
+cors <- tidyr::pivot_longer(corMat |> 
+                              as.data.frame() |> 
+                              tibble::rownames_to_column(var = "celltype"), where(is.numeric))
+
+# Set factor levels
+cors <- cors |> 
+  mutate(name = factor(name, levels = cluster_levels),
+         celltype = factor(celltype, levels = cluster_levels))
+
+# Calculate the absolute max value to define the limits of the fill scale
+max_val_abs <- max(abs(corMat), na.rm = TRUE)
+
+p <- ggplot(cors, aes(x = celltype, y = name, fill = value)) +
+  geom_tile() + # Use geom_tile to create the heatmap
+  geom_text(aes(label = round(value, 2)), vjust = 1, size = 3) + # Add numerical values on top of each cells
+  scale_y_discrete(limits = rev) + # Flip y axis
+  scale_fill_gradientn(colours = heatmap_colors, limit = c(-max_val_abs, max_val_abs)) + # Set fill scale limits using max_val_abs
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle = 90)) + # Remove panel borders
+  labs(x = "cell type", y = "cell type")
+p
+
+pdf(file = paste0(myfolder, "heatmaps/colocalization_dl_all.pdf"), width = 30, height = 30)
+p
+dev.off()
+```
+
+
+### Cell type co-localization (age specific)
+
+#### Creating age groups
+
+```{r}
+ST_age1 <- ST[,ST$age <= 7.5]
+ST_age2 <- ST[,ST$age == 8 | ST$age == 9]
+ST_age3 <- ST[,ST$age >= 10]
+```
+
+
+##### Sanity check
+
+```{r}
+table(ST_age1$age)
+table(ST_age2$age)
+table(ST_age3$age)
+```
+
+### ST_age1 - Pairwise correlation
+
+#### Correlation matrix between ST and stereoscope assay
+
+```{r}
+corMat <- cor(GetAssayData(ST_age1, assay = "stereoscope_dl", slot = "data") |> t())
+dim(corMat)
+```
+
+
+#### Set diagonal to NA
+
+```{r}
+diag(corMat) <- NA
+```
+
+
+#### Visualization
+
+```{r}
+heatmap_colors <- colorRampPalette(RColorBrewer::brewer.pal(n = 11, name = "RdBu") |> rev())(50)
+
+#pdf(file = paste0(myfolder, "heatmaps/colocalization_dl_age1.pdf"), width = 15, height = 15)
+pheatmap(corMat, border_color = NA, color = heatmap_colors)
+#dev.off()
+```
+
+
+#### Better control of the Heatmap with ggplot2
+
+```{r}
+# Cluster data for arrangement
+distMat <- dist(corMat, method = "euclidean") # Compoute distance matrix
+clusters <- hclust(distMat, method = "complete") # Cluster distance matrix
+cluster_levels <- colnames(corMat)[clusters$order] # Fetch rearranged cell type labels
+
+# Pivot corMat to long data format
+cors <- tidyr::pivot_longer(corMat |> 
+                              as.data.frame() |> 
+                              tibble::rownames_to_column(var = "celltype"), where(is.numeric))
+
+# Set factor levels
+cors <- cors |> 
+  mutate(name = factor(name, levels = cluster_levels),
+         celltype = factor(celltype, levels = cluster_levels))
+
+# Calculate the absolute max value to define the limits of the fill scale
+max_val_abs <- max(abs(corMat), na.rm = TRUE)
+
+p <- ggplot(cors, aes(x = celltype, y = name, fill = value)) +
+  geom_tile() + # Use geom_tile to create the heatmap
+  geom_text(aes(label = round(value, 2)), vjust = 1, size = 3) + # Add numerical values on top of each cells
+  scale_y_discrete(limits = rev) + # Flip y axis
+  scale_fill_gradientn(colours = heatmap_colors, limit = c(-max_val_abs, max_val_abs)) + # Set fill scale limits using max_val_abs
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle = 90)) + # Remove panel borders
+  labs(x = "cell type", y = "cell type")
+p
+
+pdf(file = paste0(myfolder, "heatmaps/colocalization_dl_age1.pdf"), width = 30, height = 30)
+p
+dev.off()
+```
+
+
+### ST_age2 - Pairwise correlation
+
+#### Correlation matrix between ST and stereoscope assay
+
+```{r}
+corMat <- cor(GetAssayData(ST_age2, assay = "stereoscope_dl", slot = "data") |> t())
+dim(corMat)
+```
+
+
+#### Set diagonal to NA
+
+```{r}
+diag(corMat) <- NA
+```
+
+
+#### Visualization
+
+```{r}
+heatmap_colors <- colorRampPalette(RColorBrewer::brewer.pal(n = 11, name = "RdBu") |> rev())(50)
+
+#pdf(file = paste0(myfolder, "heatmaps/colocalization_dl_age2.pdf"), width = 15, height = 15)
+pheatmap(corMat, border_color = NA, color = heatmap_colors)
+#dev.off()
+```
+
+
+#### Better control of the Heatmap with ggplot2
+
+```{r}
+# Cluster data for arrangement
+distMat <- dist(corMat, method = "euclidean") # Compoute distance matrix
+clusters <- hclust(distMat, method = "complete") # Cluster distance matrix
+cluster_levels <- colnames(corMat)[clusters$order] # Fetch rearranged cell type labels
+
+# Pivot corMat to long data format
+cors <- tidyr::pivot_longer(corMat |> 
+                              as.data.frame() |> 
+                              tibble::rownames_to_column(var = "celltype"), where(is.numeric))
+
+# Set factor levels
+cors <- cors |> 
+  mutate(name = factor(name, levels = cluster_levels),
+         celltype = factor(celltype, levels = cluster_levels))
+
+# Calculate the absolute max value to define the limits of the fill scale
+max_val_abs <- max(abs(corMat), na.rm = TRUE)
+
+p <- ggplot(cors, aes(x = celltype, y = name, fill = value)) +
+  geom_tile() + # Use geom_tile to create the heatmap
+  geom_text(aes(label = round(value, 2)), vjust = 1, size = 3) + # Add numerical values on top of each cells
+  scale_y_discrete(limits = rev) + # Flip y axis
+  scale_fill_gradientn(colours = heatmap_colors, limit = c(-max_val_abs, max_val_abs)) + # Set fill scale limits using max_val_abs
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle = 90)) + # Remove panel borders
+  labs(x = "cell type", y = "cell type")
+p
+
+pdf(file = paste0(myfolder, "heatmaps/colocalization_dl_age2.pdf"), width = 30, height = 30)
+p
+dev.off()
+```
+
+
+### ST_age3 - Pairwise correlation
+
+#### Correlation matrix between ST and stereoscope assay
+
+```{r}
+corMat <- cor(GetAssayData(ST_age3, assay = "stereoscope_dl", slot = "data") |> t())
+dim(corMat)
+```
+
+
+#### Set diagonal to NA
+
+```{r}
+diag(corMat) <- NA
+```
+
+
+#### Visualization
+
+```{r}
+heatmap_colors <- colorRampPalette(RColorBrewer::brewer.pal(n = 11, name = "RdBu") |> rev())(50)
+
+#pdf(file = paste0(myfolder, "heatmaps/colocalization_dl_age3.pdf"), width = 15, height = 15)
+pheatmap(corMat, border_color = NA, color = heatmap_colors)
+#dev.off()
+```
+
+
+#### Better control of the Heatmap with ggplot2
+
+```{r}
+# Cluster data for arrangement
+distMat <- dist(corMat, method = "euclidean") # Compoute distance matrix
+clusters <- hclust(distMat, method = "complete") # Cluster distance matrix
+cluster_levels <- colnames(corMat)[clusters$order] # Fetch rearranged cell type labels
+
+# Pivot corMat to long data format
+cors <- tidyr::pivot_longer(corMat |> 
+                              as.data.frame() |> 
+                              tibble::rownames_to_column(var = "celltype"), where(is.numeric))
+
+# Set factor levels
+cors <- cors |> 
+  mutate(name = factor(name, levels = cluster_levels),
+         celltype = factor(celltype, levels = cluster_levels))
+
+# Calculate the absolute max value to define the limits of the fill scale
+max_val_abs <- max(abs(corMat), na.rm = TRUE)
+
+p <- ggplot(cors, aes(x = celltype, y = name, fill = value)) +
+  geom_tile() + # Use geom_tile to create the heatmap
+  geom_text(aes(label = round(value, 2)), vjust = 1, size = 3) + # Add numerical values on top of each cells
+  scale_y_discrete(limits = rev) + # Flip y axis
+  scale_fill_gradientn(colours = heatmap_colors, limit = c(-max_val_abs, max_val_abs)) + # Set fill scale limits using max_val_abs
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle = 90)) + # Remove panel borders
+  labs(x = "cell type", y = "cell type")
+p
+
+pdf(file = paste0(myfolder, "heatmaps/colocalization_dl_age3.pdf"), width = 30, height = 30)
+p
+dev.off()
+```
+
+
+================================================================================
+================================================================================
+
+## Network correlation graph
+
+### High Level
+
+```{r}
+set.seed(1)
+corMat_network <- cor(GetAssayData(ST, assay = "stereoscope", slot = "data") |> t())
+corMat_network[corMat_network<0.04] <- 0
+network <- graph_from_adjacency_matrix(corMat_network, weighted=T, mode="undirected", diag=F)
+
+# Count the number of degree for each node:
+deg <- degree(network, mode="all")
+ 
+# Plot
+plot(network, vertex.size=deg*2, vertex.color=rgb(0.1,0.7,0.8,0.5))
+```
+
+
+### Deep Level
+
+```{r}
+DefaultAssay(ST_age1) <- "stereoscope_dl"
+DefaultAssay(ST_age2) <- "stereoscope_dl"
+DefaultAssay(ST_age3) <- "stereoscope_dl"
+```
+
+
+#### Cell types to exclude from the network graph
+
+```{r}
+cell_types_to_exclude <- c("CM-5", "CM-17", "EN-5", "FB-2", "FB-12", "IN-11", "IN-12", "IN-17", "IN-3", "IN-4", "IN-7")
+```
+
+
+#### ST deep level all ages
+
+```{r}
+set.seed(1)
+
+DefaultAssay(ST) <- "stereoscope_dl"
+
+# Subset ST object for cell types of interest
+ST_nw <- ST[!(rownames(ST) %in% cell_types_to_exclude), ]
+
+# Calculate Pearson's correlation scores for remaining cell types
+corMat_network <- cor(GetAssayData(ST_nw, assay = "stereoscope_dl", slot = "data") |> t())
+
+# Keep Pearson's scores above threshold (can't work with negative scores)
+corMat_network[corMat_network<0.070] <- 0
+
+# Generate network graph based on the remaining correlation score
+network <- graph_from_adjacency_matrix(corMat_network, weighted=T, mode="undirected", diag=F)
+
+# Count the number of degree for each node:
+deg <- degree(network, mode="all")
+ 
+# Plot
+pdf(file = paste0(myfolder, "networks/deeplevel_all_0070.pdf"), width = 10, height = 10)
+plot(network, vertex.size=deg*1.1, vertex.color=rgb(0.1,0.7,0.8,0.5))
+dev.off()
+```
+
+#### ST_age1
+
+```{r}
+set.seed(1)
+
+# Subset ST object for cell types of interest
+ST_age1_nw <- ST_age1[!(rownames(ST_age1) %in% cell_types_to_exclude), ]
+
+# Calculate Pearson's correlation scores for remaining cell types
+corMat_network <- cor(GetAssayData(ST_age1_nw, assay = "stereoscope_dl", slot = "data") |> t())
+
+# Keep Pearson's scores above threshold (can't work with negative scores)
+corMat_network[corMat_network<0.070] <- 0
+
+# Generate network graph based on the remaining correlation score
+network <- graph_from_adjacency_matrix(corMat_network, weighted=T, mode="undirected", diag=F)
+
+# Count the number of degree for each node:
+deg <- degree(network, mode="all")
+ 
+# Plot
+pdf(file = paste0(myfolder, "networks/deeplevel_age1_0070.pdf"), width = 10, height = 10)
+plot(network, vertex.size=deg*1.1, vertex.color=rgb(0.1,0.7,0.8,0.5))
+dev.off()
+```
+
+
+#### ST_age2
+
+```{r}
+set.seed(1)
+
+# Subset ST object for cell types of interest
+ST_age2_nw <- ST_age2[!(rownames(ST_age2) %in% cell_types_to_exclude), ]
+
+# Calculate Pearson's correlation scores for remaining cell types
+corMat_network <- cor(GetAssayData(ST_age2_nw, assay = "stereoscope_dl", slot = "data") |> t())
+
+# Keep Pearson's scores above threshold (can't work with negative scores)
+corMat_network[corMat_network<0.070] <- 0
+
+# Generate network graph based on the remaining correlation score
+network <- graph_from_adjacency_matrix(corMat_network, weighted=T, mode="undirected", diag=F)
+
+# Count the number of degree for each node:
+deg <- degree(network, mode="all")
+ 
+# Plot
+pdf(file = paste0(myfolder, "networks/deeplevel_age2_0070.pdf"), width = 10, height = 10)
+plot(network, vertex.size=deg*1.1, vertex.color=rgb(0.1,0.7,0.8,0.5))
+dev.off()
+```
+
+
+#### ST_age3
+
+```{r}
+set.seed(1)
+
+# Subset ST object for cell types of interest
+ST_age3_nw <- ST_age3[!(rownames(ST_age3) %in% cell_types_to_exclude), ]
+
+# Calculate Pearson's correlation scores for remaining cell types
+corMat_network <- cor(GetAssayData(ST_age3_nw, assay = "stereoscope_dl", slot = "data") |> t())
+
+# Keep Pearson's scores above threshold (can't work with negative scores)
+corMat_network[corMat_network<0.070] <- 0
+
+# Generate network graph based on the remaining correlation score
+network <- graph_from_adjacency_matrix(corMat_network, weighted=T, mode="undirected", diag=F)
+
+# Count the number of degree for each node:
+deg <- degree(network, mode="all")
+ 
+# Plot
+pdf(file = paste0(myfolder, "networks/deeplevel_age3_0070.pdf"), width = 10, height = 10)
+plot(network, vertex.size=deg*1.1, vertex.color=rgb(0.1,0.7,0.8,0.5))
+dev.off()
+```
+
+
+================================================================================
+================================================================================
+
+## CO-LOCALIZATION
+
+### Set default assay to `stereoscope_dl´
+
+```{r}
+DefaultAssay(ST) <- "stereoscope_dl"
+ST
+```
+
+
+#### "CM-19-1", "CM-19-2"
+
+```{r}
+plots <- ColorMixPlot(ST,
+                      features = c("CM-19-1", "CM-19-2"),
+                      section_number = 16)
+p <- patchwork::wrap_plots(plots, ncol = 3)
+
+pdf(file = paste0(myfolder, "colocalization/SAN_AVN_section_16.pdf"), width = 15.75, height = 4.5)
+p
+dev.off()
+```
+
+
+#### "CM-4-2", "CM-4-1" - 4 different sections
+
+```{r}
+# time point 1
+plots1 <- ColorMixPlot(ST,
+                      features = c("CM-4-2", "CM-4-1"),
+                      section_number = 5)
+p1 <- patchwork::wrap_plots(plots1, ncol = 3)
+
+# time point 2
+plots2 <- ColorMixPlot(ST, 
+                      features = c("CM-4-2", "CM-4-1"),
+                      section_number = 2)
+p2 <- patchwork::wrap_plots(plots2, ncol = 3)
+
+# time point 3
+plots3 <- ColorMixPlot(ST, 
+                      features = c("CM-4-2", "CM-4-1"),
+                      section_number = 11)
+p3 <- patchwork::wrap_plots(plots3, ncol = 3)
+
+# time point 4
+plots4 <- ColorMixPlot(ST, 
+                      features = c("CM-4-2", "CM-4-1"),
+                      section_number = 24)
+p4 <- patchwork::wrap_plots(plots4, ncol = 3)
+
+p <- plots1[[3]] + plots2[[3]] + plots3[[3]] + plots4[[3]]  +
+    patchwork::plot_layout(ncol = 4)
+
+pdf(file = paste0(myfolder, "colocalization/purkinje_pre_purkinje.pdf"), width = 15.75, height = 4.5)
+p
+dev.off()
+```
+
+
+##### section5
+
+```{r}
+plots <- ColorMixPlot(ST,
+                      features = c("CM-4-2", "CM-4-1"),
+                      section_number = 5)
+p <- patchwork::wrap_plots(plots, ncol = 3)
+
+pdf(file = paste0(myfolder, "colocalization/purkinje_pre_purkinje_section5.pdf"), width = 15.75, height = 4.5)
+p
+dev.off()
+```
+
+
+##### section2
+
+```{r}
+plots <- ColorMixPlot(ST,
+                      features = c("CM-4-2", "CM-4-1"),
+                      section_number = 2)
+p <- patchwork::wrap_plots(plots, ncol = 3)
+
+pdf(file = paste0(myfolder, "colocalization/purkinje_pre_purkinje_section2.pdf"), width = 15.75, height = 4.5)
+p
+dev.off()
+```
+
+
+##### section11
+
+```{r}
+plots <- ColorMixPlot(ST,
+                      features = c("CM-4-2", "CM-4-1"),
+                      section_number = 11)
+p <- patchwork::wrap_plots(plots, ncol = 3)
+
+pdf(file = paste0(myfolder, "colocalization/purkinje_pre_purkinje_section11.pdf"), width = 15.75, height = 4.5)
+p
+dev.off()
+```
+
+
+##### section24
+
+```{r}
+plots <- ColorMixPlot(ST,
+                      features = c("CM-4-2", "CM-4-1"),
+                      section_number = 24)
+p <- patchwork::wrap_plots(plots, ncol = 3)
+
+pdf(file = paste0(myfolder, "colocalization/purkinje_pre_purkinje_section24.pdf"), width = 15.75, height = 4.5)
+p
+dev.off()
+```
+
+
+#### "CM-19-1", "CM-18", "CM-8-2"
+
+```{r}
+plots <- ColorMixPlot3(ST,
+                      features = c("CM-19-1", "CM-18", "CM-8-2"),
+                      section_number = 3)
+p <- patchwork::wrap_plots(plots, ncol = 4)
+
+pdf(file = paste0(myfolder, "colocalization/AVN_cond_compact_myo_His_Tawara_section_3.pdf"), width = 20, height = 5)
+p
+dev.off()
+```
+
+```{r}
+plots <- ColorMixPlot3(ST,
+                      features = c("CM-19-1", "CM-18", "CM-8-2"),
+                      section_number = 16)
+p <- patchwork::wrap_plots(plots, ncol = 4)
+
+pdf(file = paste0(myfolder, "colocalization/AVN_cond_compact_myo_His_Tawara_section_16.pdf"), width = 20, height = 5)
+p
+dev.off()
+```
+
+
+#### "CM-4-2", "CM-18", "CM-8-2"
+
+```{r}
+plots <- ColorMixPlot3(ST,
+                      features = c("CM-4-2", "CM-18", "CM-8-2"),
+                      section_number = 3)
+p <- patchwork::wrap_plots(plots, ncol = 4)
+
+pdf(file = paste0(myfolder, "colocalization/Purkinje_cond_compact_myo_His_Tawara_section_3.pdf"), width = 20, height = 5)
+p
+dev.off()
+```
+
+```{r}
+plots <- ColorMixPlot3(ST,
+                      features = c("CM-4-2", "CM-18", "CM-8-2"),
+                      section_number = 16)
+p <- patchwork::wrap_plots(plots, ncol = 4)
+
+pdf(file = paste0(myfolder, "colocalization/Purkinje_cond_compact_myo_His_Tawara_section_16.pdf"), width = 20, height = 5)
+p
+dev.off()
+```
+
+
+#### "CM-4-2", "CM-18"
+
+```{r}
+plots <- ColorMixPlot(ST,
+                      features = c("CM-4-2", "CM-18"),
+                      section_number = 3)
+p <- patchwork::wrap_plots(plots, ncol = 3)
+
+pdf(file = paste0(myfolder, "colocalization/Ventricular_conduction_system_section_3.pdf"), width = 15.75, height = 4.5)
+p
+dev.off()
+```
+
+```{r}
+plots <- ColorMixPlot(ST,
+                      features = c("CM-4-2", "CM-18"),
+                      section_number = 16)
+p <- patchwork::wrap_plots(plots, ncol = 3)
+
+pdf(file = paste0(myfolder, "colocalization/Ventricular_conduction_system_section_16.pdf"), width = 15.75, height = 4.5)
+p
+dev.off()
+```
+
+
+#### "FB-11", "CM-8-2"
+
+```{r}
+plots <- ColorMixPlot(ST,
+                      features = c("FB-11", "CM-8-2"),
+                      section_number = 28,
+                      colors = c("red", "blue"))
+p <- patchwork::wrap_plots(plots, ncol = 3)
+
+pdf(file = paste0(myfolder, "colocalization/Coloc_FM-CM_section_28.pdf"), width = 15.75, height = 4.5)
+p
+dev.off()
+```
+
+
+#### "FB-4", "FB-11", "FB-13"
+
+```{r}
+plots <- ColorMixPlot3(ST,
+                      features = c("FB-4", "FB-11", "FB-13"),
+                      section_number = 2)
+p <- patchwork::wrap_plots(plots, ncol = 4)
+
+pdf(file = paste0(myfolder, "colocalization/Valve-related_FB _section_2.pdf"), width = 20, height = 5)
+p
+dev.off()
+```
+
+```{r}
+plots <- ColorMixPlot3(ST,
+                      features = c("FB-4", "FB-11", "FB-13"),
+                      section_number = 28)
+p <- patchwork::wrap_plots(plots, ncol = 4)
+
+pdf(file = paste0(myfolder, "colocalization/Valve-related_FB _section_28.pdf"), width = 20, height = 5)
+p
+dev.off()
+```
+
+
+#### "FB-5", "FB-9", FB-19" - 4 different sections
+
+```{r}
+# time point 1
+plots1 <- ColorMixPlot3(ST,
+                      features = c("FB-5", "FB-9", "FB-19"),
+                      section_number = 5)
+p1 <- patchwork::wrap_plots(plots1, ncol = 4)
+
+# time point 2
+plots2 <- ColorMixPlot3(ST,
+                      features = c("FB-5", "FB-9", "FB-19"),
+                      section_number = 2)
+p2 <- patchwork::wrap_plots(plots2, ncol = 4)
+
+# time point 3
+plots3 <- ColorMixPlot3(ST,
+                      features = c("FB-5", "FB-9", "FB-19"),
+                      section_number = 11)
+p3 <- patchwork::wrap_plots(plots3, ncol = 4)
+
+# time point 4
+plots4 <- ColorMixPlot3(ST,
+                      features = c("FB-5", "FB-9", "FB-19"),
+                      section_number = 24)
+p4 <- patchwork::wrap_plots(plots4, ncol = 4)
+
+p <- plots1[[4]] + plots2[[4]] + plots3[[4]] + plots4[[4]]  +
+    patchwork::plot_layout(ncol = 4)
+
+pdf(file = paste0(myfolder, "colocalization/interstitial_FB.pdf"), width = 15.75, height = 4.5)
+p
+dev.off()
+```
+
+
+##### section5
+
+```{r}
+plots <- ColorMixPlot3(ST,
+                      features = c("FB-5", "FB-9", "FB-19"),
+                      section_number = 5)
+p <- patchwork::wrap_plots(plots, ncol = 4)
+
+pdf(file = paste0(myfolder, "colocalization/interstitial_FB_section_5.pdf"), width = 20, height = 5)
+p
+dev.off()
+```
+
+
+##### section2
+
+```{r}
+plots <- ColorMixPlot3(ST,
+                      features = c("FB-5", "FB-9", "FB-19"),
+                      section_number = 2)
+p <- patchwork::wrap_plots(plots, ncol = 4)
+
+pdf(file = paste0(myfolder, "colocalization/interstitial_FB_section_2.pdf"), width = 20, height = 5)
+p
+dev.off()
+```
+
+
+##### section11
+
+```{r}
+plots <- ColorMixPlot3(ST,
+                      features = c("FB-5", "FB-9", "FB-19"),
+                      section_number = 11)
+p <- patchwork::wrap_plots(plots, ncol = 4)
+
+pdf(file = paste0(myfolder, "colocalization/interstitial_FB_section_11.pdf"), width = 20, height = 5)
+p
+dev.off()
+```
+
+
+##### section24
+
+```{r}
+plots <- ColorMixPlot3(ST,
+                      features = c("FB-5", "FB-9", "FB-19"),
+                      section_number = 24)
+p <- patchwork::wrap_plots(plots, ncol = 4)
+
+pdf(file = paste0(myfolder, "colocalization/interstitial_FB_section_24.pdf"), width = 20, height = 5)
+p
+dev.off()
+```
+
+
+#### "FB-7", "FB-3", "FB-18" - 4 different sections
+
+```{r}
+# time point 1
+plots1 <- ColorMixPlot3(ST,
+                      features = c("FB-7", "FB-3", "FB-18"),
+                      section_number = 5)
+p1 <- patchwork::wrap_plots(plots1, ncol = 4)
+
+# time point 2
+plots2 <- ColorMixPlot3(ST,
+                      features = c("FB-7", "FB-3", "FB-18"),
+                      section_number = 2)
+p2 <- patchwork::wrap_plots(plots2, ncol = 4)
+
+# time point 3
+plots3 <- ColorMixPlot3(ST,
+                      features = c("FB-7", "FB-3", "FB-18"),
+                      section_number = 11)
+p3 <- patchwork::wrap_plots(plots3, ncol = 4)
+
+# time point 4
+plots4 <- ColorMixPlot3(ST,
+                      features = c("FB-7", "FB-3", "FB-18"),
+                      section_number = 24)
+p4 <- patchwork::wrap_plots(plots4, ncol = 4)
+
+p <- plots1[[4]] + plots2[[4]] + plots3[[4]] + plots4[[4]]  +
+    patchwork::plot_layout(ncol = 4)
+
+pdf(file = paste0(myfolder, "colocalization/Epi_derived_FB_1.pdf"), width = 15.75, height = 4.5)
+p
+dev.off()
+```
+
+
+##### section5
+
+```{r}
+plots <- ColorMixPlot3(ST,
+                      features = c("FB-7", "FB-3", "FB-18"),
+                      section_number = 5)
+p <- patchwork::wrap_plots(plots, ncol = 4)
+
+pdf(file = paste0(myfolder, "colocalization/Epi_derived_FB_1_section_5.pdf"), width = 15.75, height = 4.5)
+p
+dev.off()
+```
+
+
+##### section2
+
+```{r}
+plots <- ColorMixPlot3(ST,
+                      features = c("FB-7", "FB-3", "FB-18"),
+                      section_number = 2)
+p <- patchwork::wrap_plots(plots, ncol = 4)
+
+pdf(file = paste0(myfolder, "colocalization/Epi_derived_FB_1_section_2.pdf"), width = 15.75, height = 4.5)
+p
+dev.off()
+```
+
+
+##### section11
+
+```{r}
+plots <- ColorMixPlot3(ST,
+                      features = c("FB-7", "FB-3", "FB-18"),
+                      section_number = 11)
+p <- patchwork::wrap_plots(plots, ncol = 4)
+
+pdf(file = paste0(myfolder, "colocalization/Epi_derived_FB_1_section_11.pdf"), width = 15.75, height = 4.5)
+p
+dev.off()
+```
+
+
+##### section24
+
+```{r}
+plots <- ColorMixPlot3(ST,
+                      features = c("FB-7", "FB-3", "FB-18"),
+                      section_number = 24)
+p <- patchwork::wrap_plots(plots, ncol = 4)
+
+pdf(file = paste0(myfolder, "colocalization/Epi_derived_FB_1_section_24.pdf"), width = 15.75, height = 4.5)
+p
+dev.off()
+```
+
+
+
+#### "FB-7", "FB-3", "FB-8"
+
+```{r}
+plots <- ColorMixPlot3(ST,
+                      features = c("FB-7", "FB-3", "FB-8"),
+                      section_number = 3)
+p <- patchwork::wrap_plots(plots, ncol = 4)
+
+pdf(file = paste0(myfolder, "colocalization/Epi_derived_FB_2_section_3.pdf"), width = 20, height = 5)
+p
+dev.off()
+```
+
+
+```{r}
+plots <- ColorMixPlot3(ST,
+                      features = c("FB-7", "FB-3", "FB-8"),
+                      section_number = 11)
+p <- patchwork::wrap_plots(plots, ncol = 4)
+
+pdf(file = paste0(myfolder, "colocalization/Epi_derived_FB_2_section_11.pdf"), width = 20, height = 5)
+p
+dev.off()
+```
+
+
+#### "CM19-1", "FB-17", "EC-18"
+
+```{r}
+plots <- ColorMixPlot3(ST,
+                      features = c("CM-19-1", "FB-17", "EN-18"),
+                      section_number = 19)
+p <- patchwork::wrap_plots(plots, ncol = 4)
+
+pdf(file = paste0(myfolder, "colocalization/Coloc_atrial_septum_section_19.pdf"), width = 20, height = 5)
+p
+dev.off()
+```
+
+
+#### "EN-18", "EN-6"
+
+```{r}
+plots <- ColorMixPlot(ST,
+                      features = c("EN-18", "EN-6"),
+                      section_number = 18)
+p <- patchwork::wrap_plots(plots, ncol = 3)
+
+pdf(file = paste0(myfolder, "colocalization/Atrial_septum_related_EN_section_18.pdf"), width = 15.75, height = 4.5)
+p
+dev.off()
+```
+
+
+#### "EN-7", "EN-17"
+
+```{r}
+plots <- ColorMixPlot(ST,
+                      features = c("EN-7", "EN-17"),
+                      section_number = 2)
+p <- patchwork::wrap_plots(plots, ncol = 3)
+
+pdf(file = paste0(myfolder, "colocalization/Valve_related_EN_section_2.pdf"), width = 15.75, height = 4.5)
+p
+dev.off()
+```
+
+
+```{r}
+plots <- ColorMixPlot(ST,
+                      features = c("EN-7", "EN-17"),
+                      section_number = 20)
+p <- patchwork::wrap_plots(plots, ncol = 3)
+
+pdf(file = paste0(myfolder, "colocalization/Valve_related_EN_section_20.pdf"), width = 15.75, height = 4.5)
+p
+dev.off()
+```
+
+
+#### "EN-1", "EN-12" - 4 different sections
+
+```{r}
+# time point 1
+plots1 <- ColorMixPlot(ST,
+                      features = c("EN-1", "EN-12"),
+                      section_number = 5)
+p1 <- patchwork::wrap_plots(plots1, ncol = 3)
+
+# time point 2
+plots2 <- ColorMixPlot(ST,
+                      features = c("EN-1", "EN-12"),
+                      section_number = 2)
+p2 <- patchwork::wrap_plots(plots2, ncol = 3)
+
+# time point 3
+plots3 <- ColorMixPlot(ST,
+                      features = c("EN-1", "EN-12"),
+                      section_number = 11)
+p3 <- patchwork::wrap_plots(plots3, ncol = 3)
+
+# time point 4
+plots4 <- ColorMixPlot(ST,
+                      features = c("EN-1", "EN-12"),
+                      section_number = 24)
+p4 <- patchwork::wrap_plots(plots4, ncol = 3)
+
+p <- plots1[[3]] + plots2[[3]] + plots3[[3]] + plots4[[3]]  +
+    patchwork::plot_layout(ncol = 4)
+
+pdf(file = paste0(myfolder, "colocalization/Endocardium_1.pdf"), width = 15.75, height = 4.5)
+p
+dev.off()
+```
+
+
+##### section5
+
+```{r}
+plots <- ColorMixPlot(ST,
+                      features = c("EN-1", "EN-12"),
+                      section_number = 5)
+p <- patchwork::wrap_plots(plots, ncol = 3)
+
+pdf(file = paste0(myfolder, "colocalization/Endocardium_1_section_5.pdf"), width = 15.75, height = 4.5)
+p
+dev.off()
+```
+
+
+##### section2
+
+```{r}
+plots <- ColorMixPlot(ST,
+                      features = c("EN-1", "EN-12"),
+                      section_number = 2)
+p <- patchwork::wrap_plots(plots, ncol = 3)
+
+pdf(file = paste0(myfolder, "colocalization/Endocardium_1_section_2.pdf"), width = 15.75, height = 4.5)
+p
+dev.off()
+```
+
+
+##### section11
+
+```{r}
+plots <- ColorMixPlot(ST,
+                      features = c("EN-1", "EN-12"),
+                      section_number = 11)
+p <- patchwork::wrap_plots(plots, ncol = 3)
+
+pdf(file = paste0(myfolder, "colocalization/Endocardium_1_section_11.pdf"), width = 15.75, height = 4.5)
+p
+dev.off()
+```
+
+
+##### section24
+
+```{r}
+plots <- ColorMixPlot(ST,
+                      features = c("EN-1", "EN-12"),
+                      section_number = 24)
+p <- patchwork::wrap_plots(plots, ncol = 3)
+
+pdf(file = paste0(myfolder, "colocalization/Endocardium_1_section_24.pdf"), width = 15.75, height = 4.5)
+p
+dev.off()
+```
+
+
+#### "EN-3", "EN-6" - 4 different sections
+
+```{r}
+# time point 1
+plots1 <- ColorMixPlot(ST,
+                      features = c("EN-3", "EN-6"),
+                      section_number = 5)
+p1 <- patchwork::wrap_plots(plots1, ncol = 3)
+
+# time point 2
+plots2 <- ColorMixPlot(ST,
+                      features = c("EN-3", "EN-6"),
+                      section_number = 2)
+p2 <- patchwork::wrap_plots(plots2, ncol = 3)
+
+# time point 3
+plots3 <- ColorMixPlot(ST,
+                      features = c("EN-3", "EN-6"),
+                      section_number = 11)
+p3 <- patchwork::wrap_plots(plots3, ncol = 3)
+
+# time point 4
+plots4 <- ColorMixPlot(ST,
+                      features = c("EN-3", "EN-6"),
+                      section_number = 24)
+p4 <- patchwork::wrap_plots(plots4, ncol = 3)
+
+p <- plots1[[3]] + plots2[[3]] + plots3[[3]] + plots4[[3]]  +
+    patchwork::plot_layout(ncol = 4)
+
+pdf(file = paste0(myfolder, "colocalization/Endocardium_2.pdf"), width = 15.75, height = 4.5)
+p
+dev.off()
+```
+
+
+##### section5
+
+```{r}
+plots <- ColorMixPlot(ST,
+                      features = c("EN-3", "EN-6"),
+                      section_number = 5)
+p <- patchwork::wrap_plots(plots, ncol = 3)
+
+pdf(file = paste0(myfolder, "colocalization/Endocardium_2_section_5.pdf"), width = 15.75, height = 4.5)
+p
+dev.off()
+```
+
+
+##### section2
+
+```{r}
+plots <- ColorMixPlot(ST,
+                      features = c("EN-3", "EN-6"),
+                      section_number = 2)
+p <- patchwork::wrap_plots(plots, ncol = 3)
+
+pdf(file = paste0(myfolder, "colocalization/Endocardium_2_section_2.pdf"), width = 15.75, height = 4.5)
+p
+dev.off()
+```
+
+
+##### section11
+
+```{r}
+plots <- ColorMixPlot(ST,
+                      features = c("EN-3", "EN-6"),
+                      section_number = 11)
+p <- patchwork::wrap_plots(plots, ncol = 3)
+
+pdf(file = paste0(myfolder, "colocalization/Endocardium_2_section_11.pdf"), width = 15.75, height = 4.5)
+p
+dev.off()
+```
+
+
+##### section24
+
+```{r}
+plots <- ColorMixPlot(ST,
+                      features = c("EN-3", "EN-6"),
+                      section_number = 24)
+p <- patchwork::wrap_plots(plots, ncol = 3)
+
+pdf(file = paste0(myfolder, "colocalization/Endocardium_2_section_24.pdf"), width = 15.75, height = 4.5)
+p
+dev.off()
+```
+
+
+##### section27
+
+```{r}
+plots <- ColorMixPlot(ST,
+                      features = c("EN-3", "EN-6"),
+                      section_number = 27)
+p <- patchwork::wrap_plots(plots, ncol = 3)
+
+pdf(file = paste0(myfolder, "colocalization/Endocardium_2_section_27.pdf"), width = 15.75, height = 4.5)
+p
+dev.off()
+```
+
+
+
+#### "EN-2", "EN-10" - 4 different sections
+
+```{r}
+# time point 1
+plots1 <- ColorMixPlot(ST,
+                      features = c("EN-2", "EN-10"),
+                      section_number = 5)
+p1 <- patchwork::wrap_plots(plots1, ncol = 3)
+
+# time point 2
+plots2 <- ColorMixPlot(ST,
+                      features = c("EN-2", "EN-10"),
+                      section_number = 2)
+p2 <- patchwork::wrap_plots(plots2, ncol = 3)
+
+# time point 3
+plots3 <- ColorMixPlot(ST,
+                      features = c("EN-2", "EN-10"),
+                      section_number = 11)
+p3 <- patchwork::wrap_plots(plots3, ncol = 3)
+
+# time point 4
+plots4 <- ColorMixPlot(ST,
+                      features = c("EN-2", "EN-10"),
+                      section_number = 24)
+p4 <- patchwork::wrap_plots(plots4, ncol = 3)
+
+p <- plots1[[3]] + plots2[[3]] + plots3[[3]] + plots4[[3]]  +
+    patchwork::plot_layout(ncol = 4)
+
+pdf(file = paste0(myfolder, "colocalization/Capillary.pdf"), width = 15.75, height = 4.5)
+p
+dev.off()
+```
+
+
+##### section5
+
+```{r}
+plots <- ColorMixPlot(ST,
+                      features = c("EN-2", "EN-10"),
+                      section_number = 5)
+p <- patchwork::wrap_plots(plots, ncol = 3)
+
+pdf(file = paste0(myfolder, "colocalization/Capillary_section_5.pdf"), width = 15.75, height = 4.5)
+p
+dev.off()
+```
+
+
+##### section2
+
+```{r}
+plots <- ColorMixPlot(ST,
+                      features = c("EN-2", "EN-10"),
+                      section_number = 2)
+p <- patchwork::wrap_plots(plots, ncol = 3)
+
+pdf(file = paste0(myfolder, "colocalization/Capillary_section_2.pdf"), width = 15.75, height = 4.5)
+p
+dev.off()
+```
+
+
+##### section11
+
+```{r}
+plots <- ColorMixPlot(ST,
+                      features = c("EN-2", "EN-10"),
+                      section_number = 11)
+p <- patchwork::wrap_plots(plots, ncol = 3)
+
+pdf(file = paste0(myfolder, "colocalization/Capillary_section_11.pdf"), width = 15.75, height = 4.5)
+p
+dev.off()
+```
+
+
+##### section24
+
+```{r}
+plots <- ColorMixPlot(ST,
+                      features = c("EN-2", "EN-10"),
+                      section_number = 24)
+p <- patchwork::wrap_plots(plots, ncol = 3)
+
+pdf(file = paste0(myfolder, "colocalization/Capillary_section_24.pdf"), width = 15.75, height = 4.5)
+p
+dev.off()
+```
+
+
+#### "CM-8-2", "FB-11", "FB-19"
+
+```{r}
+plots <- ColorMixPlot3(ST,
+                      features = c("CM-8-2", "FB-11", "FB-19"),
+                      section_number = 4)
+p <- patchwork::wrap_plots(plots, ncol = 4)
+
+pdf(file = paste0(myfolder, "colocalization/CM-8-2_FB-11_FB-19_section_4.pdf"), width = 20, height = 5)
+p
+dev.off()
+```
+
+
+#### "IN"
+
+```{r}
+pairs <- list(c("IN-1", "IN-13"),
+              c("IN-1", "HL-29"),
+              c("IN-1", "IN-8"),
+              c("IN-1", "IN-19"),
+              
+              c("IN-13", "HL-29"),
+              c("IN-13", "IN-8"),
+              c("IN-13", "IN-19"),
+              
+              c("HL-29", "IN-8"),
+              c("HL-29", "IN-19"),
+              
+              c("IN-8", "IN-19"))
+
+for (pair in pairs) {
+  print(pair)
+}
+```
+
+
+```{r}
+for (pair in pairs) {
+  plots <- ColorMixPlot(ST,
+                      features = pair,
+                      section_number = 16)
+  p <- patchwork::wrap_plots(plots, ncol = 3)
+  
+  pdf(file = paste0(myfolder, "colocalization/IN_section_16_", pair[1], "_", pair[2], ".pdf"), width = 15.75, height = 4.5)
+  print(p)
+  dev.off()
+}
+```
+
+
+
+================================================================================
+================================================================================
+================================================================================
+================================================================================
+================================================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
