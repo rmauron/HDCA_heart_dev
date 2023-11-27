@@ -5,17 +5,17 @@ The environments used in this project can be restored throught the YAML files fo
 ## Conda Environments
 
 ### Restore conda environments:
-Restore the conda environments by:
 
 1. Download the `.yml` files (e.g. after git clone the project)
 2. Open a terminal where the `.yml` files are downloaded
-3. Run
+3. Run:
 
     ```
     conda env create -f environment.yml
     ```
 
-Change `environment.yml` with the names of the `.yml` to restore (`r-semla.yml`, `scFates.yml`, `scVelo.yml`, `stereoscope.yml`)
+4. Change `environment.yml` with the names of the `.yml` to restore (`r-semla.yml`, `scFates.yml`, `scVelo.yml`, `stereoscope.yml`)
+
 
 ### Use conda environemnts:
 
@@ -31,7 +31,8 @@ Use the conda environments by running:
 
 ### Building the Docker Container
 
-You can also use Docker to run your project in a containerized environment.
+Most of the analysis is run on a docker container. The corresponding image is found on (dockerhub)[https://hub.docker.com/].
+
 
 1. **Pull the Docker Image from Docker Hub:**
 
