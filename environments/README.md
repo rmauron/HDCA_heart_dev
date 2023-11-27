@@ -31,7 +31,7 @@ Use the conda environments by running:
 
 ### Building the Docker Container
 
-Most of the analysis is run on a docker container. The corresponding image is found on (dockerhub)[https://hub.docker.com/].
+Most of the analysis is run on a docker container. The corresponding image is found on [dockerhub](https://hub.docker.com/).
 
 
 1. **Pull the Docker Image from Docker Hub:**
