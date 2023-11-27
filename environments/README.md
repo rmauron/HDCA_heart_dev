@@ -11,7 +11,7 @@ Restaure the conda environments by:
 2. Open a terminal where the `.yml` files are downloaded
 3. Run
 
-    ```bash
+    ```
     conda env create -f environment.yml
     ```
 
@@ -19,9 +19,9 @@ Change `environment.yml` with the names of the `.yml` to restaure (`r-semla.yml`
 
 ### Use conda environemnts:
 
-Use the conda environments by running:
+Use the conda environments by running
 
-    ```bash
+    ```
     conda activate environment.yml
     ```
 
