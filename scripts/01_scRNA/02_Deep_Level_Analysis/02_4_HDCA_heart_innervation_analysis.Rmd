@@ -512,27 +512,162 @@ gc()
 ```
 
 
-## Export innervation metadata and Seurat object
+### DEG IN selection of markers 2
 
 ```{r}
-saveRDS(IN[[]], paste0(myfolder, "/rds_objects/innervation_metadata.rds"))
-saveRDS(IN, paste0(myfolder, "/rds_objects/innervation.rds"))
+# specific list of marker to project the dotplot on
+my_markers <- c("SOX10", #for glia
+                "FOXD3",
+                "MBP",
+                "MPZ",
+                
+                "PRPH", #for neurons
+                "TH",
+                "PHOX2B", 
+                #"PHOX2A",
+                #"ASCL1",
+                #"CHGA",
+                
+                "PENK", #for chromaffin
+                "PNMT",
+                #"TH",
+                #"MBP",
+                #"CHGB",
+                #"PMP22",
+                #"HTR3A",
+                #"HTR3B",
+                
+                "SST" #for VIP
+                )
+
+
+values_to_keep <- c("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", "11", "17", "8", "1", "6", "15", "20", "21")
+
+# Filter the data using the %in% operator
+data_IN <- IN[, IN$clusters_subset %in% values_to_keep]
+data_IN$clusters_subset <- factor(data_IN$clusters_subset, level=values_to_keep)
+
+data_IN <- SetIdent(data_IN, value = "clusters_subset")
+
+pdf(paste0(myfolder, "innervation/dotplot_markers_IN_2.pdf"), width = 8, height = 8)
+DotPlot(data_IN, features = my_markers) +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete() +
+  scale_y_discrete(limits = rev) +
+  labs(x = "", y = "") + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+dev.off()
+
+gc()
 ```
+
+
+### DEG IN-4, 7, 12, 11, 8, 19, 17, 3, 13, 1 - top5 ordered
 
 ```{r}
-IN <- readRDS(paste0(myfolder, "rds_objects/innervation.rds"))
+values_to_keep <- c("4", "7", "12", "11", "8", "19", "17", "3", "13", "1")
+
+# Filter the data using the %in% operator
+data_IN <- IN[, IN$clusters_subset %in% values_to_keep]
+
+# Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
+sample_size <- table(data_IN$clusters_subset)
+sample_size[sample_size > 150] <- 150
+sample_size
+
+# Randomly sample the cells that will be included when calculating DGE (same number of cells as selected above).
+# Samples without replacement, so each cell only can be included once.
+DGE_cells <- lapply(names(sample_size), function(x){ 
+  set.seed(1)
+  sample(colnames(data_IN)[data_IN$clusters_subset == x], size = sample_size[x])
+  })
+DGE_cells <- unlist(DGE_cells)
+
+# Select all data that relates to the sampled DGE cells.
+DGE_DATA <- data_IN[, DGE_cells]
+
+# reorder the cell types desired
+DGE_DATA$clusters_subset <- factor(DGE_DATA$clusters_subset, 
+                                              levels = c("4", "7", "12", "11", "8", "19", "17", "3", "13", "1"))
+
+#Find differential expressed genes based on groups defined by "clusters_subset_split".
+DGE_DATA <- SetIdent(DGE_DATA, value = "clusters_subset")
+
+# The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).
+detable <- FindAllMarkers(DGE_DATA,
+                          only.pos = TRUE,
+                          max.cells.per.ident = 300,
+                          logfc.threshold = .1,
+                          assay = "RNA",
+                          min.pct = 0.05)
+
+# Only keep DEG that have a p-value below 0.05.
+detable <- detable[detable$p_val < 0.05, ]
+
+# Adding two extra columns giving the difference (and log difference) between pct1 and pct2.
+# pct1 is the percentage of cells in the specific cluster that express this gene.
+# pct2 is the percentage of cells in all other clusters that express this gene.
+detable$pct.diff <- detable$pct.1 - detable$pct.2
+detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
+
+
+# Pick the 40 genes with the lowest p value for each cluster, then 20 highest based on pct.diff, then 5 highest based on avg_log2FC.
+detable %>%
+  group_by(cluster) %>%
+  top_n(-40, p_val) %>%
+  top_n(20, pct.diff) %>%
+  top_n(5, avg_log2FC) ->
+  top5
+
+
+pdf(paste0(myfolder, "innervation/DEG_top5_IN_sel_cl.pdf"), width = 6, height = 10)
+par(mfrow=c(1,1), mar=c(3,6,2,5))
+DotPlot(DGE_DATA, features = top5 %>% pull(gene) %>% unique()) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") +
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5))
+dev.off()
+
+gc()
+rm(detable, DGE_DATA, top5, DGE_cells, sample_size)
 ```
 
 
-================================================================================
-================================================================================
-================================================================================
-================================================================================
-================================================================================
+### DEG IN selection of cl, spe markers
+
+```{r}
+# specific list of marker to project the dotplot on
+my_markers <- c("SOX10", "FOXD3", "MPZ", "PMP22", "MBP", "ASCL1", "PHOX2B", "PHOX2A", "HTR3A", "PRPH", "CHAT", "SST", "TH", "DBH", "PNMT", "CHGA", "CHGB", "PENK", "EPAS1", "COX4I2")
 
 
+values_to_keep <- c("4", "7", "12", "11", "8", "19", "17", "3", "13", "1")
 
-### FeaturePlot for Igor
+# Filter the data using the %in% operator
+data_IN <- IN[, IN$clusters_subset %in% values_to_keep]
+data_IN$clusters_subset <- factor(data_IN$clusters_subset, level=values_to_keep)
+
+data_IN <- SetIdent(data_IN, value = "clusters_subset")
+
+pdf(paste0(myfolder, "innervation/dotplot_markers_IN_cl_ord_3.pdf"), width = 7, height = 4)
+DotPlot(data_IN, features = my_markers) +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete() +
+  scale_y_discrete(limits = rev) +
+  labs(x = "", y = "") + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+dev.off()
+
+gc()
+```
+
+
+### FeaturePlot
 
 ```{r}
 feature_list <- c("TH", "PENK", "CHGB", "CHAT", "ELAVL4", "STMN2",
@@ -553,15 +688,27 @@ for (feature in feature_list){
 ```
 
 
-### Feature plot
+## Export innervation metadata and Seurat object
 
 ```{r}
-p <-   FeaturePlot(IN, reduction = "umap_subset", features = "nFeature_RNA", raster = FALSE, order = TRUE)
-
-pdf(paste0(myfolder, "innervation/nFeature.pdf"), width = 10, height = 10)
-print(p)
-dev.off()
+saveRDS(IN[[]], paste0(myfolder, "/rds_objects/innervation_metadata.rds"))
+saveRDS(IN, paste0(myfolder, "/rds_objects/innervation.rds"))
 ```
+
+```{r}
+IN <- readRDS(paste0(myfolder, "rds_objects/innervation.rds"))
+```
+
+
+================================================================================
+================================================================================
+================================================================================
+================================================================================
+================================================================================
+
+
+
+
 
 
 

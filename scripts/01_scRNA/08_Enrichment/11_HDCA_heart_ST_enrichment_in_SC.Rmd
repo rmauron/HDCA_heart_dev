@@ -247,7 +247,7 @@ dev.off()
 
 ```{r}
 # Get the gene set from single cluster
-cluster_list <- c("5", "8", "9", "10", "12", "13", "15", "19", "22")
+cluster_list <- c("0", "1", "2", "3", "4", "5", "7", "8", "9", "10", "13", "14", "15", "16", "17")
 ```
 
 
@@ -291,9 +291,63 @@ selected_clusters <- mixedsort(unique(FB_sub@meta.data[["clusters_subset"]]))
 FB$clusters_subset <- factor(FB_sub$clusters_subset, levels = c("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", "11", "17", "8", "1", "6", "15", "20"))
 
 # Plot
-pdf(file = paste0(myfolder, "ST_enrichment/Violin_enrichment_ST_subset_FB.pdf"), width = 40, height = 16.6)
+pdf(file = paste0(myfolder, "ST_enrichment/Violin_enrichment_ST_subset_FB.pdf"), width = 40, height = 26.6)
 VlnPlot(FB_sub, features = new_column_names, group.by = "clusters_subset", pt.size = 0) + 
   plot_layout(ncol = 2)
+dev.off()
+```
+
+
+## Enrichment in Deep Level FB - spe markers 1
+
+```{r}
+# Create a list
+GeneSets <- list()
+
+# Create a vector
+GeneSel <- c("SOX10", "TFAP2A", "TFAP2B", "ETS1", "ERBB3", "EDNRB", "S100B")
+
+# Add the vector to the list
+GeneSets <- c(GeneSets, list(GeneSel))
+
+# Compute module score on single-cell data
+FB <- AddModuleScore(FB, features = GeneSets, name = "Enrichment_Score")
+
+# Plot violin plots
+# If you have 10 clusters, the scores should now be named Enrichment_Score1, Enrichment_Scoree2, ..., Enrichment_Score10
+FB_sub <- FB[, FB$clusters_subset %in% c("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", "11", "17", "8", "1", "6", "15", "20")]
+FB_sub$clusters_subset <- factor(FB_sub$clusters_subset, levels = c("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", "11", "17", "8", "1", "6", "15", "20"))
+
+# Plot
+pdf(file = paste0(myfolder, "complementary/Violin_enrichment_list1_subset_FB.pdf"), width = 40, height = 6)
+VlnPlot(FB_sub, features = "Enrichment_Score1", group.by = "clusters_subset", pt.size = 0)
+dev.off()
+```
+
+
+## Enrichment in Deep Level FB - spe markers 2
+
+```{r}
+# Create a list
+GeneSets <- list()
+
+# Create a vector
+GeneSel <- c("SOX10", "TFAP2A", "TFAP2B", "ETS1", "ERBB3", "EDNRB", "S100B", "B3GAT1", "SOX8", "ITGA1")
+
+# Add the vector to the list
+GeneSets <- c(GeneSets, list(GeneSel))
+
+# Compute module score on single-cell data
+FB <- AddModuleScore(FB, features = GeneSets, name = "Enrichment_Score")
+
+# Plot violin plots
+# If you have 10 clusters, the scores should now be named Enrichment_Score1, Enrichment_Scoree2, ..., Enrichment_Score10
+FB_sub <- FB[, FB$clusters_subset %in% c("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", "11", "17", "8", "1", "6", "15", "20")]
+FB_sub$clusters_subset <- factor(FB_sub$clusters_subset, levels = c("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", "11", "17", "8", "1", "6", "15", "20"))
+
+# Plot
+pdf(file = paste0(myfolder, "complementary/Violin_enrichment_list2_subset_FB.pdf"), width = 40, height = 6)
+VlnPlot(FB_sub, features = "Enrichment_Score1", group.by = "clusters_subset", pt.size = 0)
 dev.off()
 ```
 

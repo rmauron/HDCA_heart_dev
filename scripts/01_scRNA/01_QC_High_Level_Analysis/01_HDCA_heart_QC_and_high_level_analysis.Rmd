@@ -269,6 +269,7 @@ data <- readRDS(paste0(myfolder, "rds_objects/HDCA_heart_sc_unfiltered.rds"))
 data
 ```
 
+#[1]  59480 107673
 
 ### Patchword of QC plots from different metrics from metadata
 
@@ -425,6 +426,7 @@ saveRDS(data, paste0(myfolder, "rds_objects/HDCA_heart_sc_doubletfound02.rds"))
 data <- readRDS(paste0(myfolder, "rds_objects/HDCA_heart_sc_doubletfound02.rds"))
 ```
 
+# [1]  59480 101104
 
 ## Samples Quality: nCount & nFeature *after filtering and doublet found*
 
@@ -575,6 +577,7 @@ saveRDS(object = data, file = paste0(myfolder, "rds_objects/HDCA_heart_sc_scaled
 data <- readRDS(paste0(myfolder, "rds_objects/HDCA_heart_sc_scaledata_prefiltered_adjusted.rds"))
 ```
 
+# [1] 59480 76991
 
 ### PCA
 

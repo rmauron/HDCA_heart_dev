@@ -698,6 +698,230 @@ rm(detable, DGE_DATA, top5, DGE_cells, sample_size)
 ```
 
 
+### DEG CM - top5 re-ordered (23.11.2023)
+
+```{r}
+values_to_keep <- c("19-2", "19-1", "12", "9", "14", "4-2", "4-1", "18", "8-2", "8-1", "8-3", "17", "6", "1", "10", "3", "7", "2", "5")
+
+# Filter the data using the %in% operator
+data_CM <- CM[, CM$clusters_subset_split %in% values_to_keep]
+
+# Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
+sample_size <- table(data_CM$clusters_subset_split)
+sample_size[sample_size > 150] <- 150
+sample_size
+
+# Randomly sample the cells that will be included when calculating DGE (same number of cells as selected above).
+# Samples without replacement, so each cell only can be included once.
+DGE_cells <- lapply(names(sample_size), function(x){ 
+  set.seed(1)
+  sample(colnames(data_CM)[data_CM$clusters_subset_split == x], size = sample_size[x])
+  })
+DGE_cells <- unlist(DGE_cells)
+
+# Select all data that relates to the sampled DGE cells.
+DGE_DATA <- data_CM[, DGE_cells]
+
+# reorder the cell types desired
+DGE_DATA$clusters_subset_split <- factor(DGE_DATA$clusters_subset_split, 
+                                              levels = c("19-2", "19-1", "12", "9", "14", "4-2", "4-1", "18", "8-2", "8-1", "8-3", "17", "6", "1", "10", "3", "7", "2", "5"))
+
+#Find differential expressed genes based on groups defined by "clusters_subset_split".
+DGE_DATA <- SetIdent(DGE_DATA, value = "clusters_subset_split")
+
+# The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).
+detable <- FindAllMarkers(DGE_DATA,
+                          only.pos = TRUE,
+                          max.cells.per.ident = 300,
+                          logfc.threshold = .1,
+                          assay = "RNA",
+                          min.pct = 0.05)
+
+# Only keep DEG that have a p-value below 0.05.
+detable <- detable[detable$p_val < 0.05, ]
+
+# Adding two extra columns giving the difference (and log difference) between pct1 and pct2.
+# pct1 is the percentage of cells in the specific cluster that express this gene.
+# pct2 is the percentage of cells in all other clusters that express this gene.
+detable$pct.diff <- detable$pct.1 - detable$pct.2
+detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
+
+
+# Pick the 40 genes with the lowest p value for each cluster, then 20 highest based on pct.diff, then 5 highest based on avg_log2FC.
+detable %>%
+  group_by(cluster) %>%
+  top_n(-40, p_val) %>%
+  top_n(20, pct.diff) %>%
+  top_n(5, avg_log2FC) ->
+  top5
+
+
+pdf(paste0(myfolder, "cardiomyocytes/DEG_top5_CM_ordered_new.pdf"), width = 10, height = 17)
+par(mfrow=c(1,1), mar=c(3,6,2,5))
+DotPlot(DGE_DATA, features = top5 %>% pull(gene) %>% unique()) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 0.5))
+dev.off()
+
+gc()
+rm(detable, DGE_DATA, top5, DGE_cells, sample_size)
+```
+
+
+### DEG CM - top10 re-ordered subset (23.11.2023)
+
+```{r}
+values_to_keep <- c("6", "4-2", "4-1", "18")
+
+# Filter the data using the %in% operator
+data_CM <- CM[, CM$clusters_subset_split %in% values_to_keep]
+
+# Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
+sample_size <- table(data_CM$clusters_subset_split)
+sample_size[sample_size > 150] <- 150
+sample_size
+
+# Randomly sample the cells that will be included when calculating DGE (same number of cells as selected above).
+# Samples without replacement, so each cell only can be included once.
+DGE_cells <- lapply(names(sample_size), function(x){ 
+  set.seed(1)
+  sample(colnames(data_CM)[data_CM$clusters_subset_split == x], size = sample_size[x])
+  })
+DGE_cells <- unlist(DGE_cells)
+
+# Select all data that relates to the sampled DGE cells.
+DGE_DATA <- data_CM[, DGE_cells]
+
+# reorder the cell types desired
+DGE_DATA$clusters_subset_split <- factor(DGE_DATA$clusters_subset_split, 
+                                              levels = c("6", "4-2", "4-1", "18"))
+
+#Find differential expressed genes based on groups defined by "clusters_subset_split".
+DGE_DATA <- SetIdent(DGE_DATA, value = "clusters_subset_split")
+
+# The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).
+detable <- FindAllMarkers(DGE_DATA,
+                          only.pos = TRUE,
+                          max.cells.per.ident = 300,
+                          logfc.threshold = .1,
+                          assay = "RNA",
+                          min.pct = 0.05)
+
+# Only keep DEG that have a p-value below 0.05.
+detable <- detable[detable$p_val < 0.05, ]
+
+# Adding two extra columns giving the difference (and log difference) between pct1 and pct2.
+# pct1 is the percentage of cells in the specific cluster that express this gene.
+# pct2 is the percentage of cells in all other clusters that express this gene.
+detable$pct.diff <- detable$pct.1 - detable$pct.2
+detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
+
+
+# Pick the 40 genes with the lowest p value for each cluster, then 20 highest based on pct.diff, then 5 highest based on avg_log2FC.
+detable %>%
+  group_by(cluster) %>%
+  top_n(-40, p_val) %>%
+  top_n(20, pct.diff) %>%
+  top_n(10, avg_log2FC) ->
+  top10
+
+
+pdf(paste0(myfolder, "cardiomyocytes/DEG_top10_CM_6_4-2_4-1_18.pdf"), width = 4.5, height = 8)
+par(mfrow=c(1,1), mar=c(3,6,2,5))
+DotPlot(DGE_DATA, features = top10 %>% pull(gene) %>% unique()) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 0.5))
+dev.off()
+
+gc()
+rm(detable, DGE_DATA, top10, DGE_cells, sample_size)
+```
+
+
+### DEG CM - top10 re-ordered subset (23.11.2023)
+
+```{r}
+values_to_keep <- c("19-2", "19-1", "12", "9", "14")
+
+# Filter the data using the %in% operator
+data_CM <- CM[, CM$clusters_subset_split %in% values_to_keep]
+
+# Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
+sample_size <- table(data_CM$clusters_subset_split)
+sample_size[sample_size > 150] <- 150
+sample_size
+
+# Randomly sample the cells that will be included when calculating DGE (same number of cells as selected above).
+# Samples without replacement, so each cell only can be included once.
+DGE_cells <- lapply(names(sample_size), function(x){ 
+  set.seed(1)
+  sample(colnames(data_CM)[data_CM$clusters_subset_split == x], size = sample_size[x])
+  })
+DGE_cells <- unlist(DGE_cells)
+
+# Select all data that relates to the sampled DGE cells.
+DGE_DATA <- data_CM[, DGE_cells]
+
+# reorder the cell types desired
+DGE_DATA$clusters_subset_split <- factor(DGE_DATA$clusters_subset_split, 
+                                              levels = c("19-2", "19-1", "12", "9", "14"))
+
+#Find differential expressed genes based on groups defined by "clusters_subset_split".
+DGE_DATA <- SetIdent(DGE_DATA, value = "clusters_subset_split")
+
+# The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).
+detable <- FindAllMarkers(DGE_DATA,
+                          only.pos = TRUE,
+                          max.cells.per.ident = 300,
+                          logfc.threshold = .1,
+                          assay = "RNA",
+                          min.pct = 0.05)
+
+# Only keep DEG that have a p-value below 0.05.
+detable <- detable[detable$p_val < 0.05, ]
+
+# Adding two extra columns giving the difference (and log difference) between pct1 and pct2.
+# pct1 is the percentage of cells in the specific cluster that express this gene.
+# pct2 is the percentage of cells in all other clusters that express this gene.
+detable$pct.diff <- detable$pct.1 - detable$pct.2
+detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
+
+
+# Pick the 40 genes with the lowest p value for each cluster, then 20 highest based on pct.diff, then 5 highest based on avg_log2FC.
+detable %>%
+  group_by(cluster) %>%
+  top_n(-40, p_val) %>%
+  top_n(20, pct.diff) %>%
+  top_n(10, avg_log2FC) ->
+  top10
+
+
+pdf(paste0(myfolder, "cardiomyocytes/DEG_top10_CM_19-2_19-1_12_9_14.pdf"), width = 5, height = 10)
+par(mfrow=c(1,1), mar=c(3,6,2,5))
+DotPlot(DGE_DATA, features = top10 %>% pull(gene) %>% unique()) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 0.5))
+dev.off()
+
+gc()
+rm(detable, DGE_DATA, top10, DGE_cells, sample_size)
+```
+
 ### DEG CM selection of markers (split & all)
 
 ```{r}

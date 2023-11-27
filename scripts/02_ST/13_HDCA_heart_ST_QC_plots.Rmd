@@ -1,7 +1,10 @@
 ---
 title: "ST QC plots - complementary figures"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
+
 
 ## Set up and loading material
 

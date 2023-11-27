@@ -31,6 +31,7 @@ library(tidygraph)
 library(ggraph)
 library(igraph)
 library(feather)
+library(data.table)
 ```
 
 
@@ -65,9 +66,9 @@ Ran independantly for CM19-2, CM19-1, CM4-2, EN7, EN17, EN18, FB14, FB4
 
 ```{r}
 # CHANGE HERE
-data_cell <- CM
-cluster <- "19-1"
-data_sub <- data_cell[,data_cell$clusters_subset_split %in% cluster]
+data_cell <- FB
+cluster <- "14"
+data_sub <- data_cell[,data_cell$clusters_subset %in% cluster]
 ```
 
 
@@ -154,7 +155,7 @@ genesKept <- geneFiltering(exprMat, scenicOptions) #create list of markers from 
 #filter expression matrix
 exprMat_filtered <- exprMat[genesKept, ] #filter based on genes found in database
 dim(exprMat_filtered)
-exprMat_filtered <- exprMat[VariableFeatures(CM),] #keeps only the highly variable genes
+exprMat_filtered <- exprMat[VariableFeatures(FB),] #keeps only the highly variable genes
 dim(exprMat_filtered)
 
 #run correlation
@@ -179,12 +180,19 @@ list_unique_TF <- factor(list_unique_TF, levels = list_unique_TF)
 #### Enrichment of unique TF in remaining clusters
 
 ```{r}
-data_cell <- SetIdent(data_cell, value = "clusters_subset_split") #clusters_subset_split (for CM), clusters_subset (for EN, FB, IN)
-data_cell$clusters_subset_split <- factor(data_cell$clusters_subset_split, 
-                                              levels = c("1", "2", "3", "4-1", "4-2", "5", "6", "7", "8-1", "8-2", "8-3", "9", "10", "12", "14", "17", "19-1", "19-2"))
+data_cell <- SetIdent(data_cell, value = "clusters_subset") #clusters_subset_split (for CM), clusters_subset (for EN, FB, IN)
+data_cell$clusters_subset <- factor(data_cell$clusters_subset, 
+                                              levels = c("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", "11", "17", "8", "1", "6", "15", "20"))
+
+#CM
+# c("1", "2", "3", "4-1", "4-2", "5", "6", "7", "8-1", "8-2", "8-3", "9", "10", "12", "14", "17", "19-1", "19-2")
+#EN
+# c("1", "12", "3", "6", "18", "17", "7", "19", "15", "13", "10", "2", "5", "21", "16", "20", "11", "14")
+#FB
+# ("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", "11", "17", "8", "1", "6", "15", "20")
 
 # Identify all other clusters
-all_clusters <- levels(data_cell$clusters_subset_split) #clusters_subset_split (for CM), clusters_subset (for EN, FB, IN)
+all_clusters <- levels(data_cell$clusters_subset) #clusters_subset_split (for CM), clusters_subset (for EN, FB, IN)
 other_clusters <- setdiff(all_clusters, cluster)
 
 # Run FindMarkers to compare the cluster of interest against all other clusters combined
@@ -202,6 +210,7 @@ markers_table
 ### Build and score the GRN
 
 #### SCENIC_1
+
 ```{r}
 scenicOptions <- runSCENIC_1_coexNetwork2modules(scenicOptions)
 tfModules_asDF <- loadInt(scenicOptions, "tfModules_asDF")
@@ -298,8 +307,6 @@ saveRDS(motifEnrichment, file=getIntName(scenicOptions, "motifEnrichment_full"))
 
 ```{r}
 #1.3 Keep only the motifs annotated to the initial TF
-#skip this filtering for testing purposes
-# motifEnrichment_selfMotifs <- motifEnrichment[which(motifEnrichment$TFinDB != ""),, drop=FALSE]
 getIntName(scenicOptions)
 motifEnrichment <- loadInt(scenicOptions, "motifEnrichment_full")
 
@@ -323,7 +330,7 @@ motifEnrichment_selfMotifs_wGenes <- lapply(names(dbNames), function(motifDbName
                       rankings=ranking,
                       maxRank=5000, method="aprox", nCores=nCores)
 })
-library(data.table)
+
 motifEnrichment_selfMotifs_wGenes <- rbindlist(motifEnrichment_selfMotifs_wGenes)
 motifEnrichment_selfMotifs_wGenes[order(motifEnrichment_selfMotifs_wGenes$NES,decreasing=TRUE),][1:5,(1:ncol(motifEnrichment_selfMotifs_wGenes)-1), with=F]
 
@@ -374,7 +381,7 @@ TF_for_regulons <- rownames(TF_for_regulons)
 list_unique_GN <- unique(regulonTargetsInfo$gene)
 
 # Run FindMarkers to compare the cluster of interest against all other clusters combined
-gene_table <- FindMarkers(CM, 
+gene_table <- FindMarkers(data_cell, 
                              ident.1 = cluster, 
                              ident.2 = other_clusters, 
                              test.use = "wilcox", 
@@ -429,7 +436,7 @@ bet = igraph::betweenness(net, normalized = TRUE)
 tg <- tidygraph::as_tbl_graph(net) %>% 
   tidygraph::activate(nodes) %>% 
   dplyr::mutate(label=name,
-		size = deg)
+		size = 2*deg)
 
 
 set.seed(1) #TO FIX seed in layout
@@ -477,10 +484,9 @@ p <- ggraph(tg, layout = layout) +
   theme(legend.position = "none")
 
 #Save plot
-pdf(paste0(myfolder, "scenic/figures/", data_cell, "_", cluster, ".pdf"), width = 7, height = 7)
+pdf(paste0(myfolder, "scenic/figures/", "FB", "_", cluster, ".pdf"), width = 7, height = 7) #FB14 saved in 11x11
 p
 dev.off()
-
 ```
 
 
