@@ -1,6 +1,6 @@
-# Environment Repository
+# Environments
 
-This repository contains Conda environment YAML files for different project environments.
+The environments used in this project can be restaured throught the YAML files for the conda environments and with the docker image found on Dockerhub for the container.
 
 ## Conda Environments
 
