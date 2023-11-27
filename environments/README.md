@@ -4,13 +4,22 @@ The environments used in this project can be restaured throught the YAML files f
 
 ## Conda Environments
 
-### Environment 1: `environment1.yml`
-- Description: Brief description of the first environment.
-- Usage: Instructions on how to create and activate the environment using the provided YAML file.
+### Restaure conda environments:
+Restaure the conda environments by:
 
-### Environment 2: `environment2.yml`
-- Description: Brief description of the second environment.
-- Usage: Instructions on how to create and activate the environment using the provided YAML file.
+1. Download the `.yml` files (e.g. after git clone the project)
+2. Open a terminal where the `.yml` files are downloaded
+3. Run
+
+    ```bash
+    conda env create -f environment.yml
+    ```
+    
+Change `environment.yml` with the names of the `.yml` to restaure (`r-semla.yml`, `scFates.yml`, `scVelo.yml`, `stereoscope.yml`)
+
+### Use conda environemnts:
+
+
 
 <!-- Add more environments as needed -->
 
