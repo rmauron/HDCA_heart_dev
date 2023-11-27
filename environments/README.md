@@ -1,11 +1,11 @@
 # Environments
 
-The environments used in this project can be restaured throught the YAML files for the conda environments and with the docker image found on Dockerhub for the container.
+The environments used in this project can be restored throught the YAML files for the conda environments and with the docker image found on Dockerhub for the container.
 
 ## Conda Environments
 
-### Restaure conda environments:
-Restaure the conda environments by:
+### Restore conda environments:
+Restore the conda environments by:
 
 1. Download the `.yml` files (e.g. after git clone the project)
 2. Open a terminal where the `.yml` files are downloaded
@@ -15,7 +15,7 @@ Restaure the conda environments by:
     conda env create -f environment.yml
     ```
 
-Change `environment.yml` with the names of the `.yml` to restaure (`r-semla.yml`, `scFates.yml`, `scVelo.yml`, `stereoscope.yml`)
+Change `environment.yml` with the names of the `.yml` to restore (`r-semla.yml`, `scFates.yml`, `scVelo.yml`, `stereoscope.yml`)
 
 ### Use conda environemnts:
 
