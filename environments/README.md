@@ -56,4 +56,5 @@ Use the conda environments by running:
    conda activate environment
    ```
 
+**NB:** Make sure your Conda is relatively updated to avoid trouble when restoring from the `.yml` files.
 
