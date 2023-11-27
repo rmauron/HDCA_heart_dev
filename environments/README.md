@@ -21,9 +21,9 @@ Change `environment.yml` with the names of the `.yml` to restaure (`r-semla.yml`
 
 Use the conda environments by running
 
-   ```bash
-   conda activate environment.yml
-   ```
+    ```bash
+    conda activate environment.yml
+    ```
 
 
 
