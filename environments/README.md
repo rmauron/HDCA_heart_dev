@@ -21,9 +21,9 @@ Change `environment.yml` with the names of the `.yml` to restaure (`r-semla.yml`
 
 Use the conda environments by running:
 
-    ```
-    conda env create -f environment.yml
-    ```
+   ```bash
+   docker pull yourusername/your-repo-name:tag
+   ```
 
 
 
