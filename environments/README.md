@@ -14,14 +14,18 @@ Restaure the conda environments by:
     ```bash
     conda env create -f environment.yml
     ```
-    
+
 Change `environment.yml` with the names of the `.yml` to restaure (`r-semla.yml`, `scFates.yml`, `scVelo.yml`, `stereoscope.yml`)
 
 ### Use conda environemnts:
 
+Use the conda environments by running:
+
+    ```bash
+    conda activate environment.yml
+    ```
 
 
-<!-- Add more environments as needed -->
 
 ## Docker Container
 
