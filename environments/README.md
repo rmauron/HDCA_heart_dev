@@ -29,7 +29,7 @@ go in the project directory:
    cd HDCA_heart_dev
    ```
 
-and proceed. <br>
+and proceed. <br><br>
 
 1. **Pull the Docker Image from Docker Hub:**
 
@@ -45,7 +45,7 @@ and pull the image:
    docker pull raphaelmauron/hdcadevheart
    ```
 
-This can take several minutes since the image containes ```R version 4.3.1``` and the required packages.<br>
+This can take several minutes since the image containes ```R version 4.3.1``` and the required packages.<br><br>
 
 2. **Build the Container:**
 
@@ -56,7 +56,7 @@ This can take several minutes since the image containes ```R version 4.3.1``` an
 **Where:**
 - ```<YOURPASSWORD>``` is the password you want to use when connecting to the RStudio server.
 - ```--memory``` is the RAM you want to allocate to the container.
-- ```<SOURCEPATH>``` is the directory on your local computer that will be accessible form the server. Make sure the data and code are accessible from that directory. If you hare located in ```~/HDCA_heart_dev/``` you can use ```"$(pwd)"``` as ```<SOURCEPATH>```.<br>
+- ```<SOURCEPATH>``` is the directory on your local computer that will be accessible form the server. Make sure the data and code are accessible from that directory. If you hare located in ```~/HDCA_heart_dev/``` you can use ```"$(pwd)"``` as ```<SOURCEPATH>```.<br><br>
 
 3. **Run the Container on your web browser**
 
@@ -106,3 +106,4 @@ Use the conda environments by running:
 
 **NB:** Make sure your Conda is relatively updated to avoid trouble when restoring from the `.yml` files.
 
+<br><br>
