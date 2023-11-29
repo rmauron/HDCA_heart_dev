@@ -14,10 +14,10 @@ The environments used in this project can be restored throught the YAML files fo
 
 ### Building the Docker Container
 
-Most of the analysis is ran on a docker container. The corresponding image is found on [Docker Hub](https://hub.docker.com/r/raphaelmauron/hdcadevheart) and was build from the ```rocker/rstudio:4.3.1``` basis.
-The most useful commands from the [documentation](https://docs.docker.com/language/java/run-containers/) to restore the container are the following.
+Most of the analysis is ran on a docker container. The corresponding image is found on [Docker Hub](https://hub.docker.com/r/raphaelmauron/hdcadevheart) and was built from the ```rocker/rstudio:4.3.1``` basis.
+The most useful commands from the [documentation](https://docs.docker.com/language/java/run-containers/) to restore the container are listed below.
 
-**NB:** the container is going to be mounted according to the ```<SOURCEPATH>``` provided in the later command. We recommand to clone the entire GitHub repository, and start the restauration from there:
+**NB:** The container is mounted on the ```<SOURCEPATH>``` provided in the later command. We recommand to clone the entire GitHub repository, and start the restoration from there:
 
    ```
    git clone https://github.com/rmauron/HDCA_heart_dev.git
@@ -56,7 +56,7 @@ This can take several minutes since the image containes ```R version 4.3.1``` an
 **Where:**
 - ```<YOURPASSWORD>``` is the password you want to use when connecting to the RStudio server.
 - ```--memory``` is the RAM you want to allocate to the container.
-- ```<SOURCEPATH>``` is the directory on your local computer that will be accessible form the server. Make sure the data and code are accessible from that directory. If you hare located in ```~/HDCA_heart_dev/``` you can use ```"$(pwd)"``` as ```<SOURCEPATH>```.<br><br>
+- ```<SOURCEPATH>``` is the directory on your local computer that will be accessible form the server. Make sure the data and code are accessible from that directory. If you are located in ```~/HDCA_heart_dev/``` you can use ```"$(pwd)"``` as ```<SOURCEPATH>```.<br><br>
 
 3. **Run the Container on your web browser**
 
@@ -79,7 +79,7 @@ Enter the username and password:
 
 ## Conda Environments
 
-Some analysis, especially the one ran with *semla* and the python scripts (*stereoscope*, *scVelo*, *scFates*) were run on separate conda environments.
+Some analysis, especially the one ran with *semla* and the python scripts (*stereoscope*, *scVelo*, *scFates*) were ran on separate conda environments.
 
 **NB:** *stereoscope* was run on a private GPU server.
 
@@ -93,7 +93,7 @@ Some analysis, especially the one ran with *semla* and the python scripts (*ster
     conda env create -f <environment.yml>
     ```
 
-4. Change `<environment.yml>` with the names of the `.yml` to restore (`r-semla.yml`, `scFates.yml`, `scVelo.yml`, `stereoscope.yml`)
+4. Change `<environment.yml>` with the names of the YAML file to restore (`r-semla.yml`, `scFates.yml`, `scVelo.yml`, `stereoscope.yml`)
 
 
 ### Use conda environemnts:
@@ -101,9 +101,12 @@ Some analysis, especially the one ran with *semla* and the python scripts (*ster
 Use the conda environments by running:
 
    ```bash
-   conda activate environment
+   conda activate <environment>
    ```
 
+Change `<environment>` with one of the freshly cloned conda environments (`r-semla`, `scFates`, `scVelo`, `stereoscope`).
+
 **NB:** Make sure your Conda is relatively updated to avoid trouble when restoring from the `.yml` files.
+The conda version used and tested is `23.X.X`.
 
 <br><br>
