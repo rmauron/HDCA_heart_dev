@@ -14,7 +14,7 @@ The environments used in this project can be restored throught the YAML files fo
 
 ### Building the Docker Container
 
-Most of the analysis is ran on a docker container. The corresponding image is found on [Docker Hub](https://hub.docker.com/r/raphaelmauron/hdcadevheart) and was build from the <rocker/rstudio:4.3.1> basis.
+Most of the analysis is ran on a docker container. The corresponding image is found on [Docker Hub](https://hub.docker.com/r/raphaelmauron/hdcadevheart) and was build from the ```rocker/rstudio:4.3.1``` basis.
 The most useful commands from the [documentation](https://docs.docker.com/language/java/run-containers/) to restore the container are the following.
 
 **NB:** the container is going to be mounted according to the ```<SOURCEPATH>``` provided in the later command. We recommand to clone the entire GitHub repository, and start the restauration from there:
@@ -23,13 +23,13 @@ The most useful commands from the [documentation](https://docs.docker.com/langua
    git clone https://github.com/rmauron/HDCA_heart_dev.git
    ```
 
-and go in the project directory:
+go in the project directory:
 
    ```
    cd HDCA_heart_dev
    ```
 
-and proceed.
+and proceed. <br>
 
 1. **Pull the Docker Image from Docker Hub:**
 
@@ -45,7 +45,7 @@ and pull the image:
    docker pull raphaelmauron/hdcadevheart
    ```
 
-This can take several minutes since the image containes ```R version 4.3.1``` and the required packages.
+This can take several minutes since the image containes ```R version 4.3.1``` and the required packages.<br>
 
 2. **Build the Container:**
 
@@ -56,7 +56,7 @@ This can take several minutes since the image containes ```R version 4.3.1``` an
 **Where:**
 - ```<YOURPASSWORD>``` is the password you want to use when connecting to the RStudio server.
 - ```--memory``` is the RAM you want to allocate to the container.
-- ```<SOURCEPATH>``` is the directory on your local computer that will be accessible form the server. Make sure the data and code are accessible from that directory. If you hare located in ```~/HDCA_heart_dev/``` you can use ```"$(pwd)"``` as ```<SOURCEPATH>```
+- ```<SOURCEPATH>``` is the directory on your local computer that will be accessible form the server. Make sure the data and code are accessible from that directory. If you hare located in ```~/HDCA_heart_dev/``` you can use ```"$(pwd)"``` as ```<SOURCEPATH>```.<br>
 
 3. **Run the Container on your web browser**
 
@@ -86,14 +86,14 @@ Some analysis, especially the one ran with *semla* and the python scripts (*ster
 ### Restore conda environments:
 
 1. Download the `.yml` files (e.g. after git clone the project)
-2. Open a terminal where the `.yml` files are downloaded
+2. Open a terminal where the `.yml` files are downloaded (e.g. ```~/HDCA_heart_dev/environments/```)
 3. Run:
 
     ```
-    conda env create -f environment.yml
+    conda env create -f <environment.yml>
     ```
 
-4. Change `environment.yml` with the names of the `.yml` to restore (`r-semla.yml`, `scFates.yml`, `scVelo.yml`, `stereoscope.yml`)
+4. Change `<environment.yml>` with the names of the `.yml` to restore (`r-semla.yml`, `scFates.yml`, `scVelo.yml`, `stereoscope.yml`)
 
 
 ### Use conda environemnts:
