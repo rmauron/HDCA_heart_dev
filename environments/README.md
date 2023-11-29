@@ -110,7 +110,7 @@ Change `<environment>` with one of the freshly cloned conda environments (`r-sem
 
 ---
 
-**NB:** Make sure your Conda is relatively updated to avoid trouble when restoring from the `.yml` files.
+**NB:** Make sure your Conda is relatively updated to avoid troubles when restoring from the `.yml` files.
 The conda version used and tested is `23.X.X`.
 
 <br><br>
