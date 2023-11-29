@@ -2,8 +2,9 @@
 
 The environments used in this project can be restored throught the YAML files for the conda environments and with the docker image found on Dockerhub for the container.
 
+<br>
 ---
-<br><br>
+<br>
 
 ## Docker Container
 
@@ -68,8 +69,9 @@ Enter the username and password:
 - ```Username```: rstudio
 - ```Password```: what you passed as ```<YOURPASSWORD>``` on point 2 
 
+<br>
 ---
-<br><br>
+<br>
 
 ## Conda Environments
 
