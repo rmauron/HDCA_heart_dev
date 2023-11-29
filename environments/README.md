@@ -7,25 +7,39 @@ The environments used in this project can be restored throught the YAML files fo
 
 ### Building the Docker Container
 
-Most of the analysis is ran on a docker container. The corresponding image is found on [Docker Hub](https://hub.docker.com/).
-The most useful commands from the [documentation](https://docs.docker.com/language/java/run-containers/) to restore the container are the following:
+Most of the analysis is ran on a docker container. The corresponding image is found on [Docker Hub](https://hub.docker.com/r/raphaelmauron/hdcadevheart) and was build from the <rocker/rstudio:4.3.1> basis.
+The most useful commands from the [documentation](https://docs.docker.com/language/java/run-containers/) to restore the container are the following.
+
+**NB:** the container is going to be mounted according to the ```<SOURCEPATH>``` provided in the later command. We recommand to clone the entire GitHub repository, and start the restauration from there:
+
+   ```
+   git clone https://github.com/rmauron/HDCA_heart_dev.git
+   ```
+
+and go in the project directory:
+
+   ```
+   cd HDCA_heart_dev
+   ```
+
+and proceed.
 
 1. **Pull the Docker Image from Docker Hub:**
 
    ```bash
-   docker pull yourusername/your-repo-name:tag
+   docker pull raphaelmauron/hdcadevheart
    ```
 
 2. **Build the Container:**
 
    ```bash
-   sudo docker run -d -p 1337:8787 -p 3030:3030 --name hdca_devheart -e PASSWORD=<YOURPASSWORD> --memory=30g --mount type=bind,source="<SOURCEPATH>",target=/home/rstudio -e ROOT=TRUE hdcadevheart
+   sudo docker run -d -p 1337:8787 -p 3030:3030 --name hdcadevheart -e PASSWORD=<YOURPASSWORD> --memory=30g --mount type=bind,source="$(pwd)",target=/home/rstudio -e ROOT=TRUE hdcadevheart
    ```
 
 **Where:**
 - ```<YOURPASSWORD>``` is the password you want to use when connecting to the RStudio server.
 - ```--memory``` is the RAM you want to allocate to the container.
-- ```<SOURCEPATH>``` is the directory on your local computer that will be accessible form the server. Make sure the data and code are accessible from that directory.
+- ```<SOURCEPATH>``` is the directory on your local computer that will be accessible form the server. Make sure the data and code are accessible from that directory. If you hare located in ```~/HDCA_heart_dev/``` you can use ```"$(pwd)"``` as ```<SOURCEPATH>```
 
 
 
