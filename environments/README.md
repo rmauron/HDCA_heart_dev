@@ -3,7 +3,8 @@
 The environments used in this project can be restored throught the YAML files for the conda environments and with the docker image found on Dockerhub for the container.
 
 
-[Docker Container](## Docker Container)
+[Docker Container](#docker-container)
+[Conda Environments](#conda-environments)
 
 <br>
 
