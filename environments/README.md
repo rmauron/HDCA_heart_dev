@@ -106,6 +106,10 @@ Use the conda environments by running:
 
 Change `<environment>` with one of the freshly cloned conda environments (`r-semla`, `scFates`, `scVelo`, `stereoscope`).
 
+<br>
+
+---
+
 **NB:** Make sure your Conda is relatively updated to avoid trouble when restoring from the `.yml` files.
 The conda version used and tested is `23.X.X`.
 
