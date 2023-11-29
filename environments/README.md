@@ -2,6 +2,9 @@
 
 The environments used in this project can be restored throught the YAML files for the conda environments and with the docker image found on Dockerhub for the container.
 
+
+[Docker Container](## Docker Container)
+
 <br>
 
 ---
@@ -62,7 +65,7 @@ Check that the container is running:
    docker container ls -a
    ```
 
-Access the container on your web browser with [localhost:1337](localhost:1337).
+Access the container on your web browser with ```localhost:1337```.
 
 Enter the username and password:
 
