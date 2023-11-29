@@ -3,6 +3,7 @@
 The environments used in this project can be restored throught the YAML files for the conda environments and with the docker image found on Dockerhub for the container.
 
 <br>
+
 ---
 <br>
 
@@ -70,6 +71,7 @@ Enter the username and password:
 - ```Password```: what you passed as ```<YOURPASSWORD>``` on point 2 
 
 <br>
+
 ---
 <br>
 
