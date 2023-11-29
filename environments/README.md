@@ -43,7 +43,7 @@ This can take several minutes since the image containes ```R version 4.3.1``` an
 2. **Build the Container:**
 
    ```bash
-   sudo docker run -d -p 1337:8787 -p 3030:3030 --name hdcadevheart -e PASSWORD=<YOURPASSWORD> --memory=30g --mount type=bind,source="$(pwd)",target=/home/rstudio -e ROOT=TRUE hdcadevheart
+   sudo docker run -d -p 1337:8787 -p 3030:3030 --name hdcadevheart -e PASSWORD=<YOURPASSWORD> --memory=30g --mount type=bind,source="$(pwd)",target=/home/rstudio -e ROOT=TRUE raphaelmauron/hdcadevheart:latest
    ```
 
 **Where:**
@@ -51,6 +51,20 @@ This can take several minutes since the image containes ```R version 4.3.1``` an
 - ```--memory``` is the RAM you want to allocate to the container.
 - ```<SOURCEPATH>``` is the directory on your local computer that will be accessible form the server. Make sure the data and code are accessible from that directory. If you hare located in ```~/HDCA_heart_dev/``` you can use ```"$(pwd)"``` as ```<SOURCEPATH>```
 
+3. **Run the Container on your web browser**
+
+Check that the container is running:
+
+   ```
+   docker container ls -a
+   ```
+
+Access the container on your web browser with [localhost:1337](localhost:1337).
+
+Enter the username and password:
+
+- ```Username```: rstudio
+- ```Password```: what you passed as ```<YOURPASSWORD>``` on point 2 
 
 
 ## Conda Environments
