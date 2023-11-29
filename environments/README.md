@@ -26,9 +26,19 @@ and proceed.
 
 1. **Pull the Docker Image from Docker Hub:**
 
+Control that Docker is installed:
+
+   ```
+   docker ps
+   ```
+
+and pull the image:
+
    ```bash
    docker pull raphaelmauron/hdcadevheart
    ```
+
+This can take several minutes since the image containes ```R version 4.3.1``` and the required packages.
 
 2. **Build the Container:**
 
