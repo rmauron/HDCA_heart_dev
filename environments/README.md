@@ -5,7 +5,6 @@ The environments used in this project can be restored throught the YAML files fo
 <br>
 
 ---
-<br>
 
 ## Docker Container
 
@@ -73,7 +72,6 @@ Enter the username and password:
 <br>
 
 ---
-<br>
 
 ## Conda Environments
 
