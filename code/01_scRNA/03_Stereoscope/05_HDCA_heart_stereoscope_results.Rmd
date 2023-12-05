@@ -64,7 +64,6 @@ ST <- LoadImages(ST, image_height = 1.5e3)
 ```
 
 
-
 ## High Level Analysis
 
 ### Load stereoscope results for sampled cells
@@ -102,22 +101,6 @@ rownames(ST)
 ```
 
 
-#### Plot cells from a cluster on a slide
-
-```{r fig.asp=0.7}
-# MapFeatures(ST, 
-#             features = "4-35", #single-cell cluster to plot
-#             section_number = 27, #ST section to plot on
-#             image_use = "raw", 
-#             colors = c("lightgrey","mistyrose", "red", "darkred", "black"),
-#             add_scalebar = TRUE, 
-#             scalebar_gg = scalebar(x = 1000), 
-#             scalebar_position = c(0.6, 0.9), 
-#             scalebar_height = 0.07) & ThemeLegendRight()
-```
-
-
-
 #### Plot all sections (1 patchwork per cluster)
 Here we project the gene expression of cluster individually on every section
 
@@ -125,7 +108,6 @@ Here we project the gene expression of cluster individually on every section
 # Create path if not existing
 if (!dir.exists(paste0(myfolder, "visualization/high_level"))){
   dir.create(paste0(myfolder, "visualization/high_level"), recursive = TRUE)}
-
 
 for (celltype in rownames(ST)) {
   p <- MapFeatures(ST,
@@ -154,7 +136,6 @@ Here we project the gene expression of cluster individually on every section
 if (!dir.exists(paste0(myfolder, "visualization/high_level_no_cutoff"))){
   dir.create(paste0(myfolder, "visualization/high_level_no_cutoff"), recursive = TRUE)}
 
-
 for (celltype in rownames(ST)) {
   p <- MapFeatures(ST,
                    features = celltype,
@@ -174,14 +155,12 @@ rm(celltype, p)
 ```
 
 
-
 #### Plot on subset of sections
 
 ```{r}
 # Create path if not existing
 if (!dir.exists(paste0(myfolder, "visualization/high_level_figures"))){
   dir.create(paste0(myfolder, "visualization/figures"), recursive = TRUE)}
-
 
 for (celltype in rownames(ST)) {
   p <- MapFeatures(ST,
@@ -196,7 +175,6 @@ for (celltype in rownames(ST)) {
   p11 <- p[[11]] & theme(plot.subtitle = element_blank(), legend.position = "none")
   p24 <- p[[24]] & theme(plot.subtitle = element_blank(), legend.position = "right", legend.text = element_text(angle = 0))
 
-  
   pg <- p5 + p2 + p11 + p24  +
     patchwork::plot_layout(ncol = 4)
   
@@ -215,7 +193,6 @@ rm(p, p2, p5, p11, p24, pg)
 if (!dir.exists(paste0(myfolder, "visualization/high_level_figures_no_cutoff"))){
   dir.create(paste0(myfolder, "visualization/high_level_figures_no_cutoff"), recursive = TRUE)}
 
-
 for (celltype in rownames(ST)) {
   p <- MapFeatures(ST,
                    features = celltype,
@@ -229,7 +206,6 @@ for (celltype in rownames(ST)) {
   p11 <- p[[11]] & theme(plot.subtitle = element_blank(), legend.position = "none")
   p24 <- p[[24]] & theme(plot.subtitle = element_blank(), legend.position = "right", legend.text = element_text(angle = 0))
 
-  
   pg <- p5 + p2 + p11 + p24  +
     patchwork::plot_layout(ncol = 4)
   
@@ -241,21 +217,7 @@ rm(p, p2, p5, p11, p24, pg)
 ```
 
 
-#### Plot multiple clusters on 1 slide (delete later)
-
-This in mainly (if not only) to visualize where multiple single-cell clusters are projected on a single section
-
-```{r}
-# MapMultipleFeatures(ST, 
-#                     features = c("8", "13", "17", "4-35"), #clusters to plot. When overlap, highest intensities take over
-#                     section_number = 10, 
-#                     scale = "free" #new scale for each feature
-#                     )
-```
-
-
-
-## Deep Clustering Analysis
+## Deep Level Clustering Analysis
 
 ### Cardiomyocytes, Endothelial cells, Fibroblasts (together)
 
@@ -294,21 +256,6 @@ rownames(ST)
 ```
 
 
-#### Plot cells from a cluster on a slide
-
-```{r fig.asp=0.7}
-# MapFeatures(ST, 
-#             features = "CM-1", #single-cell cluster to plot
-#             section_number = 27, #ST section to plot on
-#             image_use = "raw", 
-#             colors = c("lightgrey","mistyrose", "red", "darkred", "black"),
-#             add_scalebar = TRUE, 
-#             scalebar_gg = scalebar(x = 1000), 
-#             scalebar_position = c(0.6, 0.9), 
-#             scalebar_height = 0.07) & ThemeLegendRight()
-```
-
-
 #### Plot all sections (1 patchwork per cluster)
 Here we project the gene expression of cluster individually on every section
 
@@ -316,7 +263,6 @@ Here we project the gene expression of cluster individually on every section
 #Create path if not existing
 if (!dir.exists(paste0(myfolder, "/visualization/deep_level/"))){
   dir.create(paste0(myfolder, "/visualization/deep_level/"))}
-
 
 for (celltype in rownames(ST)) {
   p <- MapFeatures(ST,
@@ -344,7 +290,6 @@ Here we project the gene expression of cluster individually on every section
 if (!dir.exists(paste0(myfolder, "/visualization/deep_level_no_cutoff/"))){
   dir.create(paste0(myfolder, "/visualization/deep_level_no_cutoff/"))}
 
-
 for (celltype in rownames(ST)) {
   p <- MapFeatures(ST,
                    features = celltype,
@@ -370,7 +315,6 @@ for (celltype in rownames(ST)) {
 if (!dir.exists(paste0(myfolder, "visualization/deep_level_figures/"))){
   dir.create(paste0(myfolder, "visualization/deep_level_figures/"), recursive = TRUE)}
 
-
 for (celltype in rownames(ST)) {
   p <- MapFeatures(ST,
                    features = celltype,
@@ -384,7 +328,6 @@ for (celltype in rownames(ST)) {
   p11 <- p[[11]] & theme(plot.subtitle = element_blank(), legend.position = "none")
   p24 <- p[[24]] & theme(plot.subtitle = element_blank(), legend.position = "right", legend.text = element_text(angle = 0))
 
-  
   pg <- p5 + p2 + p11 + p24  +
     patchwork::plot_layout(ncol = 4)
   
@@ -396,14 +339,12 @@ rm(p, p2, p5, p11, p24, pg)
 ```
 
 
-
 #### Plot on subset of sections - no_cutoff
 
 ```{r}
 # Create path if not existing
 if (!dir.exists(paste0(myfolder, "visualization/deep_level_figures_no_cutoff/"))){
   dir.create(paste0(myfolder, "visualization/deep_level_figures_no_cutoff/"), recursive = TRUE)}
-
 
 for (celltype in rownames(ST)) {
   p <- MapFeatures(ST,
@@ -418,7 +359,6 @@ for (celltype in rownames(ST)) {
   p11 <- p[[11]] & theme(plot.subtitle = element_blank(), legend.position = "none")
   p24 <- p[[24]] & theme(plot.subtitle = element_blank(), legend.position = "right", legend.text = element_text(angle = 0))
 
-  
   pg <- p5 + p2 + p11 + p24  +
     patchwork::plot_layout(ncol = 4)
   
