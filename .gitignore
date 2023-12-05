@@ -5,4 +5,5 @@
 ./.Rprofile
 ./.DS_Store
 *DS_Store
-./environments/Dockerfile
+/environments/Dockerfile
+/environments/renv.lock
