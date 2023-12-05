@@ -79,10 +79,8 @@ set.seed(1)
 IN <- data[,data$high_level_clusters_removed == 25   | #25
             data$high_level_clusters_removed == 26 ] #26
            
-
 # Remove all genes with 0 counts
 IN <- IN[rowSums(GetAssayData(IN, slot = "counts")) > 0, ]
-
 
 # Process the data
 IN <- IN %>% 
@@ -92,7 +90,6 @@ IN <- IN %>%
                                 "percent_ribo", "percent_mito", 
                                 "percent_hb", "percent_hsp", 
                                 "S.Score", "G2M.Score")) 
-
 
 IN <- RunPCA(IN, npcs = 50, seed.use = 42)
 
@@ -126,7 +123,6 @@ nn <- CreateNNAdjacencyMatrix(data = IN, reduction = "harmony_subset", k = 10, d
 # add the clusters to the metadata
 cl <- LouvainClustering(nn = nn, seed = 1, resolution = 1) # change resolution
 IN$clusters_subset <- factor(cl)
-
 
 pdf(paste0(myfolder, "innervation/innervationl_subclusters.pdf"), width = 10, height = 10)
 DimPlot(IN, reduction = "umap_subset", group.by = "clusters_subset", label = T) + labs(title = "Innervation subclusters")
@@ -292,7 +288,6 @@ age4 <- IN[,IN$age >= 12]
 IN_age <- c(age1, age2, age3, age4)
 rm(age1, age2, age3, age4)
 
-
 # create df by age grouping the number of cell per cluster
 cell_by_cluster_entire_1 <- as.data.frame(table(IN_age[[1]]@meta.data[["clusters_subset"]]))
 cell_by_cluster_entire_2 <- as.data.frame(table(IN_age[[2]]@meta.data[["clusters_subset"]]))
@@ -389,7 +384,6 @@ rm(detable, DGE_DATA, top20, DGE_cells, ord, sample_size)
 ```{r}
 values_to_keep <- c("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", "11", "17", "8", "1", "6", "15", "20", "21")
 
-# Filter the data using the %in% operator
 data_IN <- IN[, IN$clusters_subset %in% values_to_keep]
 
 # Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
@@ -450,7 +444,6 @@ detable <- detable[detable$p_val < 0.05, ]
 detable$pct.diff <- detable$pct.1 - detable$pct.2
 detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
 
-
 # Pick the 40 genes with the lowest p value for each cluster, then 20 highest based on pct.diff, then 5 highest based on avg_log2FC.
 detable %>%
   group_by(cluster) %>%
@@ -458,7 +451,6 @@ detable %>%
   top_n(20, pct.diff) %>%
   top_n(5, avg_log2FC) ->
   top5
-
 
 pdf(paste0(myfolder, "innervation/DEG_top5_IN_ordered.pdf"), width = 10, height = 17)
 par(mfrow=c(1,1), mar=c(3,6,2,5))
@@ -520,14 +512,12 @@ my_markers <- c("SOX10", #for glia
                 "FOXD3",
                 "MBP",
                 "MPZ",
-                
                 "PRPH", #for neurons
                 "TH",
                 "PHOX2B", 
                 #"PHOX2A",
                 #"ASCL1",
                 #"CHGA",
-                
                 "PENK", #for chromaffin
                 "PNMT",
                 #"TH",
@@ -536,14 +526,11 @@ my_markers <- c("SOX10", #for glia
                 #"PMP22",
                 #"HTR3A",
                 #"HTR3B",
-                
                 "SST" #for VIP
                 )
 
-
 values_to_keep <- c("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", "11", "17", "8", "1", "6", "15", "20", "21")
 
-# Filter the data using the %in% operator
 data_IN <- IN[, IN$clusters_subset %in% values_to_keep]
 data_IN$clusters_subset <- factor(data_IN$clusters_subset, level=values_to_keep)
 
@@ -568,7 +555,6 @@ gc()
 ```{r}
 values_to_keep <- c("4", "7", "12", "11", "8", "19", "17", "3", "13", "1")
 
-# Filter the data using the %in% operator
 data_IN <- IN[, IN$clusters_subset %in% values_to_keep]
 
 # Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
@@ -611,7 +597,6 @@ detable <- detable[detable$p_val < 0.05, ]
 detable$pct.diff <- detable$pct.1 - detable$pct.2
 detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
 
-
 # Pick the 40 genes with the lowest p value for each cluster, then 20 highest based on pct.diff, then 5 highest based on avg_log2FC.
 detable %>%
   group_by(cluster) %>%
@@ -619,7 +604,6 @@ detable %>%
   top_n(20, pct.diff) %>%
   top_n(5, avg_log2FC) ->
   top5
-
 
 pdf(paste0(myfolder, "innervation/DEG_top5_IN_sel_cl.pdf"), width = 6, height = 10)
 par(mfrow=c(1,1), mar=c(3,6,2,5))
@@ -642,12 +626,10 @@ rm(detable, DGE_DATA, top5, DGE_cells, sample_size)
 
 ```{r}
 # specific list of marker to project the dotplot on
-my_markers <- c("SOX10", "FOXD3", "MPZ", "PMP22", "MBP", "ASCL1", "PHOX2B", "PHOX2A", "HTR3A", "PRPH", "CHAT", "SST", "TH", "DBH", "PNMT", "CHGA", "CHGB", "PENK", "EPAS1", "COX4I2")
-
+my_markers <- c("SOX10", "FOXD3", "MPZ", "PMP22", "MBP", "ASCL1", "PHOX2B", "PHOX2A", "HTR3A", "PRPH", "CHAT", "SST", "TH", "DBH", "PNMT", "CHGA", "CHGB", "PENK", "EPAS1", "COX4I2", "NDUFS2", "HIGD1C")
 
 values_to_keep <- c("4", "7", "12", "11", "8", "19", "17", "3", "13", "1")
 
-# Filter the data using the %in% operator
 data_IN <- IN[, IN$clusters_subset %in% values_to_keep]
 data_IN$clusters_subset <- factor(data_IN$clusters_subset, level=values_to_keep)
 

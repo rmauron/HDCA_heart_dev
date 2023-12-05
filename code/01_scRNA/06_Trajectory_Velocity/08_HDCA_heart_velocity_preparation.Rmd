@@ -78,7 +78,6 @@ gc()
 data_spliced <- CreateSeuratObject(counts = data_spliced[,colnames(data)])
 gc()
 
-
 data_list_unspliced <- lapply( 
   file_list ,function(x) { 
     data <- Matrix::Matrix(rhdf5::h5read(paste0(PATH_DATA,x),name = "shoji/Unspliced"),sparse = T)

@@ -436,11 +436,9 @@ top20_cardiomyocoyte_markers <- de_markers_split %>%
   group_by(cluster) %>%
   top_n(20, avg_log2FC)
 
-
 CM_small <- CM[, CM$clusters_subset_split %in% selected_cardiomyocyte_clusters]
 CM_small$clusters_subset_split <- factor(CM_small$clusters_subset_split, 
                                          levels = selected_cardiomyocyte_clusters)
-
 
 CM_small <- SetIdent(CM_small, value = "clusters_subset_split")
 
@@ -471,14 +469,12 @@ pdf(file = paste0(myfolder, "cardiomyocytes/clusters_cardiomyocytes_big_umap.pdf
 p
 dev.off()
 
-
 # High level CM clusters projected on the deep level CM UMAP or Rough clusters
 pdf(file = paste0(myfolder, "cardiomyocytes/rough_clusters_cardiomyocytes.pdf"), 
      width = 10, height = 10)
 DimPlot(CM, reduction = "umap_subset", group.by = "clusters_louvain_oi") + 
   labs(title = "Rough clusters - CM UMAP")
 dev.off()
-
 
 # nCounts
 pdf(paste0(myfolder, "cardiomyocytes/nCounts_cardiomyocytes.pdf"), width = 10, height = 10)
@@ -502,7 +498,6 @@ age4 <- CM[,CM$age >= 12]
 
 CM_age <- c(age1, age2, age3, age4)
 rm(age1, age2, age3, age4)
-
 
 # order the subclusters
 CM_age[[1]]@meta.data$clusters_subset_split <- factor(CM_age[[1]]@meta.data$clusters_subset_split, 
@@ -605,12 +600,24 @@ rm(detable, DGE_DATA, top20, DGE_cells, ord, sample_size)
 ```
 
 
+### Cluster remaining clusters
+
+```{r}
+values_to_keep <- c("6",  "1", "10", "8-1", "8-3", "17", "8-2", "18", "4-2",  "4-1", "3", "14",  "9",  "12", "19-2",  "19-1", "7",  "2", "5")
+
+data_CM <- CM[, CM$clusters_subset_split %in% values_to_keep]
+
+pdf(file = paste0(myfolder, "cardiomyocytes/cardiomyocytes_clusters_remaining.pdf"), width = 10, height = 10)
+DimPlot(data_CM, reduction = "umap_subset", group.by = "clusters_subset_split", label = T) + NoLegend() + labs(title = "Cardiomyocyte subclusters")
+dev.off()
+```
+
+
 ### DEG CM - top5 ordered
 
 ```{r}
 values_to_keep <- c("6",  "1", "10", "8-1", "8-3", "17", "8-2", "18", "4-2",  "4-1", "3", "14",  "9",  "12", "19-2",  "19-1", "7",  "2", "5")
 
-# Filter the data using the %in% operator
 data_CM <- CM[, CM$clusters_subset_split %in% values_to_keep]
 
 # Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
@@ -671,7 +678,6 @@ detable <- detable[detable$p_val < 0.05, ]
 detable$pct.diff <- detable$pct.1 - detable$pct.2
 detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
 
-
 # Pick the 40 genes with the lowest p value for each cluster, then 20 highest based on pct.diff, then 5 highest based on avg_log2FC.
 detable %>%
   group_by(cluster) %>%
@@ -679,7 +685,6 @@ detable %>%
   top_n(20, pct.diff) %>%
   top_n(5, avg_log2FC) ->
   top5
-
 
 pdf(paste0(myfolder, "cardiomyocytes/DEG_top5_CM_ordered.pdf"), width = 10, height = 17)
 par(mfrow=c(1,1), mar=c(3,6,2,5))
@@ -703,7 +708,6 @@ rm(detable, DGE_DATA, top5, DGE_cells, sample_size)
 ```{r}
 values_to_keep <- c("19-2", "19-1", "12", "9", "14", "4-2", "4-1", "18", "8-2", "8-1", "8-3", "17", "6", "1", "10", "3", "7", "2", "5")
 
-# Filter the data using the %in% operator
 data_CM <- CM[, CM$clusters_subset_split %in% values_to_keep]
 
 # Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
@@ -755,7 +759,6 @@ detable %>%
   top_n(5, avg_log2FC) ->
   top5
 
-
 pdf(paste0(myfolder, "cardiomyocytes/DEG_top5_CM_ordered_new.pdf"), width = 10, height = 17)
 par(mfrow=c(1,1), mar=c(3,6,2,5))
 DotPlot(DGE_DATA, features = top5 %>% pull(gene) %>% unique()) +
@@ -778,7 +781,6 @@ rm(detable, DGE_DATA, top5, DGE_cells, sample_size)
 ```{r}
 values_to_keep <- c("6", "4-2", "4-1", "18")
 
-# Filter the data using the %in% operator
 data_CM <- CM[, CM$clusters_subset_split %in% values_to_keep]
 
 # Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
@@ -821,7 +823,6 @@ detable <- detable[detable$p_val < 0.05, ]
 detable$pct.diff <- detable$pct.1 - detable$pct.2
 detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
 
-
 # Pick the 40 genes with the lowest p value for each cluster, then 20 highest based on pct.diff, then 5 highest based on avg_log2FC.
 detable %>%
   group_by(cluster) %>%
@@ -829,7 +830,6 @@ detable %>%
   top_n(20, pct.diff) %>%
   top_n(10, avg_log2FC) ->
   top10
-
 
 pdf(paste0(myfolder, "cardiomyocytes/DEG_top10_CM_6_4-2_4-1_18.pdf"), width = 4.5, height = 8)
 par(mfrow=c(1,1), mar=c(3,6,2,5))
@@ -853,7 +853,6 @@ rm(detable, DGE_DATA, top10, DGE_cells, sample_size)
 ```{r}
 values_to_keep <- c("19-2", "19-1", "12", "9", "14")
 
-# Filter the data using the %in% operator
 data_CM <- CM[, CM$clusters_subset_split %in% values_to_keep]
 
 # Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
@@ -896,7 +895,6 @@ detable <- detable[detable$p_val < 0.05, ]
 detable$pct.diff <- detable$pct.1 - detable$pct.2
 detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
 
-
 # Pick the 40 genes with the lowest p value for each cluster, then 20 highest based on pct.diff, then 5 highest based on avg_log2FC.
 detable %>%
   group_by(cluster) %>%
@@ -904,7 +902,6 @@ detable %>%
   top_n(20, pct.diff) %>%
   top_n(10, avg_log2FC) ->
   top10
-
 
 pdf(paste0(myfolder, "cardiomyocytes/DEG_top10_CM_19-2_19-1_12_9_14.pdf"), width = 5, height = 10)
 par(mfrow=c(1,1), mar=c(3,6,2,5))
@@ -921,6 +918,7 @@ dev.off()
 gc()
 rm(detable, DGE_DATA, top10, DGE_cells, sample_size)
 ```
+
 
 ### DEG CM selection of markers (split & all)
 
@@ -976,6 +974,247 @@ gc()
 ```
 
 
+### DEG CM selection of markers (split & selection)
+
+```{r}
+values_to_keep <- c("8-2", "8-1", "8-3", "6", "1", "10")
+
+data_CM <- CM[, CM$clusters_subset_split %in% values_to_keep]
+
+# specific list of marker to project the dotplot on
+my_markers <- c("MYH7", "MYL2", "MYL4", "MYL7", "TNNI1", "TNNI3", "CACNA1C", "CACNB2", "RYR2", "ATP2A2", "SLC8A1", "JPH", "NEXN", "PPARGC1A", "ESRRG", "OPA1", "HK1", "HK2", "PKM", "ALDOA", "ENO1", "NDUFA1", "NDUFB4", "UQCRH", "UQCRB", "COX7C", "COX5A", "ATP5F1A", "ATP5MD")
+
+data_CM <- SetIdent(data_CM, value = "clusters_subset_split")
+data_CM$clusters_subset_split <- factor(data_CM$clusters_subset_split, 
+                                              levels = c("8-2", "8-1", "8-3", "6", "1", "10"))
+
+p <- DotPlot(data_CM, features = my_markers) +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete() +
+  scale_y_discrete(limits = rev) +
+  labs(x = "", y = "") + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+
+pdf(paste0(myfolder, "cardiomyocytes/dotplot_markers_CM_subset_selection.pdf"), width = 9, height = 2.5)
+print(p)
+dev.off()
+
+rm(p)
+gc()
+```
+
+
+### DEG CM selection of markers (split & selection)
+
+```{r}
+values_to_keep <- c("18", "4-2", "4-1", "6")
+
+data_CM <- CM[, CM$clusters_subset_split %in% values_to_keep]
+
+# specific list of marker to project the dotplot on
+my_markers <- c("RCAN1", "IRX1", "IRX2", "BRINP3", "SEMA3A", "PLXNA4", "CSMD1", "IRX5", "IRX3", "GJA1")
+
+data_CM$clusters_subset_split <- factor(data_CM$clusters_subset_split, 
+                                              levels = c("18", "4-2", "4-1", "6"))
+
+data_CM <- SetIdent(data_CM, value = "clusters_subset_split")
+
+p <- DotPlot(data_CM, features = my_markers) +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete() +
+  scale_y_discrete(limits = rev) +
+  labs(x = "", y = "") + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+
+pdf(paste0(myfolder, "cardiomyocytes/dotplot_markers_CM_subset_selection_18_4-2_4-1_6.pdf"), width = 5, height = 3)
+print(p)
+dev.off()
+
+rm(p)
+gc()
+```
+
+
+### DEG CM selection of markers (split & selection)
+
+```{r}
+values_to_keep <- c("19-2", "19-1", "12", "9", "14")
+
+data_CM <- CM[, CM$clusters_subset_split %in% values_to_keep]
+
+# specific list of marker to project the dotplot on
+my_markers <- c("SHOX2", "RGS6", "CACNA1D", "CACNA1G", "TENM2", "TENM3", "TENM4", "ADAMTS19", "NRXN3", "GDF10", "HCN1", "HCN4", "ITGA10", "LIMCH1", "PRRX1", "PXDNL", "SLIT2", "TBX18", "ZNF385B")
+
+data_CM$clusters_subset_split <- factor(data_CM$clusters_subset_split, 
+                                              levels = c("19-2", "19-1", "12", "9", "14"))
+
+data_CM <- SetIdent(data_CM, value = "clusters_subset_split")
+
+p <- DotPlot(data_CM, features = my_markers) +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete() +
+  scale_y_discrete(limits = rev) +
+  labs(x = "", y = "") + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+
+pdf(paste0(myfolder, "cardiomyocytes/dotplot_markers_CM_subset_selection_19-2_19-1_12_9_14.pdf"), width = 7, height = 3.5)
+print(p)
+dev.off()
+
+rm(p)
+gc()
+```
+
+
+### DEG CM selection of markers (split & selection)
+
+```{r}
+values_to_keep <- c("19-2", "19-1", "12", "9", "14", "4-2", "4-1", "18", "6")
+
+data_CM <- CM[, CM$clusters_subset_split %in% values_to_keep]
+
+# specific list of marker to project the dotplot on
+my_markers <- c("ADRB1", "CHRM2")
+
+data_CM$clusters_subset_split <- factor(data_CM$clusters_subset_split, 
+                                              levels = c("19-2", "19-1", "12", "9", "14", "4-2", "4-1", "18", "6"))
+
+data_CM <- SetIdent(data_CM, value = "clusters_subset_split")
+
+p <- DotPlot(data_CM, features = my_markers) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+
+pdf(paste0(myfolder, "cardiomyocytes/dotplot_markers_CM_subset_selection_19-2_19-1_12_9_14_4-2_4-1_18_6.pdf"), width = 7, height = 3.5)
+print(p)
+dev.off()
+
+rm(p)
+gc()
+```
+
+
+### DEG CM selection of markers (split & selection)
+
+```{r}
+values_to_keep <- c("19-2", "19-1", "12", "9", "14")
+
+data_CM <- CM[, CM$clusters_subset_split %in% values_to_keep]
+
+# specific list of marker to project the dotplot on
+my_markers <- c("ADRB1", "CHRM2")
+
+data_CM$clusters_subset_split <- factor(data_CM$clusters_subset_split, 
+                                              levels = c("19-2", "19-1", "12", "9", "14"))
+
+data_CM <- SetIdent(data_CM, value = "clusters_subset_split")
+
+p <- DotPlot(data_CM, features = my_markers) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+
+pdf(paste0(myfolder, "cardiomyocytes/dotplot_markers_CM_subset_selection_19-2_19-1_12_9_14.pdf"), width = 4, height = 3.5)
+print(p)
+dev.off()
+
+rm(p)
+gc()
+```
+
+
+### DEG CM selection of markers (split & selection)
+
+```{r}
+values_to_keep <- c("18", "4-2", "4-1", "6")
+
+data_CM <- CM[, CM$clusters_subset_split %in% values_to_keep]
+
+# specific list of marker to project the dotplot on
+my_markers <- c("ADRB1", "CHRM2")
+
+data_CM$clusters_subset_split <- factor(data_CM$clusters_subset_split, 
+                                              levels = c("18", "4-2", "4-1", "6"))
+
+data_CM <- SetIdent(data_CM, value = "clusters_subset_split")
+
+p <- DotPlot(data_CM, features = my_markers) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+
+pdf(paste0(myfolder, "cardiomyocytes/dotplot_markers_CM_subset_selection_18_4-2_4-1_6.pdf"), width = 4, height = 3.5)
+print(p)
+dev.off()
+
+rm(p)
+gc()
+```
+
+
+
+### DEG CM DE table "19-2", "19-1", "12", "9", "14"
+
+```{r}
+values_to_keep <- c("19-2", "19-1", "12", "9", "14")
+
+data_CM <- CM[, CM$clusters_subset_split %in% values_to_keep]
+
+# specific list of marker to project the dotplot on
+my_markers <- c("HCN1", "HCN4", "SCN5A", "CACNA1C", "CACNA1D", "CACNA1G", "CACNA2D1", "CACNA2D2", "CACNB2", "RYR2", "KCNA5", "KCNH7", "KCNJ2", "KCNJ3", "KCNJ4", "KCNMB2", "KCNN2", "KCNQ1", "KCNQ3", "KCNQ5", "CLCN3", "CLCN6", "CLIC1", "CLIC4", "CLIC5", "ANO4", "ANO5", "ANO6", "GRIA1", "GRID1", "GRID2", "GRIK1", "GRIK2", "GRIN2B", "P2RX1", "GABRB2", "GABRB3", "GABRE", "LRRC8B", "TRPC1", "TRPC3", "TRPM3", "TRPM4", "TRPM7", "TRPS1", "PKD2", "GJA1", "GJA3", "GJA5", "GJC1", "AQP1", "NCX")
+
+detable <- FindAllMarkers(data_CM,
+                          only.pos = TRUE,
+                          max.cells.per.ident = 300,
+                          logfc.threshold = .1,
+                          assay = "RNA",
+                          min.pct = 0.05)
+write.csv2(detable, paste0(myfolder, "cardiomyocytes/DE_table_19-2_19-1_12_9_14_all.csv"))
+
+detable_selection <- detable[rownames(detable) %in% my_markers,]
+write.csv2(detable_selection, paste0(myfolder, "cardiomyocytes/DE_table_19-2_19-1_12_9_14_selection.csv"))
+```
+
+
+### DEG CM DE table "4-2", "4-1", "6"
+
+```{r}
+values_to_keep <- c("4-2", "4-1", "6")
+
+data_CM <- CM[, CM$clusters_subset_split %in% values_to_keep]
+
+# specific list of marker to project the dotplot on
+my_markers <- c("HCN1", "HCN4", "SCN5A", "CACNA1C", "CACNA1D", "CACNA1G", "CACNA2D1", "CACNA2D2", "CACNB2", "RYR2", "KCNA5", "KCNH7", "KCNJ2", "KCNJ3", "KCNJ4", "KCNMB2", "KCNN2", "KCNQ1", "KCNQ3", "KCNQ5", "CLCN3", "CLCN6", "CLIC1", "CLIC4", "CLIC5", "ANO4", "ANO5", "ANO6", "GRIA1", "GRID1", "GRID2", "GRIK1", "GRIK2", "GRIN2B", "P2RX1", "GABRB2", "GABRB3", "GABRE", "LRRC8B", "TRPC1", "TRPC3", "TRPM3", "TRPM4", "TRPM7", "TRPS1", "PKD2", "GJA1", "GJA3", "GJA5", "GJC1", "AQP1", "NCX")
+
+detable <- FindAllMarkers(data_CM,
+                          only.pos = TRUE,
+                          max.cells.per.ident = 300,
+                          logfc.threshold = .1,
+                          assay = "RNA",
+                          min.pct = 0.05)
+write.csv2(detable, paste0(myfolder, "cardiomyocytes/DE_table_4-2_4-1_6_all.csv"))
+
+detable_selection <- detable[rownames(detable) %in% my_markers, ]
+write.csv2(detable_selection, paste0(myfolder, "cardiomyocytes/DE_table_4-2_4-1_6_selection.csv"))
+```
+
+
 ## Gene Set Enrichment Analysis (GSEA) between ST-DEG and CM-subclusters
 
 ### Load ST-DEG
@@ -1002,10 +1241,7 @@ cluster_list <- c("0", "1", "2", "3", "4", "7", "9", "12", "15", "17")
 #### DEG_ST_heart_subset
 
 ```{r}
-# Check how many genes you have per group
-# Wouldn't make much sense to use only 1 gene, but maybe you'll have
-# 10-100 or something. 
-table(DEG_ST_heart_subset$cluster)
+ table(DEG_ST_heart_subset$cluster)
 
 # Create list of DEGs
 GeneSets <- split(DEG_ST_heart_subset$gene, DEG_ST_heart_subset$cluster)
@@ -1033,7 +1269,6 @@ for (i in 32:41) {
 selected_cardiomyocyte_clusters <- mixedsort(unique(CM_subset@meta.data[["clusters_subset_split"]]))
 CM$clusters_subset_split <- factor(CM_subset$clusters_subset_split, levels = selected_cardiomyocyte_clusters)
 
-
 pdf(file = paste0(myfolder, "cardiomyocytes/Violin_enrichment_ST.pdf"), 
      width = 20, height = 20)
 VlnPlot(CM_subset, features = new_column_names, group.by = "clusters_subset_split") + 
@@ -1045,9 +1280,6 @@ dev.off()
 #### DEG_ST_all_clusters
 
 ```{r}
-# Check how many genes you have per group
-# Wouldn't make much sense to use only 1 gene, but maybe you'll have
-# 10-100 or something. 
 table(DEG_ST_all_clusters$cluster)
 
 # Create list of DEGs
@@ -1069,7 +1301,6 @@ for (i in 42:51) {
 # If you have 10 clusters, the scores should now be named Enrichment_Score1, Enrichment_Scoree2, ..., Enrichment_Score10
 selected_cardiomyocyte_clusters <- mixedsort(unique(CM_subset@meta.data[["clusters_subset_split"]]))
 CM_subset$clusters_subset_split <- factor(CM_subset$clusters_subset_split, levels = selected_cardiomyocyte_clusters)
-
 
 pdf(file = paste0(myfolder, "cardiomyocytes/Violin_enrichment_ST_all.pdf"), 
      width = 20, height = 20)

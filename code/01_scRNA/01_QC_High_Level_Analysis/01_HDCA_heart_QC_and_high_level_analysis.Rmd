@@ -118,7 +118,7 @@ temp <- do.call(rbind, temp)
 # Add the temp dataframe to the Seurat metadata. Column bind (put the columns side by side)
 data@meta.data <- cbind(data@meta.data, temp)
 
-metadata <- read.delim("/home/rstudio/project/data/metadata/Result 1_210211_121011.tab",row.names = 2)
+metadata <- read.delim("/home/rstudio/project/data/metadata/Result_1_210211_121011.tab",row.names = 2)
 identities <- as.character(sub("Ten", 10, file_list))
 metadata <- metadata[as.character(sub(".h5","",identities)),]
 metadata$age
@@ -313,13 +313,11 @@ dev.off()
 * Remove cells with a percentage of ribosomal protein coding gene counts below 3% and a percentage of hemoglobin gene counts below 10% 
 * Remove cells with less than 250 unique genes detected and a percentage of hemoglobin gene counts below 10% 
 
-<!-- NB: I assume that the 10% hb threshold is used to make sure that erythrocytes are still kept. These cells could have low quality stats with respect to unique genes detected and ribosomal protein coding gene counts. -->
-
 ```{r, results='hide'}
-cells_to_filter_out1 <- data@meta.data$percent_mito > 30 # 4212
-cells_to_filter_out2 <- data@meta.data$percent_ribo < 3 & data@meta.data$percent_hb < 10 # 4636, 2289 overlapping with mito, 1224 have fewer than 250 unique genes
-cells_to_filter_out3 <- data@meta.data$nFeature_RNA < 250 & data@meta.data$percent_hb < 10 # 1653, almost all overlapping with mito
-to_filter <- cells_to_filter_out1 | cells_to_filter_out2 | cells_to_filter_out3 # 6569
+cells_to_filter_out1 <- data@meta.data$percent_mito > 30
+cells_to_filter_out2 <- data@meta.data$percent_ribo < 3 & data@meta.data$percent_hb < 10
+cells_to_filter_out3 <- data@meta.data$nFeature_RNA < 250 & data@meta.data$percent_hb < 10
+to_filter <- cells_to_filter_out1 | cells_to_filter_out2 | cells_to_filter_out3
 
 rm(cells_to_filter_out1, cells_to_filter_out2, cells_to_filter_out3)
 gc()
@@ -359,7 +357,6 @@ data <- data[, !to_filter]
 `FindDoublets` runs a doublet detection workflow for each dataset (sampleID) separately. The results are then merged to create a new Seurat object.
 
 ```{r}
-# Find doublets
 data_list <- FindDoublets(data = data, myfolder = myfolder)
 ```
 
@@ -497,9 +494,9 @@ rm(p1, p2, p3, p4)
 * Remove detected doublets.
 
 ```{r}
-cells_to_filter_out1 <- data@meta.data$percent_hb > 10 # 19742 (most RBCs)
-cells_to_filter_out2 <- data@meta.data$DF.classifications == "Doublet" # 4568
-to_filter <- cells_to_filter_out1 | cells_to_filter_out2 # 24113
+cells_to_filter_out1 <- data@meta.data$percent_hb > 10
+cells_to_filter_out2 <- data@meta.data$DF.classifications == "Doublet"
+to_filter <- cells_to_filter_out1 | cells_to_filter_out2
 rm(cells_to_filter_out1, cells_to_filter_out2)
 ```
 
@@ -662,7 +659,7 @@ DimPlot(data, reduction = "umap_oi", group.by = "clusters_louvain_oi", label = T
 dev.off()
 
 pdf(paste0(myfolder, "clusters.pdf"), width = 15, height = 15)
-DimPlot(data, reduction = "umap_oi", group.by = "clusters_louvain_oi", label = T, raster = F) # + labs(title = "High level clusters")
+DimPlot(data, reduction = "umap_oi", group.by = "clusters_louvain_oi", label = T, raster = F)
 dev.off()
 ```
 
@@ -1225,7 +1222,7 @@ ages <- readRDS(paste0(myfolder, "rds_objects/HDCA_heart_sc_age_groups.rds"))
 ### Temporal evolution of High Level UMAP
 
 ```{r}
-pdf(file = paste0(myfolder, "Clusters_age_5_to_6_weeks_full_size.pdf"), width = 15, height = 15, bg = "transparent") # 10
+pdf(file = paste0(myfolder, "Clusters_age_5_to_6_weeks_full_size.pdf"), width = 15, height = 15, bg = "transparent")
 DimPlot(ages[[1]][, as.character(ages[[1]]$high_level_clusters_removed) %in% levels(ages[[1]]$high_level_clusters_removed)], reduction = "umap_oi", group.by = "cell.types", raster = F, pt.size = 1) + NoLegend()
 dev.off()
 
@@ -1346,7 +1343,7 @@ gc()
 ```
 
 
-#### Second set of markers
+### High Level dotplot from selected markers
 
 ```{r}
 # specific list of marker to project the dotplot on
@@ -1843,12 +1840,12 @@ write.csv2(table(df_list[[ID]]@meta.data[["high_level_clusters_removed"]]),
 ```
 
 
-## Special DEG:
+## DEG subsets
 
-#### Round 1: CM_21, EC_14, FB_20
+#### Round 1: CM_21, EN_14, FB_20
 
 ```{r}
-#keep only CM_21, EC_14, FB_20
+#keep only CM_21, EN_14, FB_20
 round1_1 <- CM[, CM$clusters_subset == "21"]
 round1_2 <- EN[, EN$clusters_subset == "14"]
 round1_3 <- FB[, FB$clusters_subset == "20"]

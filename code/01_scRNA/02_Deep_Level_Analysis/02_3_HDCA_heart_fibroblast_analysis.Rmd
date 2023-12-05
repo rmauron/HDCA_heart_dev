@@ -124,7 +124,6 @@ nn <- CreateNNAdjacencyMatrix(FB, reduction = "harmony_subset", k = 10, dims = 1
 cl <- LouvainClustering(nn = nn, seed = 1, resolution = 1.5)
 FB$clusters_subset <- factor(cl)
 
-
 pdf(paste0(myfolder, "fibroblast/fibroblast_subclusters.pdf"), width = 10, height = 10)
 DimPlot(FB, reduction = "umap_subset", group.by = "clusters_subset", label = T) + labs(title = "Fibroblast subclusters")
 dev.off()
@@ -248,7 +247,6 @@ age4 <- FB[,FB$age >= 12]
 FB_age <- c(age1, age2, age3, age4)
 rm(age1, age2, age3, age4)
 
-
 # create df by age grouping the number of cell per cluster
 cell_by_cluster_entire_1 <- as.data.frame(table(FB_age[[1]]@meta.data[["clusters_subset"]]))
 cell_by_cluster_entire_2 <- as.data.frame(table(FB_age[[2]]@meta.data[["clusters_subset"]]))
@@ -345,7 +343,6 @@ rm(detable, DGE_DATA, top20, DGE_cells, ord, sample_size)
 ```{r}
 values_to_keep <- c("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", "11", "17", "8", "1", "6", "15", "20")
 
-# Filter the data using the %in% operator
 data_FB <- FB[, FB$clusters_subset %in% values_to_keep]
 
 # Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
@@ -405,7 +402,6 @@ detable <- detable[detable$p_val < 0.05, ]
 detable$pct.diff <- detable$pct.1 - detable$pct.2
 detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
 
-
 # Pick the 40 genes with the lowest p value for each cluster, then 20 highest based on pct.diff, then 5 highest based on avg_log2FC.
 detable %>%
   group_by(cluster) %>%
@@ -413,7 +409,6 @@ detable %>%
   top_n(20, pct.diff) %>%
   top_n(5, avg_log2FC) ->
   top5
-
 
 pdf(paste0(myfolder, "fibroblast/DEG_top5_FB_ordered.pdf"), width = 10, height = 17)
 par(mfrow=c(1,1), mar=c(3,6,2,5))

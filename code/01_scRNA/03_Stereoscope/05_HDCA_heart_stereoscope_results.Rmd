@@ -64,6 +64,7 @@ ST <- LoadImages(ST, image_height = 1.5e3)
 ```
 
 
+
 ## High Level Analysis
 
 ### Load stereoscope results for sampled cells
@@ -101,7 +102,7 @@ rownames(ST)
 ```
 
 
-#### Plot all sections (1 patchwork per cluster)
+#### Plot each celltypes on all sections (1 patchwork per cluster)
 Here we project the gene expression of cluster individually on every section
 
 ```{r}
@@ -193,6 +194,7 @@ rm(p, p2, p5, p11, p24, pg)
 if (!dir.exists(paste0(myfolder, "visualization/high_level_figures_no_cutoff"))){
   dir.create(paste0(myfolder, "visualization/high_level_figures_no_cutoff"), recursive = TRUE)}
 
+
 for (celltype in rownames(ST)) {
   p <- MapFeatures(ST,
                    features = celltype,
@@ -217,7 +219,7 @@ rm(p, p2, p5, p11, p24, pg)
 ```
 
 
-## Deep Level Clustering Analysis
+## Deep Clustering Analysis
 
 ### Cardiomyocytes, Endothelial cells, Fibroblasts (together)
 
@@ -256,7 +258,7 @@ rownames(ST)
 ```
 
 
-#### Plot all sections (1 patchwork per cluster)
+#### Plot each celltypes on all sections (1 patchwork per cluster)
 Here we project the gene expression of cluster individually on every section
 
 ```{r}
@@ -327,7 +329,7 @@ for (celltype in rownames(ST)) {
   p2 <- p[[2]] & theme(plot.subtitle = element_blank(), legend.position = "none")
   p11 <- p[[11]] & theme(plot.subtitle = element_blank(), legend.position = "none")
   p24 <- p[[24]] & theme(plot.subtitle = element_blank(), legend.position = "right", legend.text = element_text(angle = 0))
-
+  
   pg <- p5 + p2 + p11 + p24  +
     patchwork::plot_layout(ncol = 4)
   
@@ -337,6 +339,7 @@ for (celltype in rownames(ST)) {
 }
 rm(p, p2, p5, p11, p24, pg)
 ```
+
 
 
 #### Plot on subset of sections - no_cutoff

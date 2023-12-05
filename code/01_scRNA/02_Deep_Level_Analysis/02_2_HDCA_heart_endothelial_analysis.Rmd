@@ -84,10 +84,8 @@ EN <- data[,data$cell.types == "Endocardial EC"   | #3
             data$cell.types == "Lymphatic EC"     | #32
             data$cell.types == "TMSB10high_2"     ] #33
            
-
 # Remove all genes with 0 counts
 EN <- EN[rowSums(GetAssayData(EN, slot = "counts")) > 0, ]
-
 
 # Process the data
 EN <- EN %>% 
@@ -97,7 +95,6 @@ EN <- EN %>%
                                 "percent_ribo", "percent_mito", 
                                 "percent_hb", "percent_hsp", 
                                 "S.Score", "G2M.Score")) 
-
 
 EN <- RunPCA(EN, npcs = 50, seed.use = 42)
 
@@ -131,7 +128,6 @@ nn <- CreateNNAdjacencyMatrix(data = EN, reduction = "harmony_subset", k = 10, d
 # add the clusters to the metadata
 cl <- LouvainClustering(nn = nn, seed = 1, resolution = 1.15) # change resolution
 EN$clusters_subset <- factor(cl)
-
 
 pdf(paste0(myfolder, "endothelial/endothelial_subclusters.pdf"), width = 10, height = 10)
 DimPlot(EN, reduction = "umap_subset", group.by = "clusters_subset", label = T) + labs(title = "Endothelial subclusters")
@@ -227,75 +223,6 @@ EN <- readRDS(file = paste0(myfolder, "rds_objects/endothelial01.rds"))
 ```
 
 
-
-#### Age groups
-
-##### Create the age groups
-
-5-6 weeks
-7-8 weeks
-9-11 weeks
-12-14 weeks
-
-```{r}
-# age1 <- EN[,EN$age <= 6]
-# age2 <- EN[,EN$age == 7 | EN$age == 8 | EN$age == 8.5]
-# age3 <- EN[,EN$age == 9 | EN$age == 10 | EN$age == 11.5]
-# age4 <- EN[,EN$age >= 12]
-```
-
-
-###### Check cell group (age) with the fewest cells
-
-```{r}
-# a1 <- sum(table(age1$sampleID))
-# a2 <- sum(table(age2$sampleID))
-# a3 <- sum(table(age3$sampleID))
-# a4 <- sum(table(age4$sampleID))
-# min_cell <- min(a1, a2, a3, a4)
-# min_cell
-# rm(a1, a2, a3, a4)
-```
-
-
-##### Select random subsets of the same size
-
-To 1668 cells (same size as the smallest age group, i.e., age3).
-
-```{r}
-# set.seed(1) ; age1 <- age1[, sample(colnames(age1), size = min_cell)]
-# set.seed(1) ; age2 <- age2[, sample(colnames(age2), size = min_cell)]
-# set.seed(1) ; age3 <- age3[, sample(colnames(age3), size = min_cell)]
-# set.seed(1) ; age4 <- age4[, sample(colnames(age4), size = min_cell)]
-# 
-# ages <- c(age1, age2, age3, age4)
-# 
-# rm(age1, age2, age3, age4)
-# gc()
-```
-
-
-##### Save images temporal clusters
-
-```{r}
-# pdf(file = paste0(myfolder, "endothelial/Clusters_age_5_to_6_weeks_full_size.pdf"), width = 15, height = 15, bg = "transparent") # 10
-# DimPlot(ages[[1]][, as.character(ages[[1]]$high_level_clusters_removed) %in% levels(ages[[1]]$high_level_clusters_removed)], reduction = "umap_subset", group.by = "clusters_subset", raster = F, pt.size = 1) + NoLegend()
-# dev.off()
-# 
-# pdf(file = paste0(myfolder, "endothelial/Clusters_age_7_to_8_weeks_full_size.pdf"), width = 15, height = 15, bg = "transparent")
-# DimPlot(ages[[2]][, as.character(ages[[2]]$high_level_clusters_removed) %in% levels(ages[[2]]$high_level_clusters_removed)], reduction = "umap_subset", group.by = "clusters_subset", raster = F, pt.size = 1) + NoLegend()
-# dev.off()
-# 
-# pdf(file = paste0(myfolder, "endothelial/Clusters_age_9_to_11_weeks_full_size.pdf"), width = 15, height = 15, bg = "transparent")
-# DimPlot(ages[[3]][, as.character(ages[[3]]$high_level_clusters_removed) %in% levels(ages[[3]]$high_level_clusters_removed)], reduction = "umap_subset", group.by = "clusters_subset", raster = F, pt.size = 1) + NoLegend()
-# dev.off()
-# 
-# pdf(file = paste0(myfolder, "endothelial/Clusters_age_12_to_14_weeks_full_size.pdf"), width = 15, height = 15, bg = "transparent")
-# DimPlot(ages[[4]][, as.character(ages[[4]]$high_level_clusters_removed) %in% levels(ages[[4]]$high_level_clusters_removed)], reduction = "umap_subset", group.by = "clusters_subset", raster = F, pt.size = 1) + NoLegend()
-# dev.off()
-```
-
-
 ### Save images and data
 
 ```{r}
@@ -331,7 +258,6 @@ age4 <- EN[,EN$age >= 12]
 
 EN_age <- c(age1, age2, age3, age4)
 rm(age1, age2, age3, age4)
-
 
 # create df by age grouping the number of cell per cluster
 cell_by_cluster_entire_1 <- as.data.frame(table(EN_age[[1]]@meta.data[["clusters_subset"]]))
@@ -429,7 +355,6 @@ rm(detable, DGE_DATA, top20, DGE_cells, ord, sample_size)
 ```{r}
 values_to_keep <- c("1", "12", "3", "6", "18", "17", "7", "19", "15", "13", "10", "2", "5", "21", "16", "20", "11", "14")
 
-# Filter the data using the %in% operator
 data_EN <- EN[, EN$clusters_subset %in% values_to_keep]
 
 # Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
@@ -489,7 +414,6 @@ detable <- detable[detable$p_val < 0.05, ]
 detable$pct.diff <- detable$pct.1 - detable$pct.2
 detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
 
-
 # Pick the 40 genes with the lowest p value for each cluster, then 20 highest based on pct.diff, then 5 highest based on avg_log2FC.
 detable %>%
   group_by(cluster) %>%
@@ -497,7 +421,6 @@ detable %>%
   top_n(20, pct.diff) %>%
   top_n(5, avg_log2FC) ->
   top5
-
 
 pdf(paste0(myfolder, "endothelial/DEG_top5_EN_ordered.pdf"), width = 10, height = 17)
 par(mfrow=c(1,1), mar=c(3,6,2,5))
@@ -521,7 +444,6 @@ rm(detable, DGE_DATA, top5, DGE_cells, sample_size)
 ```{r}
 values_to_keep <- c("18", "17", "7")
 
-# Filter the data using the %in% operator
 data_EN <- EN[, EN$clusters_subset %in% values_to_keep]
 
 # Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
@@ -566,7 +488,6 @@ detable <- detable[detable$p_val < 0.05, ]
 detable$pct.diff <- detable$pct.1 - detable$pct.2
 detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
 
-
 # Pick the 40 genes with the lowest p value for each cluster, then 20 highest based on pct.diff, then 5 highest based on avg_log2FC.
 detable %>%
   group_by(cluster) %>%
@@ -574,7 +495,6 @@ detable %>%
   top_n(20, pct.diff) %>%
   top_n(10, avg_log2FC) ->
   top5
-
 
 pdf(paste0(myfolder, "endothelial/DEG_top5_EN7_17_18.pdf"), width = 5, height = 10)
 par(mfrow=c(1,1), mar=c(3,6,2,5))
@@ -598,7 +518,6 @@ rm(detable, DGE_DATA, top5, DGE_cells, sample_size)
 ```{r}
 values_to_keep <- c("1", "3", "6", "12")
 
-# Filter the data using the %in% operator
 data_EN <- EN[, EN$clusters_subset %in% values_to_keep]
 
 # Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
@@ -641,7 +560,6 @@ detable <- detable[detable$p_val < 0.05, ]
 detable$pct.diff <- detable$pct.1 - detable$pct.2
 detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
 
-
 # Pick the 40 genes with the lowest p value for each cluster, then 20 highest based on pct.diff, then 5 highest based on avg_log2FC.
 detable %>%
   group_by(cluster) %>%
@@ -649,7 +567,6 @@ detable %>%
   top_n(20, pct.diff) %>%
   top_n(10, avg_log2FC) ->
   top5
-
 
 pdf(paste0(myfolder, "endothelial/DEG_top5_EN1_3_6_12.pdf"), width = 5, height = 10)
 par(mfrow=c(1,1), mar=c(3,6,2,5))
@@ -673,7 +590,6 @@ rm(detable, DGE_DATA, top5, DGE_cells, sample_size)
 ```{r}
 values_to_keep <- c("2", "10")
 
-# Filter the data using the %in% operator
 data_EN <- EN[, EN$clusters_subset %in% values_to_keep]
 
 # Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
@@ -716,7 +632,6 @@ detable <- detable[detable$p_val < 0.05, ]
 detable$pct.diff <- detable$pct.1 - detable$pct.2
 detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
 
-
 # Pick the 40 genes with the lowest p value for each cluster, then 20 highest based on pct.diff, then 5 highest based on avg_log2FC.
 detable %>%
   group_by(cluster) %>%
@@ -724,7 +639,6 @@ detable %>%
   top_n(20, pct.diff) %>%
   top_n(10, avg_log2FC) ->
   top5
-
 
 pdf(paste0(myfolder, "endothelial/DEG_top5_EN2_10.pdf"), width = 5, height = 5)
 par(mfrow=c(1,1), mar=c(3,6,2,5))
@@ -771,12 +685,9 @@ gc()
 ```{r}
 values_to_keep <- c("1", "12", "3", "6", "18", "17", "7", "19", "15", "13", "10", "2", "5", "21", "16", "20", "11", "14")
 
-# Filter the data using the %in% operator
 data_EN <- EN[, EN$clusters_subset %in% values_to_keep]
 
-
 feature_list <- c("CDH5", "PECAM1", "VWF", "NPR3", "CDH11", "JAG1", "JAG2", "GJA5", "HEY1", "APCDD1", "RGCC", "KIT", "FABP5", "FABP4", "INMT", "MKI67", "PROX1", "LYVE1", "APLNR", "ACKR1", "ACKR4", "CCL21", "TMSB4X", "PDE4C", "BTNL9", "GABBR2", "NTS", "KLF2", "INSR")
-
 
 for (feature in feature_list){
   p <-   FeaturePlot(data_EN, reduction = "umap_subset", features = feature, raster = FALSE, order = TRUE)
