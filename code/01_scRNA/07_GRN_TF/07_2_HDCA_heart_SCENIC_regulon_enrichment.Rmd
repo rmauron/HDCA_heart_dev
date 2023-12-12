@@ -1,0 +1,404 @@
+---
+title: "07_2_HDCA_heart_SCENIC_regulon_enrichment"
+author: "Raphaël Mauron"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# HDCA heart SCENIC regulon enrichment
+
+Calculate Gene Regulatory Network and infer Transcription Factors activity (Regulons) with SCENIC.
+
+Regulons enrichment in EN_7, EN_17, EN_18 in time.
+
+NOTE: The path to load the data and the path to save the figures should be changed at your convenience.
+
+Environment: **Docker**
+
+
+## Settings
+
+### Set library path
+
+```{r setup, include=FALSE}
+.libPaths("/home/rstudio/project/renv/library/R-4.3/aarch64-unknown-linux-gnu/")
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+### Load Libraries
+
+```{r, message = FALSE}
+library(Seurat)
+library(SCENIC)
+library(SingleCellExperiment)
+library(ggplot2)
+library(tidygraph)
+library(ggraph)
+library(igraph)
+library(feather)
+library(data.table)
+```
+
+
+### Set environment variables
+
+```{r}
+myfolder <- "/home/rstudio/project/output/HDCA_heart_sc_analysis_docker/"
+```
+
+
+### Load data
+
+```{r}
+EN <- readRDS(file = paste0(myfolder, "rds_objects/endothelial.rds"))
+```
+
+
+### Set seed
+
+```{r}
+set.seed(1)
+```
+
+
+## Sub-sample to specific cluster of interest
+
+```{r}
+data_cell <- EN
+cluster <- c("7", "17", "18")
+data_sub <- data_cell[,data_cell$clusters_subset %in% cluster]
+```
+
+
+### Cells per cluster per age group
+
+```{r}
+table(data_sub$age_groups, data_sub$clusters_subset)
+```
+
+
+### Add additional age groups to the metadata (age_group_refined)
+
+```{r}
+df <- data.frame(age = c(5.5, 6, 7, 8, 8.5, 9, 10, 11.5, 12, 13.25, 14), age_group = c("5-6", "5-6", "7-8", "7-8", "7-8", "9-14", "9-14", "9-14", "9-14", "9-14", "9-14"))
+age_to_age_group <- setNames(df$age_group, nm = df$age)
+data_sub$age_group_refined <- factor(age_to_age_group[as.character(data_sub$age)], levels = c("5-6", "7-8", "9-14"))
+rm(df, age_to_age_group)
+gc()
+```
+
+
+### Cells per cluster per new age group
+
+```{r}
+table(data_sub$age_group_refined, data_sub$clusters_subset)
+```
+
+
+### Get expression matrix
+
+```{r}
+exprMat <- GetAssayData(data_sub, assay = "RNA", slot = "counts")
+exprMat <- as.matrix(exprMat)
+
+rownames(exprMat)
+dim(exprMat)
+
+Idents(data_sub)
+cellInfo <- data.frame(seuratCluster=Idents(data_sub))
+```
+
+
+### Initialize settings
+
+database selected:
+´´´wget https://resources.aertslab.org/cistarget/databases/old/homo_sapiens/hg19/refseq_r45/mc9nr/gene_based/hg19-500bp-upstream-7species.mc9nr.feather´´´
+
+´´´wget https://resources.aertslab.org/cistarget/databases/old/homo_sapiens/hg19/refseq_r45/mc9nr/gene_based/hg19-tss-centered-10kb-7species.mc9nr.feather´´´
+
+
+```{r}
+org <- "hgnc"
+dbDir <- "/home/rstudio/project/data/db_scenic" # RcisTarget databases location
+dbs <- c("hg19-500bp-upstream-10species.mc9nr.feather",
+         "hg19-tss-centered-10kb-7species.mc9nr.feather")
+scenicOptions <- initializeScenic(org=org, dbDir=dbDir, dbs=dbs, nCores=10) #might give an error so need to rename motifAnnotations
+
+motifAnnotations_hgnc <- motifAnnotations
+
+scenicOptions <- initializeScenic(org=org, dbDir=dbDir, dbs=dbs, nCores=10) #rerun 
+rm(motifAnnotations)
+
+# Add cellInfo to scenicOptions object
+scenicOptions@inputDatasetInfo$cellInfo <- cellInfo
+```
+
+
+### Co-expression network
+
+```{r}
+genesKept <- geneFiltering(exprMat, scenicOptions) #create list of markers from gene set that are found in databases provided
+
+#filter expression matrix
+exprMat_filtered <- exprMat[genesKept, ] #filter based on genes found in database
+dim(exprMat_filtered)
+exprMat_filtered <- exprMat[VariableFeatures(EN),] #keeps only the highly variable genes
+dim(exprMat_filtered)
+
+#run correlation
+runCorrelation(exprMat_filtered, scenicOptions)
+
+#run GENIE3
+exprMat_filtered_log <- log2(exprMat_filtered+1) #check if already normalized in the exprMat_filtered
+runGenie3(exprMat_filtered_log, scenicOptions)
+```
+
+
+#### Extract TF List from GENIE3
+
+```{r}
+genie_list <- loadInt(scenicOptions, "genie3ll")
+table(genie_list$TF)
+list_unique_TF <- c(sort(unique(genie_list$TF)))
+list_unique_TF <- factor(list_unique_TF, levels = list_unique_TF)
+```
+
+
+### Build and score the GRN
+
+#### SCENIC_1
+
+```{r}
+scenicOptions <- runSCENIC_1_coexNetwork2modules(scenicOptions)
+tfModules_asDF <- loadInt(scenicOptions, "tfModules_asDF")
+```
+
+
+#### SCENIC_2
+
+```{r}
+# Remove genes missing from RcisTarget databases
+tfModules_asDF$TF <- as.character(tfModules_asDF$TF)
+tfModules_asDF$Target <- as.character(tfModules_asDF$Target)
+allTFs <- getDbTfs(scenicOptions)
+tfModules_asDF <- tfModules_asDF[which(tfModules_asDF$TF %in% allTFs),]
+
+
+genesInDb <- unique(unlist(lapply(getDatabases(scenicOptions), function(x)
+  names(feather::feather_metadata(x)[["types"]]))))
+
+
+geneInDb <- tfModules_asDF$Target %in% genesInDb
+missingGene <- sort(unique(tfModules_asDF[which(!geneInDb),"Target"]))
+if(length(missingGene)>0) 
+  warning(paste0("Genes in co-expression modules not available in RcisTargetDatabases: ", 
+                 paste(missingGene, collapse=", ")))
+tfModules_asDF <- tfModules_asDF[which(geneInDb),]
+
+
+# Targets with positive correlation
+tfModules_Selected <- tfModules_asDF[which(tfModules_asDF$corr==1),]
+
+
+# Add a column with the geneSet name (TF_method)
+tfModules_Selected <- cbind(tfModules_Selected, geneSetName=paste(tfModules_Selected$TF, tfModules_Selected$method, sep="_"))
+tfModules_Selected$geneSetName <- factor(as.character(tfModules_Selected$geneSetName))
+allGenes <- unique(tfModules_Selected$Target)
+
+
+# Split into tfModules (TF-modules, with several methods)
+tfModules <- split(tfModules_Selected$Target, tfModules_Selected$geneSetName)
+
+
+# Add TF to the gene set (used in the following steps, careful if editing)
+tfModules <- setNames(lapply(names(tfModules), function(gsn) {
+  tf <- strsplit(gsn, "_")[[1]][1]
+  unique(c(tf, tfModules[[gsn]]))
+}), names(tfModules))
+
+
+# Keep gene sets with at least 'minGenes' genes
+minGenes <- 20
+tfModules <- tfModules[which(lengths(tfModules)>=minGenes)]
+
+
+saveRDS(tfModules, file=getIntName(scenicOptions, "tfModules_forEnrichment"))
+tfModules_forEnrichment <- loadInt(scenicOptions, "tfModules_forEnrichment")
+```
+
+```{r}
+#RcisTarget
+# 1.1 Calculate enrichment
+motifs_AUC <- lapply(getDatabases(scenicOptions), function(rnkName) {
+  ranking <- importRankings(rnkName, columns=allGenes)
+  message("Scoring database: ", ranking@description)
+  RcisTarget::calcAUC(tfModules, ranking, aucMaxRank=0.03*getNumColsInDB(ranking), nCores=9, verbose=TRUE)})
+
+saveRDS(motifs_AUC, file=getIntName(scenicOptions, "motifs_AUC"))
+```
+
+```{r}
+#1.2 Convert to table, filter by NES & add the TFs to which the motif is annotated
+motifAnnot <- motifAnnotations_hgnc
+motifEnrichment <- lapply(motifs_AUC, function(aucOutput)
+{
+  # Extract the TF of the gene-set name (i.e. MITF_w001):
+  tf <- sapply(setNames(strsplit(rownames(aucOutput), "_"), rownames(aucOutput)), function(x) x[[1]])
+  
+  # Calculate NES and add motif annotation (provide tf in 'highlightTFs'):
+  addMotifAnnotation(aucOutput, 
+                     nesThreshold=3, digits=3, 
+                     motifAnnot=motifAnnot,
+                     motifAnnot_highConfCat=c("directAnnotation", "inferredBy_Orthology"),
+                     motifAnnot_lowConfCat=c("inferredBy_MotifSimilarity",
+                                               "inferredBy_MotifSimilarity_n_Orthology"), 
+                     highlightTFs=tf)
+})
+
+# Merge both tables, adding a column that contains the 'motifDb'
+motifEnrichment <- do.call(rbind, lapply(names(motifEnrichment), function(dbName){
+  cbind(motifDb=dbName, motifEnrichment[[dbName]])
+}))
+saveRDS(motifEnrichment, file=getIntName(scenicOptions, "motifEnrichment_full"))
+```
+
+```{r}
+#1.3 Keep only the motifs annotated to the initial TF
+getIntName(scenicOptions)
+motifEnrichment <- loadInt(scenicOptions, "motifEnrichment_full")
+
+#instead, drop the once not in TF_highConf
+motifEnrichment_selfMotifs <- motifEnrichment[which(motifEnrichment$TF_highConf != ""),, drop=FALSE]
+motifEnrichment_selfMotifs <- motifEnrichment_selfMotifs[which(motifEnrichment_selfMotifs$AUC > 0.1),, drop=FALSE]
+motifEnrichment_selfMotifs <- motifEnrichment_selfMotifs[which(motifEnrichment_selfMotifs$NES > 3.9),, drop=FALSE]
+
+```
+
+
+```{r}
+#2. Prune targets
+dbNames <- getDatabases(scenicOptions)
+nCores <- 9
+
+motifEnrichment_selfMotifs_wGenes <- lapply(names(dbNames), function(motifDbName){
+  ranking <- importRankings(dbNames[motifDbName], columns=allGenes)
+  addSignificantGenes(resultsTable=motifEnrichment_selfMotifs[motifEnrichment_selfMotifs$motifDb==motifDbName,],
+                      geneSets=tfModules,
+                      rankings=ranking,
+                      maxRank=5000, method="aprox", nCores=nCores)
+})
+
+motifEnrichment_selfMotifs_wGenes <- rbindlist(motifEnrichment_selfMotifs_wGenes)
+motifEnrichment_selfMotifs_wGenes[order(motifEnrichment_selfMotifs_wGenes$NES,decreasing=TRUE),][1:5,(1:ncol(motifEnrichment_selfMotifs_wGenes)-1), with=F]
+
+
+motifEnrichment.asIncidList <- apply(motifEnrichment_selfMotifs_wGenes, 1, function(oneMotifRow) {
+  genes <- strsplit(oneMotifRow["enrichedGenes"], ";")[[1]]
+  oneMotifRow <- data.frame(rbind(oneMotifRow), stringsAsFactors=FALSE)
+  data.frame(oneMotifRow[rep(1, length(genes)),c("NES", "motif", "highlightedTFs", "TFinDB")], genes, stringsAsFactors = FALSE)
+})
+motifEnrichment.asIncidList <- rbindlist(motifEnrichment.asIncidList)
+colnames(motifEnrichment.asIncidList) <- c("NES", "motif", "TF", "annot", "gene")
+motifEnrichment.asIncidList <- data.frame(motifEnrichment.asIncidList, stringsAsFactors = FALSE)
+
+
+# Get targets for each TF, but keep info about best motif/enrichment
+regulonTargetsInfo <- lapply(split(motifEnrichment.asIncidList, motifEnrichment.asIncidList$TF), function(tfTargets){
+  # print(unique(tfTargets$TF))
+  tfTable <- as.data.frame(do.call(rbind, lapply(split(tfTargets, tfTargets$gene), function(enrOneGene){
+    highConfAnnot <- "**" %in% enrOneGene$annot
+    enrOneGeneByAnnot <- enrOneGene
+    if(highConfAnnot) enrOneGeneByAnnot <- enrOneGeneByAnnot[which(enrOneGene$annot == "**"),]
+    bestMotif <- which.max(enrOneGeneByAnnot$NES)
+
+    cbind(TF=unique(enrOneGene$TF), gene=unique(enrOneGene$gene), nMotifs=nrow(enrOneGene),
+          bestMotif=as.character(enrOneGeneByAnnot[bestMotif,"motif"]), NES=as.numeric(enrOneGeneByAnnot[bestMotif,"NES"]),
+          highConfAnnot=highConfAnnot)
+  })), stringsAsFactors=FALSE)
+  tfTable[order(tfTable$NES, decreasing = TRUE),]
+})
+rm(motifEnrichment.asIncidList)
+regulonTargetsInfo <- rbindlist(regulonTargetsInfo)
+colnames(regulonTargetsInfo) <- c("TF", "gene", "nMotifs", "bestMotif", "NES", "highConfAnnot")
+```
+
+
+#### Create modules based on the regulonTargetsInfo
+
+```{r}
+# Split the dataframe by TF
+TF_modules <- split(regulonTargetsInfo, regulonTargetsInfo$TF)
+
+# Extract target genes for each TF
+TF_modules_list <- lapply(TF_modules, function(sub_df) sub_df$gene)
+```
+
+
+#### Export TF_modules_list
+
+```{r}
+regulonTargetsInfo_export <- regulonTargetsInfo[, c("TF", "gene")]
+write.csv(regulonTargetsInfo_export, file = paste0(myfolder, "scenic/EN_enrichment/EN_modules.csv"), row.names = FALSE)
+```
+
+
+#### Use TF_modules_list
+
+```{r}
+my_TF <- "NFKB1" #"KLF4"
+my_targets <- TF_modules_list[my_TF]
+my_targets
+```
+
+
+#### Enrichment of Targets in clusters
+
+```{r}
+# Compute module score in clusters
+data_sub_en <- data_sub
+data_sub_en <- AddModuleScore(data_sub_en, features = my_targets, name = "Enrichment_Score")
+
+pdf(file = paste0(myfolder, "scenic/EN_enrichment/",my_TF, ".pdf"), width = 15, height = 10)
+VlnPlot(data_sub_en, features = "Enrichment_Score1", group.by = "clusters_subset", split.by = "age_group_refined", pt.size = 0) +
+  ggtitle(paste0("Enrichment of ", my_TF, " target genes"))
+dev.off()
+```
+
+
+#### Enrichment of multiple TF
+
+```{r}
+TF_list <- c("NFKB1", "KLF4", "MECOM", "HAND2", "ZNF385D", "SALL3", "PROX1", "SOX6", "PRDM16", "FOXC2", "HMGA2", "MEIS2", "SMAD6", "HEY2", "LMO2", "NFATC1", "SP6", "ARID5A", "ARID5B", "RFX2", "GLIS3", "LEF1", "FOS", "MSX1", "SOX6", "FOXP2", "ESRRG", "MAF", "FREM1")
+for (my_TF in TF_list){
+  print(my_TF)
+  
+  my_targets <- TF_modules_list[my_TF]
+  print(my_targets)
+  
+  data_sub_en <- data_sub
+  data_sub_en <- AddModuleScore(data_sub_en, features = my_targets, name = "Enrichment_Score")
+  
+  p <-   VlnPlot(data_sub_en, features = "Enrichment_Score1", group.by = "clusters_subset", split.by = "age_group_refined", pt.size = 0) +
+    ggtitle(paste0("Enrichment of ", my_TF, " target genes"))
+  
+  pdf(file = paste0(myfolder, "scenic/EN_enrichment/", my_TF, ".pdf"), width = 15, height = 10)
+  print(p)
+  dev.off()
+}
+```
+
+
+================================================================================
+================================================================================
+================================================================================
+================================================================================
+================================================================================
+
+
+
+
+
+
+

@@ -6,9 +6,14 @@ editor_options:
   chunk_output_type: console
 ---
 
-# HDCA heart SCENIC
+# HDCA heart SCENIC CM19-2, CM19-1, CM4-2, EN7, EN17, EN18, FB14, FB4 ???
 
 Calculate Gene Regulatory Network and infer Transcription Factors activity (Regulons) with SCENIC.
+
+NOTE: The path to load the data and the path to save the figures should be changed at your convenience.
+
+Environment: **Docker**
+
 
 ## Settings
 
@@ -62,47 +67,13 @@ set.seed(1)
 ### Sub-sample to specific cluster of interest
 
 If interested in only 1 cluster, can take all the cells:
-Ran independantly for CM19-2, CM19-1, CM4-2, EN7, EN17, EN18, FB14, FB4
+Ran independently for CM19-2, CM19-1, CM4-2, EN7, EN17, EN18, FB14, FB4
 
 ```{r}
 # CHANGE HERE
-data_cell <- FB
-cluster <- "14"
-data_sub <- data_cell[,data_cell$clusters_subset %in% cluster]
-```
-
-
-If interested in several clusters, can take even number of cells:
-
-```{r}
-# ### OR this to have the same number of cells in both clusters
-# # Assuming your Seurat object is named data_cell
-# data_cell <- CM
-# cluster <- c("19-1", "19-2")
-# data_sub <- data_cell[, data_cell$clusters_subset_split %in% cluster]
-# 
-# # Find the cells belonging to the specified clusters
-# cells_to_downsample_19_2 <- WhichCells(data_sub, ident = "19-2")
-# cells_to_downsample_19_1 <- WhichCells(data_sub, ident = "19-1")
-# 
-# # Determine the minimum number of cells in the two clusters
-# min_cells <- min(length(cells_to_downsample_19_1), length(cells_to_downsample_19_2))
-# 
-# # Downsample the specified number of cells for each cluster
-# set.seed(1)  # for reproducibility
-# data_sub_19_2 <- subset(data_sub, cells = sample(cells_to_downsample_19_2, min_cells))
-# data_sub_19_1 <- subset(data_sub, cells = sample(cells_to_downsample_19_1, min_cells))
-# 
-# # Combine the downsampled subsets
-# downsampled_data_sub <- merge(data_sub_19_1, data_sub_19_2)
-# 
-# data_sub <- downsampled_data_sub
-# 
-# # Check the number of cells in each cluster
-# table(data_sub$clusters_subset_split)
-# 
-# # Remove temp objects
-# rm(downsampled_data_sub, data_sub_19_1, data_sub_19_2, cells_to_downsample_19_1, cells_to_downsample_19_2, min_cells)
+data_cell <- EN
+cluster <- "17"
+data_sub <- data_cell[,data_cell$clusters_subset %in% cluster] #clusters_subset_split for CM
 ```
 
 
@@ -128,13 +99,11 @@ database selected:
 ´´´wget https://resources.aertslab.org/cistarget/databases/old/homo_sapiens/hg19/refseq_r45/mc9nr/gene_based/hg19-tss-centered-10kb-7species.mc9nr.feather´´´
 
 
-
 ```{r}
 org <- "hgnc"
 dbDir <- "/home/rstudio/project/data/db_scenic" # RcisTarget databases location
-dbs <- c("hg19-500bp-upstream-7species.mc9nr.feather",
+dbs <- c("hg19-500bp-upstream-10species.mc9nr.feather",
          "hg19-tss-centered-10kb-7species.mc9nr.feather")
-
 scenicOptions <- initializeScenic(org=org, dbDir=dbDir, dbs=dbs, nCores=10) #might give an error so need to rename motifAnnotations
 
 motifAnnotations_hgnc <- motifAnnotations
@@ -155,7 +124,7 @@ genesKept <- geneFiltering(exprMat, scenicOptions) #create list of markers from 
 #filter expression matrix
 exprMat_filtered <- exprMat[genesKept, ] #filter based on genes found in database
 dim(exprMat_filtered)
-exprMat_filtered <- exprMat[VariableFeatures(FB),] #keeps only the highly variable genes
+exprMat_filtered <- exprMat[VariableFeatures(data_cell),] #keeps only the highly variable genes
 dim(exprMat_filtered)
 
 #run correlation
@@ -182,13 +151,13 @@ list_unique_TF <- factor(list_unique_TF, levels = list_unique_TF)
 ```{r}
 data_cell <- SetIdent(data_cell, value = "clusters_subset") #clusters_subset_split (for CM), clusters_subset (for EN, FB, IN)
 data_cell$clusters_subset <- factor(data_cell$clusters_subset, 
-                                              levels = c("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", "11", "17", "8", "1", "6", "15", "20"))
+                                              levels = c("7","17", "18"))
 
-#CM
+#remaining CM
 # c("1", "2", "3", "4-1", "4-2", "5", "6", "7", "8-1", "8-2", "8-3", "9", "10", "12", "14", "17", "19-1", "19-2")
-#EN
+#remaining EN
 # c("1", "12", "3", "6", "18", "17", "7", "19", "15", "13", "10", "2", "5", "21", "16", "20", "11", "14")
-#FB
+#remaining FB
 # ("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", "11", "17", "8", "1", "6", "15", "20")
 
 # Identify all other clusters
@@ -203,7 +172,11 @@ markers_table <- FindMarkers(data_cell,
                              features = list_unique_TF)
 
 # Print the resulting table
-markers_table
+markers_table$pct.diff <- markers_table$pct.1 - markers_table$pct.2
+
+# Save markers_table
+write.csv(markers_table, file = paste0(myfolder, "scenic/markers_table/", "EN_", cluster, ".tsv"))
+
 ```
 
 
@@ -366,7 +339,6 @@ colnames(regulonTargetsInfo) <- c("TF", "gene", "nMotifs", "bestMotif", "NES", "
 ```
 
 
-
 #### Select TF
 
 ```{r}
@@ -374,6 +346,7 @@ TF_for_regulons <- markers_table %>%
   top_n(10, -p_val)
 TF_for_regulons <- rownames(TF_for_regulons)
 ```
+
 
 #### Select GN
 
@@ -407,26 +380,6 @@ unique(regulons$TF)
 ```
 
 
-
-
-
-```{r}
-# #Read regulons from the temporary file from scenic output
-# table_reg <- read.csv("./output/Step2_regulonTargetsInfo.tsv", sep = "\t")
-# motifEnr <- read.csv("./output/Step2_MotifEnrichment.tsv", sep = "\t")
-# 
-# 
-# #Save regulons from temporary file in own directory
-# write.csv(table_reg, file = paste0(myfolder, "scenic/regulons/regulonTargetsInfo_", data_cell, "_", cluster, ".tsv"))
-# #Read regulons saved in own directory to repeat analysis if needed
-# #table_reg <- read.csv(paste0(myfolder, "scenic/regulons/regulonTargetsInfo_CM_19-2.tsv"), sep = "\t")
-# 
-# table_reg %>% filter(highConfAnnot) -> table_reg_conf
-# table_reg_conf
-# #table_reg_conf %>% filter(TF %in% c("KLF4", "NFE2L2", "JUND")) -> table_reg_conf_sm #subset from the available TF
-```
-
-
 ### Plot Gene Regulatory Networks
 
 ```{r}
@@ -439,36 +392,10 @@ tg <- tidygraph::as_tbl_graph(net) %>%
 		size = 2*deg)
 
 
-set.seed(1) #TO FIX seed in layout
+set.seed(1)
 
 layout <- layout.fruchterman.reingold(tg, niter=400)
 unique_TF <- unique(regulons$TF)
-
-
-# With fixed size for node_point, all the nodes are the same size
-# ggraph(tg, layout = layout) +
-#   geom_edge_link0(color = "grey20", alpha = 0.25) +
-#   geom_node_point(aes(size = 500, 
-#                       fill = ifelse(name %in% unique_TF, 'orange', 'turquoise'), color = 'black'), shape = 21, stroke = 0.3) +
-#   geom_node_text(aes(label = name, size = size * 20), 
-#                  color = "black", repel = F) +
-#   scale_fill_manual(values = c('orange', 'turquoise')) +
-#   scale_color_manual(values = 'black') +
-#   theme_graph(background = "white") +
-#   theme(legend.position = "none")
-# 
-# 
-# # With vectorized size for node_point, TF nodes are proportional to their connectivities
-# ggraph(tg, layout = layout) +
-#   geom_edge_link0(color = "grey20", alpha = 0.25) +
-#   geom_node_point(aes(size = size*50, 
-#                       fill = ifelse(name %in% unique_TF, 'orange', 'turquoise'), 
-#                       color = 'black'), shape = 21, stroke = 0.3) +
-#   geom_node_text(aes(label = name, size = size * 20), color = "black", repel = F) +
-#   scale_fill_manual(values = c('orange', 'turquoise')) +
-#   scale_color_manual(values = 'black') +
-#   theme_graph(background = "white") +
-#   theme(legend.position = "none")
 
 
 # Fixed size for TF and fixed size for genes

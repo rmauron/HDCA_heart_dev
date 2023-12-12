@@ -8,7 +8,12 @@ editor_options:
 
 # HDCA heart endothelial analysis
 
-In this script, a subset of the *high level* data generated in the script `01_HDCA_heart_QC_and_high_level_analysis.Rmd` is selected and processed again and is part of the *deep level* analysis.
+In this script, a subset of the *high level* data generated in the script `01_HDCA_heart_QC_and_high_level_analysis.Rmd` is selected and re-clustered and analyzed accordingly. It is part of the *deep level* analysis.
+
+NOTE: The path to load the data and the path to save the figures should be changed at your convenience.
+
+Environment: **Docker**
+
 
 ## Settings
 
@@ -687,10 +692,10 @@ values_to_keep <- c("1", "12", "3", "6", "18", "17", "7", "19", "15", "13", "10"
 
 data_EN <- EN[, EN$clusters_subset %in% values_to_keep]
 
-feature_list <- c("CDH5", "PECAM1", "VWF", "NPR3", "CDH11", "JAG1", "JAG2", "GJA5", "HEY1", "APCDD1", "RGCC", "KIT", "FABP5", "FABP4", "INMT", "MKI67", "PROX1", "LYVE1", "APLNR", "ACKR1", "ACKR4", "CCL21", "TMSB4X", "PDE4C", "BTNL9", "GABBR2", "NTS", "KLF2", "INSR")
+feature_list <- c("CDH5", "PECAM1", "VWF", "NPR3", "CDH11", "JAG1", "JAG2", "GJA5", "HEY1", "APCDD1", "RGCC", "KIT", "FABP5", "FABP4", "INMT", "MKI67", "PROX1", "LYVE1", "APLNR", "ACKR1", "ACKR4", "CCL21", "TMSB4X", "PDE4C", "BTNL9", "GABBR2", "NTS", "KLF2", "KLF4", "INSR")
 
 for (feature in feature_list){
-  p <-   FeaturePlot(data_EN, reduction = "umap_subset", features = feature, raster = FALSE, order = TRUE)
+  p <-   FeaturePlot(data_EN, reduction = "umap_subset", features = feature, raster = FALSE, order = FALSE)
 
   pdf(paste0(myfolder, "endothelial/feature_plots/", feature, ".pdf"), width = 10, height = 10)
   print(p)

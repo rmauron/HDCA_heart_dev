@@ -1,5 +1,5 @@
 ---
-title: "11_HDCA_heart_ST_enrichment_in_SC"
+title: "08_HDCA_heart_ST_enrichment_in_SC"
 author: "Raphaël Mauron"
 output: html_document
 editor_options: 
@@ -9,6 +9,10 @@ editor_options:
 # HDCA heart ST enrichment in SC
 
 In this script, markers from ST clusters are tested for enrichment in SC data.
+
+NOTE: The path to load the data and the path to save the figures should be changed at your convenience.
+
+Environment: **Docker**
 
 ## Settings
 

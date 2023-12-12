@@ -1,5 +1,5 @@
 ---
-title: "06_HDCA_heart_cell_type_colocalisation"
+title: "04_HDCA_heart_cell_type_colocalisation"
 author: "Raphaël Mauron"
 output: html_document
 editor_options: 
@@ -11,7 +11,10 @@ editor_options:
 A specific environment as been created to run this script. The reason being we are using the package called ´semla´ (https://github.com/ludvigla/semla) which has dependencies and was not installed at the beginning of the overall analysis.
 To avoid any dependencies issues, it has been decided to run this code separately.
 
-You can run this script through the provided *conda environment*.
+NOTE: The path to load the data and the path to save the figures should be changed at your convenience.
+
+Environment: **Conda: r-semla**
+
 
 ## Set up and loading material
 
@@ -2561,6 +2564,390 @@ plots <- CellColoc(ST,
                       section_number = 28)
 
 pdf(file = paste0(myfolder, "colocalization/CM-19-2_CM-19-1_section_28.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+
+### group needed plot
+
+#### "FB-1", "FB-6" sc. 9, 16
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("FB-1", "FB-6"),
+                      section_number = 9)
+
+pdf(file = paste0(myfolder, "colocalization/FB-1_FB-6_section_9.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("FB-1", "FB-6"),
+                      section_number = 16)
+
+pdf(file = paste0(myfolder, "colocalization/FB-1_FB-6_section_16.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+
+#### "FB-1", "HL-8", "EN-19", sc.9, 12, 20
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("FB-1", "HL-8", "EN-19"),
+                      section_number = 9)
+
+pdf(file = paste0(myfolder, "colocalization/FB-1_HL-8_EN-19_section_9.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("FB-1", "HL-8", "EN-19"),
+                      section_number = 12)
+
+pdf(file = paste0(myfolder, "colocalization/FB-1_HL-8_EN-19_section_12.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("FB-1", "HL-8", "EN-19"),
+                      section_number = 20)
+
+pdf(file = paste0(myfolder, "colocalization/FB-1_HL-8_EN-19_section_20.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+
+#### "FB-6", "HL-10", "EN-15", sc. 9, 16, 24
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("FB-6", "HL-10", "EN-15"),
+                      section_number = 9)
+
+pdf(file = paste0(myfolder, "colocalization/FB-6_HL-10_EN-15_section_9.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("FB-6", "HL-10", "EN-15"),
+                      section_number = 16)
+
+pdf(file = paste0(myfolder, "colocalization/FB-6_HL-10_EN-15_section_16.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("FB-6", "HL-10", "EN-15"),
+                      section_number = 24)
+
+pdf(file = paste0(myfolder, "colocalization/FB-6_HL-10_EN-15_section_24.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+
+#### "FB-15", "HL-22", sc. 9, 10, 33
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("FB-15", "HL-22"),
+                      section_number = 9)
+
+pdf(file = paste0(myfolder, "colocalization/FB-15_HL-22_section_9.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("FB-15", "HL-22"),
+                      section_number = 10)
+
+pdf(file = paste0(myfolder, "colocalization/FB-15_HL-22_section_10.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("FB-15", "HL-22"),
+                      section_number = 33)
+
+pdf(file = paste0(myfolder, "colocalization/FB-15_HL-22_section_33.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+
+#### "HL-20", "FB-7", "FB-8" sc.11
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("HL-20", "FB-7", "FB-8"),
+                      section_number = 11)
+
+pdf(file = paste0(myfolder, "colocalization/HL-20_FB-7_FB-8_section_11.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+#### "HL-20", "FB-7", "FB-3" sc.11
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("HL-20", "FB-7", "FB-3"),
+                      section_number = 11)
+
+pdf(file = paste0(myfolder, "colocalization/HL-20_FB-7_FB-3_section_11.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+
+#### "FB-4", "FB-11", "FB-13", sc. 2, 20, 22, 33
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("FB-4", "FB-11", "FB-13"),
+                      section_number = 2)
+
+pdf(file = paste0(myfolder, "colocalization/FB-4_FB-11_FB-13_section_2.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("FB-4", "FB-11", "FB-13"),
+                      section_number = 20)
+
+pdf(file = paste0(myfolder, "colocalization/FB-4_FB-11_FB-13_section_20.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("FB-4", "FB-11", "FB-13"),
+                      section_number = 22)
+
+pdf(file = paste0(myfolder, "colocalization/FB-4_FB-11_FB-13_section_22.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("FB-4", "FB-11", "FB-13"),
+                      section_number = 33)
+
+pdf(file = paste0(myfolder, "colocalization/FB-4_FB-11_FB-13_section_33.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+
+#### "EN-20", "HL-15", "FB-7", sc. 11, 16, 23
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("EN-20", "HL-15", "FB-7"),
+                      section_number = 11)
+
+pdf(file = paste0(myfolder, "colocalization/EN-20_HL-15_FB-7_section_11.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("EN-20", "HL-15", "FB-7"),
+                      section_number = 16)
+
+pdf(file = paste0(myfolder, "colocalization/EN-20_HL-15_FB-7_section_16.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("EN-20", "HL-15", "FB-7"),
+                      section_number = 23)
+
+pdf(file = paste0(myfolder, "colocalization/EN-20_HL-15_FB-7_section_23.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+
+#### "FB-7", "FB-8", "FB-14", sc. 23
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("FB-7", "FB-8", "FB-14"),
+                      section_number = 23)
+
+pdf(file = paste0(myfolder, "colocalization/FB-7_FB-8_FB-14_section_23.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+
+#### "EN-7", "EN-17", "FB-4", sc. 2, 20
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("EN-7", "EN-17", "FB-4"),
+                      section_number = 2)
+
+pdf(file = paste0(myfolder, "colocalization/EN-7_EN-17_FB-4_section_2.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("EN-7", "EN-17", "FB-4"),
+                      section_number = 20)
+
+pdf(file = paste0(myfolder, "colocalization/EN-7_EN-17_FB-4_section_20.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+
+#### "CM-19-2", "CM-19-1", "FB-17", sc. 19, 25
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("CM-19-2", "CM-19-1", "FB-17"),
+                      section_number = 19)
+
+pdf(file = paste0(myfolder, "colocalization/CM-19-2_CM-19-1_FB-17_section_19.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("CM-19-2", "CM-19-1", "FB-17"),
+                      section_number = 25)
+
+pdf(file = paste0(myfolder, "colocalization/CM-19-2_CM-19-1_FB-17_section_25.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+
+#### "FB-5", "FB-9", "FB-19", sc. 5, 2, 11, 24
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("FB-5", "FB-9", "FB-19"),
+                      section_number = 5)
+
+pdf(file = paste0(myfolder, "colocalization/FB-5_FB-9_FB-19_section_5.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("FB-5", "FB-9", "FB-19"),
+                      section_number = 2)
+
+pdf(file = paste0(myfolder, "colocalization/FB-5_FB-9_FB-19_section_2.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("FB-5", "FB-9", "FB-19"),
+                      section_number = 11)
+
+pdf(file = paste0(myfolder, "colocalization/FB-5_FB-9_FB-19_section_11.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("FB-5", "FB-9", "FB-19"),
+                      section_number = 24)
+
+pdf(file = paste0(myfolder, "colocalization/FB-5_FB-9_FB-19_section_24.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+
+#### "FB-3", "FB-7", "FB-8", sc. 9
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("FB-3", "FB-7", "FB-8"),
+                      section_number = 9)
+
+pdf(file = paste0(myfolder, "colocalization/FB-3_FB-7_FB-8_section_9.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+### For ST-seminar
+
+#### "EN-20", "HL-15"
+
+```{r}
+# time point 1
+plots1 <- CellColoc(ST,
+                      features = c("EN-20", "HL-15"),
+                      section_number = 5)
+
+# time point 2
+plots2 <- CellColoc(ST,
+                      features = c("EN-20", "HL-15"),
+                      section_number = 2)
+
+# time point 3
+plots3 <- CellColoc(ST,
+                      features = c("EN-20", "HL-15"),
+                      section_number = 11)
+
+# time point 4
+plots4 <- CellColoc(ST,
+                      features = c("EN-20", "HL-15"),
+                      section_number = 24)
+
+p <- plots1[[3]] + plots2[[3]] + plots3[[3]] + plots4[[3]]  +
+    patchwork::plot_layout(ncol = 4)
+
+pdf(file = paste0(myfolder, "colocalization/EN-20_HL-15.pdf"), width = 15.75, height = 4.5)
+p
+dev.off()
+```
+
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("EN-20", "HL-15"),
+                      section_number = 28)
+
+pdf(file = paste0(myfolder, "colocalization/EN-20_HL-15_section_28.pdf"), width = 15.75, height = 4.5)
 plots
 dev.off()
 ```

@@ -8,7 +8,12 @@ editor_options:
 
 # HDCA heart cardiomyocyte analysis
 
-In this script, a subset of the *high level* data generated in the script `01_HDCA_heart_QC_and_high_level_analysis.Rmd` is selected and processed again and is part of the *deep level* analysis.
+In this script, a subset of the *high level* data generated in the script `01_HDCA_heart_QC_and_high_level_analysis.Rmd` is selected and re-clustered and analyzed accordingly. It is part of the *deep level* analysis.
+
+NOTE: The path to load the data and the path to save the figures should be changed at your convenience.
+
+Environment: **Docker**
+
 
 ## Settings
 
@@ -1167,6 +1172,38 @@ rm(p)
 gc()
 ```
 
+
+### DEG CM selection of markers (split & selection)
+
+```{r}
+values_to_keep <- c("8-2", "18", "19-1")
+
+data_CM <- CM[, CM$clusters_subset_split %in% values_to_keep]
+
+# specific list of marker to project the dotplot on
+my_markers <- c("ACTA1", "TNFRSF19", "CNN1", "XPO4", "SORBS2", "ZFP36L1", "IRX1", "IRX2", "RCAN1", "MYOM2", "BMP2", "ATP1A1", "HAMP", "FZD7", "TBX3", "PITX2", "SPON1", "VCAM1")
+
+data_CM$clusters_subset_split <- factor(data_CM$clusters_subset_split, 
+                                              levels = c("8-2", "18", "19-1"))
+
+data_CM <- SetIdent(data_CM, value = "clusters_subset_split")
+
+p <- DotPlot(data_CM, features = my_markers) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+
+pdf(paste0(myfolder, "cardiomyocytes/dotplot_markers_CM_subset_selection_8-2_18_19-1.pdf"), width = 4, height = 4)
+print(p)
+dev.off()
+
+rm(p)
+gc()
+```
 
 
 ### DEG CM DE table "19-2", "19-1", "12", "9", "14"

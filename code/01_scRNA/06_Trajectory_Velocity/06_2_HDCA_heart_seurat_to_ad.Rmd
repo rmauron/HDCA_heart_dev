@@ -1,21 +1,19 @@
 ---
-title: "09_HDCA_heart_seurat_to_ad"
+title: "06_2_HDCA_heart_seurat_to_ad"
 author: "Raphaël Mauron"
 output: html_document
 editor_options: 
   chunk_output_type: console
 ---
 
-
-!!! TO RUN ON THE CONDA ENVIRONMENT !!!
-
-Due to packages incompatibilities. Some parts of the analysis are run on a separate environment. 
-We used a conda environment and not the docker container for this part.
-
-
 # HDCA heart analysis - Velocity preparation (Seurat to AnnData conversion)
 
 Conversion of *Spliced count* and *Unspliced count* Seurat objects in **.h5ad** format to be used as AnnData objects.
+
+NOTE: The path to load the data and the path to save the figures should be changed at your convenience.
+
+Environment: **Conda: r-semla**
+
 
 ## Load Libraries
 
@@ -45,9 +43,6 @@ Convert("~/hdca_DevHeart/data/AnnData/data_spliced.h5Seurat", dest = "h5ad")
 SaveH5Seurat(data_unspliced, filename = "~/hdca_DevHeart/data/AnnData/data_unspliced.h5Seurat")
 Convert("~/hdca_DevHeart/data/AnnData/data_unspliced.h5Seurat", dest = "h5ad")
 ```
-
-
-Continue on *scvelo.py* script in python.
 
 
 ================================================================================

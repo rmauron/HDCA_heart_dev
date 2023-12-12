@@ -1,5 +1,5 @@
 ---
-title: "08_HDCA_heart_velocity_preparation"
+title: "06_1_HDCA_heart_velocity_preparation"
 author: "Raphaël Mauron"
 output: html_document
 editor_options: 
@@ -8,8 +8,13 @@ editor_options:
 
 # HDCA heart analysis - Velocity preparation / Create object to save
 
-In order to perform RNA velocity using scVelo, several files needed to be generated. 
-*Spliced count* and *Unspliced count* from the **.h5** files directly. Those Seurat objects need to be converted in **.h5ad** format in order to be used as AnnData object in Python (10_HDCA_heart_velocity_preparation.Rmd in the conda environment). We also export metadata in **.tsv** and umap embedding in **.csv** from the high level data, and the four deep level objects (CM, EN, FB, IN).
+In order to perform RNA velocity using tools like scVelo, scFates or others, several files needed to be generated. 
+*Spliced count* and *Unspliced count* from the **.h5** files directly. Those Seurat objects need to be converted in **.h5ad** format in order to be used as AnnData object in Python (06_2_HDCA_heart_seurat_to_ad.Rmd in the r-semla conda environment). We also export metadata in **.tsv** and umap embedding in **.csv** from the high level data, and the four deep level objects (CM, EN, FB, IN).
+
+NOTE: The path to load the data and the path to save the figures should be changed at your convenience.
+
+Environment: **Docker**
+
 
 ## Settings
 

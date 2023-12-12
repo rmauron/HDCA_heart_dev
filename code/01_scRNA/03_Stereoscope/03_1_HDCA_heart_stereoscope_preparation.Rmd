@@ -1,5 +1,5 @@
 ---
-title: "03_HDCA_stereoscope_preparation"
+title: "03_1_HDCA_stereoscope_preparation"
 author: "Julia Foyer, Ludvig Larsson & Raphaël Mauron"
 output: html_document
 editor_options: 
@@ -16,7 +16,12 @@ In order to perform deconvolution using `stereoscope`, several files are require
 
 Here we generate the 3 *single-cell* files required.
 
-Note that it has been decided to perform deconvulution on the high level annotation AND on the deep level annotation. Therefore, a total of 6 files are generated here.
+Note that it has been decided to perform deconvolution on the high level annotation AND on the deep level annotation. Therefore, a total of 6 files are generated here.
+
+NOTE: The path to load the data and the path to save the figures should be changed at your convenience.
+
+Environment: **Docker**
+
 
 ## Settings
 

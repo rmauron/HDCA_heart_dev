@@ -8,7 +8,12 @@ editor_options:
 
 # HDCA heart fibroblast analysis
 
-In this script, a subset of the *high level* data generated in the script `01_HDCA_heart_QC_and_high_level_analysis.Rmd` is selected and processed again and is part of the *deep level* analysis.
+In this script, a subset of the *high level* data generated in the script `01_HDCA_heart_QC_and_high_level_analysis.Rmd` is selected and re-clustered and analyzed accordingly. It is part of the *deep level* analysis.
+
+NOTE: The path to load the data and the path to save the figures should be changed at your convenience.
+
+Environment: **Docker**
+
 
 ## Settings
 
@@ -447,6 +452,56 @@ dev.off()
 
 rm(p)
 gc()
+```
+
+
+### DEG FB selection of markers
+
+```{r}
+# specific list of marker to project the dotplot on
+my_markers <- c("WT1", "TCF21", "TWIST1", "DDR2", "COL1A1", "POSTN", "MKI67", "THY1", "APCDD1", "ERBB4", "PENK", "PDGFRA", "PDGFRB", "ACTA2", "CCL2", "DCN", "CD34", "CLEC3B", "PLA2G5", "SCN7A", "SEMA5A")
+
+values_to_keep <- c("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", "11", "17", "8", "1", "6", "15", "20")
+
+data_FB <- FB[, FB$clusters_subset %in% values_to_keep]
+
+data_FB$clusters_subset <- factor(data_FB$clusters_subset, levels = c("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", "11", "17", "8", "1", "6", "15", "20"))
+
+data_FB <- SetIdent(data_FB, value = "clusters_subset")
+
+p <- DotPlot(data_FB, features = my_markers) +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete() +
+  scale_y_discrete(limits = rev) +
+  labs(x = "", y = "") + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+
+pdf(paste0(myfolder, "fibroblast/dotplot_markers_FB_selection.pdf"), width = 10, height = 6)
+print(p)
+dev.off()
+
+rm(p)
+gc()
+```
+
+
+### FeaturePlot
+
+```{r}
+values_to_keep <- c("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", "11", "17", "8", "1", "6", "15", "20")
+
+data_FB <- FB[, FB$clusters_subset %in% values_to_keep]
+
+feature_list <- c("WT1", "TCF21", "TWIST1", "DDR2", "COL1A1", "POSTN", "MKI67", "THY1", "APCDD1", "ERBB4", "PENK", "PDGFRA", "PDGFRB", "ACTA2", "CCL2", "DCN", "CD34", "CLEC3B", "PLA2G5", "SCN7A", "SEMA5A")
+
+for (feature in feature_list){
+  p <-   FeaturePlot(data_FB, reduction = "umap_subset", features = feature, raster = FALSE, order = FALSE)
+
+  pdf(paste0(myfolder, "fibroblast/feature_plots/", feature, ".pdf"), width = 10, height = 10)
+  print(p)
+  dev.off()
+}
 ```
 
 
