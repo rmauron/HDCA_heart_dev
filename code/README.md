@@ -5,7 +5,7 @@ Since several environments have been used along the project, below you will find
 
 ## Pipeline
 
-![HDCA_heart_pipeline drawio](https://github.com/rmauron/HDCA_heart_dev/assets/92672952/2657488c-cee0-427b-b1e3-20f79aa6ef5f)
+![HDCA_heart_pipeline drawio](https://github.com/rmauron/HDCA_heart_dev/assets/92672952/53185a44-0fe7-472d-b039-14ec657cde22)
 
 
 ## Environments
