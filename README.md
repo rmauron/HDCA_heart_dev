@@ -6,8 +6,7 @@ Since several environments have been used along the project, below you will find
 ## Pipeline
 All the scripts are found in the [code folder](./code).
 
-![HDCA_heart_pipeline drawio](https://github.com/rmauron/HDCA_heart_dev/assets/92672952/24654414-4b93-4069-907d-a1ef6a900506)
-
+![HDCA_heart_pipeline drawio](https://github.com/rmauron/HDCA_heart_dev/assets/92672952/bd0b7056-2289-4d96-9063-1b9c61948a64)
 
 ## Environments
 The information regarding the environments used for the study are found in the [environments folder](./environments).
