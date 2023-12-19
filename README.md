@@ -12,9 +12,9 @@ On the diagram, find the workflow used for the analysis with each major step pre
 ![HDCA_heart_pipeline drawio](https://github.com/rmauron/HDCA_heart_dev/assets/92672952/bd0b7056-2289-4d96-9063-1b9c61948a64)
 
 ## Data
-The preprocessed data, the intermediate .Rds object and metadata required to reproduce the analysis are found on Mendeley Data at [this DOI](doi: 10.17632/fhtb99mdzd.1).
-The raw sequencing data are availbale at the European Genome-Phenome Archive and can be accessed upon request at [this EGA](https://ega-archive.org/).
-Metadata as annotation files or stereoscope output are also shared in the [metadata folder](./metadata).
+- The preprocessed data, the intermediate .Rds object and metadata required to reproduce the analysis are found on Mendeley Data at [this DOI](doi: 10.17632/fhtb99mdzd.1).
+- The raw sequencing data are availbale at the European Genome-Phenome Archive and can be accessed upon request at [this EGA](https://ega-archive.org/).
+- Metadata as annotation files or stereoscope output are also shared in the [metadata folder](./metadata).
 
 ## Resources
 The analyses presented in this repository were predominantly conducted on a MacBook Pro M2 Max chip (2023), 32 GB of memory, running Ventura 13.0; however, some computations were also executed on a private server for enhanced performance and scalability.
