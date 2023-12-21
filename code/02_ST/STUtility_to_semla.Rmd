@@ -1,0 +1,90 @@
+---
+title: "Untitled"
+author: "Ludvig Larsson"
+date: "2023-08-28"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+ST <- readRDS("../ST/220114_STdata_harmony.rds")
+```
+
+# Load scale factors
+
+```{r}
+scalefactor_files <- list.files(path = "~/Downloads/Archive/", recursive = TRUE, pattern = "json", full.names = TRUE)
+scalefactors <- semla::LoadScaleFactors(scalefactor_files)
+```
+
+# Load image info
+
+```{r}
+img_files <- list.files(path = "~/Downloads/Archive/", recursive = TRUE, pattern = "tissue_hires", full.names = TRUE)
+image_info_tibble <- semla::LoadImageInfo(img_files)
+
+image_info_tibble <- semla::UpdateImageInfo(image_info = image_info_tibble, scalefactors = scalefactors)
+```
+
+# Load coordinates
+
+```{r}
+coord_files <- list.files(path = "~/Downloads/Archive/", recursive = TRUE, pattern = "tissue_positions", full.names = TRUE)
+coordinates <- semla::LoadSpatialCoordinates(coord_files)
+```
+
+# Create Staffli object
+
+```{r}
+coordinates <- coordinates |> dplyr::mutate(barcode = gsub(pattern = "-\\d+", replacement = "", x = barcode)) |> 
+  dplyr::mutate(barcode = paste0(barcode, "-1_", sampleID))
+st_object <- semla::CreateStaffliObject(imgs = img_files, 
+                                        meta_data = coordinates, 
+                                        image_height = 400, 
+                                        image_info = image_info_tibble, 
+                                        scalefactors = scalefactors)
+
+# Run check
+all(colnames(ST) %in% st_object$barcode)
+
+# Subset Staffli object
+st_object@meta_data <- st_object@meta_data[match(colnames(ST), st_object@meta_data$barcode), ]
+
+# Run 2nd check
+all(st_object@meta_data$barcode == colnames(ST))
+```
+
+# Create Seurat object
+
+```{r}
+se <- CreateSeuratObject(counts = ST@assays$RNA@counts, assay = "Spatial")
+se$nCount_Spatial <- ST$nCount_RNA
+se$nFeature_Spatial <- ST$nFeature_RNA
+
+se@tools$Staffli <- st_object
+
+# Add SCT object
+se@assays$SCT <- ST@assays$SCT
+
+# Add variable features
+VariableFeatures(se) <- VariableFeatures(ST)
+
+# Add default assay
+DefaultAssay(se) <- "SCT"
+```
+
+Test plots
+
+```{r}
+semla::MapFeatures(se, features = "MYH11", section_number = 30)
+```
+
+Export object
+
+```{r}
+saveRDS(se, file = "../ST/220114_STdata_harmony_semla.rds")
+```
+
