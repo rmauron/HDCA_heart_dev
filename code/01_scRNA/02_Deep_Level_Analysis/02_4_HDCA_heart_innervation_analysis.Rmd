@@ -130,7 +130,8 @@ cl <- LouvainClustering(nn = nn, seed = 1, resolution = 1) # change resolution
 IN$clusters_subset <- factor(cl)
 
 pdf(paste0(myfolder, "innervation/innervationl_subclusters.pdf"), width = 10, height = 10)
-DimPlot(IN, reduction = "umap_subset", group.by = "clusters_subset", label = T) + labs(title = "Innervation subclusters")
+DimPlot(IN, reduction = "umap_subset", group.by = "clusters_subset", label = T) + labs(title = "Innervation subclusters")  +
+NoLegend()
 dev.off()
 
 gc()
@@ -168,48 +169,14 @@ IN_subset <- RunUMAP(IN_subset,
               seed.use = 42)
 
 pdf(paste0(myfolder, "innervation/innervationl_subclusters_selection.pdf"), width = 10, height = 10)
-DimPlot(IN_subset, reduction = "umap_subset_sub", group.by = "clusters_subset", label = T)
+DimPlot(IN_subset, reduction = "umap_subset_sub", group.by = "clusters_subset", label = T) +
+NoLegend()
 dev.off()
 
 ```
 
 ```{r}
 saveRDS(IN_subset, paste0(myfolder, "/rds_objects/innervation_selection.rds"))
-```
-
-## UMAP 3D
-
-```{r}
-IN <- RunUMAP(IN,
-                dims = 1:50,
-                reduction = "harmony_subset",
-                n.neighbors = 10,
-                metric = "cosine",
-                min.dist = 0.3,
-                spread = 1,
-                repulsion.strength = 1,
-                negative.sample.rate = 5,
-                n.epochs = 100,
-                reduction.key = "subset",
-                reduction.name = "umap_subset_3d",
-                seed.use = 42,
-                n.components = 3)
-gc()
-
-df_IN <- data.frame(IN@reductions$umap_subset_3d@cell.embeddings)
-df_IN <- data.frame(df_IN, seurat_clusters=IN$clusters_subset, sampleid = IN$sampleID , age = IN$age)
-colnames(df_IN)[1:3] <- c("UMAP_1", "UMAP_2", "UMAP_3")
-pal <- c(scales::hue_pal()(8), RColorBrewer::brewer.pal(9, "Set1"), RColorBrewer::brewer.pal(8, "Set2"))
-
-p <- plot_ly(df_IN, 
-             x = ~UMAP_1, y = ~UMAP_2, z = ~UMAP_3,
-             color = ~seurat_clusters,
-             colors = pal,
-             size = 0.5) %>%
-  add_markers() %>%
-  layout(scene = list(xaxis = list(title = "UMAP_1"), yaxix = list(title = "UMAP_2"), zaxis = list(title = "UMAP_3")))
-
-htmlwidgets::saveWidget(p, paste0(myfolder, "innervation/umap3d.html"))
 ```
 
 
@@ -223,254 +190,6 @@ de_markers <- FindAllMarkers(IN, logfc.threshold = 0.25,
 
 openxlsx::write.xlsx(de_markers %>% filter(p_val_adj < 0.01),
                      file = paste0(myfolder, "innervation/detable_innervation.xlsx"))
-```
-
-
-### DE dotplot
-
-```{r}
-top20_markers <- de_markers %>% 
-  group_by(cluster) %>% 
-  slice_head(n = 20) %>% 
-  pull(gene)
-
-IN <- SetIdent(IN, value = "clusters_subset")
-
-p <- DotPlot(IN, features = unique(top20_markers)) +
-  coord_flip() +  # This flips the plot vertically
-  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
-  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
-  scale_x_discrete(limits = rev) +
-  labs(x = "Cluster", y = "Genes")  # Flipped labels
-
-pdf(paste0(myfolder, "innervation/dotplot_de_genes.pdf"), width = 10, height = 100)
-print(p)
-dev.off()
-
-rm(p)
-gc()
-```
-
-
-
-### Save images and data
-
-```{r}
-# IN subclusters projected on high level UMAP
-p <- DimPlot(IN, reduction = "umap_oi", group.by = "clusters_subset", label = TRUE) + labs(title = "Subclustered innervation over the nonsubsetted UMAP")
-pdf(file = paste0(myfolder, "innervation/clusters_innervation_big_umap.pdf"),
-     width = 10, height = 10)
-p
-dev.off()
-
-# High level IN clusters projected on the deep level IN UMAP or Rough clusters
-p <- DimPlot(IN, reduction = "umap_subset", group.by = "clusters_louvain_oi", label = TRUE) + labs(title = "Rough clusters on the new innervation umap")
-pdf(file = paste0(myfolder, "innervation/rough_clusters_innervation.pdf"),
-     width = 10, height = 10)
-p
-dev.off()
-
-# nCounts
-pdf(paste0(myfolder, "innervation/nCounts_innervation.pdf"), width = 10, height = 10)
-FeaturePlot(IN, reduction = "umap_subset", features = "nCount_RNA", raster = FALSE)
-dev.off()
-
-# nFeatures
-pdf(paste0(myfolder, "innervation/nFeatures_innervation.pdf"), width = 10, height = 10)
-FeaturePlot(IN, reduction = "umap_subset", features = "nFeature_RNA", raster = FALSE)
-dev.off()
-```
-
-
-### Cell type proportion by age group in entire IN object
-
-```{r}
-age1 <- IN[,IN$age <= 6]
-age2 <- IN[,IN$age == 7 | IN$age == 8 | IN$age == 8.5]
-age3 <- IN[,IN$age == 9 | IN$age == 10 | IN$age == 11.5]
-age4 <- IN[,IN$age >= 12]
-
-IN_age <- c(age1, age2, age3, age4)
-rm(age1, age2, age3, age4)
-
-# create df by age grouping the number of cell per cluster
-cell_by_cluster_entire_1 <- as.data.frame(table(IN_age[[1]]@meta.data[["clusters_subset"]]))
-cell_by_cluster_entire_2 <- as.data.frame(table(IN_age[[2]]@meta.data[["clusters_subset"]]))
-cell_by_cluster_entire_3 <- as.data.frame(table(IN_age[[3]]@meta.data[["clusters_subset"]]))
-cell_by_cluster_entire_4 <- as.data.frame(table(IN_age[[4]]@meta.data[["clusters_subset"]]))
-
-# add the proportion of each cell type
-cell_by_cluster_entire_1$proportion <- cell_by_cluster_entire_1$Freq/sum(cell_by_cluster_entire_1$Freq)
-cell_by_cluster_entire_2$proportion <- cell_by_cluster_entire_2$Freq/sum(cell_by_cluster_entire_2$Freq)
-cell_by_cluster_entire_3$proportion <- cell_by_cluster_entire_3$Freq/sum(cell_by_cluster_entire_3$Freq)
-cell_by_cluster_entire_4$proportion <- cell_by_cluster_entire_4$Freq/sum(cell_by_cluster_entire_4$Freq)
-
-# export the df as .csv
-write.csv2(cell_by_cluster_entire_1, paste0(myfolder, "innervation/cell_by_cluster_entire_1.csv"))
-write.csv2(cell_by_cluster_entire_2, paste0(myfolder, "innervation/cell_by_cluster_entire_2.csv"))
-write.csv2(cell_by_cluster_entire_3, paste0(myfolder, "innervation/cell_by_cluster_entire_3.csv"))
-write.csv2(cell_by_cluster_entire_4, paste0(myfolder, "innervation/cell_by_cluster_entire_4.csv"))
-```
-
-
-### DEG rough IN - top20
-
-From the cells in IN, plot the DotPlot on the High Level origin of those cell (rough)
-
-```{r}
-# Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
-sample_size <- table(IN$clusters_subset)
-sample_size[sample_size > 150] <- 150
-sample_size
-
-# Randomly sample the cells that will be included when calculating DGE (same number of cells as selected above).
-# Samples without replacement, so each cell only can be included once.
-DGE_cells <- lapply(names(sample_size), function(x){ 
-  set.seed(1)
-  sample(colnames(IN)[IN$clusters_subset == x], size = sample_size[x])
-  })
-DGE_cells <- unlist(DGE_cells)
-
-# Select all data that relates to the sampled DGE cells.
-DGE_DATA <- data[, DGE_cells]
-
-#Find differential expressed genes based on groups defined by "high_level_clusters_removed".
-DGE_DATA <- SetIdent(DGE_DATA, value = "high_level_clusters_removed")
-
-# The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).
-detable <- FindAllMarkers(DGE_DATA,
-                          only.pos = TRUE,
-                          max.cells.per.ident = 300,
-                          logfc.threshold = .1,
-                          assay = "RNA",
-                          min.pct = 0.05)
-
-# Only keep DEG that have a p-value below 0.05.
-detable <- detable[detable$p_val < 0.05, ]
-
-# Adding two extra columns giving the difference (and log difference) between pct1 and pct2.
-# pct1 is the percentage of cells in the specific cluster that express this gene.
-# pct2 is the percentage of cells in all other clusters that express this gene.
-detable$pct.diff <- detable$pct.1 - detable$pct.2
-detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
-
-# Save the detable as a csv file.
-write.csv2(detable, paste0(myfolder, "innervation/detable_rough_clusters.csv"))
-
-# Pick the 60 genes with the lowest p value for each age group, then 40 highest based on pct.diff, then 20 highest based on log.pct.diff.
-detable %>%
-  group_by(cluster) %>%
-  top_n(-60, p_val) %>%
-  top_n(40, pct.diff) %>%
-  top_n(20, log.pct.diff) ->
-  top20
-
-# Genes get matched to one specific cluster, and the factor is leveled based on cluster number.
-ord <- factor(sapply(unique(as.character(top20$gene)), function(x){niceRplots::getcluster(DGE_DATA, x, "high_level_clusters_removed")}))
-
-pdf(paste0(myfolder, "innervation/DGE_rough_IN.pdf"), width = 15, height = length(ord)/6+1)
-par(mfrow=c(1,1), mar=c(3,6,2,5))
-DotPlot(DGE_DATA, features = unique(as.character(top20$gene))[order(as.numeric(as.character(ord)))]) +
-  coord_flip() +
-  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
-  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
-  scale_x_discrete(limits = rev) +
-  scale_y_discrete() +
-  #labs(x = "", y = "") +
-  theme(axis.text.x = element_text(angle = 0, hjust = 0.5))
-dev.off()
-
-rm(detable, DGE_DATA, top20, DGE_cells, ord, sample_size)
-```
-
-
-### DEG IN - top5 ordered
-
-```{r}
-values_to_keep <- c("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", "11", "17", "8", "1", "6", "15", "20", "21")
-
-data_IN <- IN[, IN$clusters_subset %in% values_to_keep]
-
-# Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
-sample_size <- table(data_IN$clusters_subset)
-sample_size[sample_size > 150] <- 150
-sample_size
-
-# Randomly sample the cells that will be included when calculating DGE (same number of cells as selected above).
-# Samples without replacement, so each cell only can be included once.
-DGE_cells <- lapply(names(sample_size), function(x){ 
-  set.seed(1)
-  sample(colnames(data_IN)[data_IN$clusters_subset == x], size = sample_size[x])
-  })
-DGE_cells <- unlist(DGE_cells)
-
-# Select all data that relates to the sampled DGE cells.
-DGE_DATA <- data_IN[, DGE_cells]
-
-# reorder the cell types desired
-DGE_DATA$clusters_subset <- factor(DGE_DATA$clusters_subset, 
-                                              levels = c("7", 
-                                                         "3", 
-                                                         "18", 
-                                                         "14", 
-                                                         "5", 
-                                                         "9", 
-                                                         "19", 
-                                                         "2", 
-                                                         "12", 
-                                                         "4", 
-                                                         "13", 
-                                                         "11", 
-                                                         "17", 
-                                                         "8", 
-                                                         "1", 
-                                                         "6", 
-                                                         "15", 
-                                                         "20", 
-                                                         "21"))
-
-#Find differential expressed genes based on groups defined by "clusters_subset_split".
-DGE_DATA <- SetIdent(DGE_DATA, value = "clusters_subset")
-
-# The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).
-detable <- FindAllMarkers(DGE_DATA,
-                          only.pos = TRUE,
-                          max.cells.per.ident = 300,
-                          logfc.threshold = .1,
-                          assay = "RNA",
-                          min.pct = 0.05)
-
-# Only keep DEG that have a p-value below 0.05.
-detable <- detable[detable$p_val < 0.05, ]
-
-# Adding two extra columns giving the difference (and log difference) between pct1 and pct2.
-# pct1 is the percentage of cells in the specific cluster that express this gene.
-# pct2 is the percentage of cells in all other clusters that express this gene.
-detable$pct.diff <- detable$pct.1 - detable$pct.2
-detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
-
-# Pick the 40 genes with the lowest p value for each cluster, then 20 highest based on pct.diff, then 5 highest based on avg_log2FC.
-detable %>%
-  group_by(cluster) %>%
-  top_n(-40, p_val) %>%
-  top_n(20, pct.diff) %>%
-  top_n(5, avg_log2FC) ->
-  top5
-
-pdf(paste0(myfolder, "innervation/DEG_top5_IN_ordered.pdf"), width = 10, height = 17)
-par(mfrow=c(1,1), mar=c(3,6,2,5))
-DotPlot(DGE_DATA, features = top5 %>% pull(gene) %>% unique()) +
-  coord_flip() +
-  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
-  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
-  scale_x_discrete(limits = rev) +
-  scale_y_discrete() +
-  labs(x = "", y = "") +
-  theme(axis.text.x = element_text(angle = 30, hjust = 0.5))
-dev.off()
-
-gc()
-rm(detable, DGE_DATA, top5, DGE_cells, sample_size)
 ```
 
 
@@ -491,8 +210,7 @@ my_markers <- c("SOX10",
                 "PMP22",
                 "HTR3A",
                 "HTR3B",
-                "TH"
-                )
+                "TH")
 
 pdf(paste0(myfolder, "innervation/dotplot_markers_IN.pdf"), width = 8, height = 8)
 DotPlot(IN, features = my_markers) +
@@ -509,53 +227,7 @@ gc()
 ```
 
 
-### DEG IN selection of markers 2
-
-```{r}
-# specific list of marker to project the dotplot on
-my_markers <- c("SOX10", #for glia
-                "FOXD3",
-                "MBP",
-                "MPZ",
-                "PRPH", #for neurons
-                "TH",
-                "PHOX2B", 
-                #"PHOX2A",
-                #"ASCL1",
-                #"CHGA",
-                "PENK", #for chromaffin
-                "PNMT",
-                #"TH",
-                #"MBP",
-                #"CHGB",
-                #"PMP22",
-                #"HTR3A",
-                #"HTR3B",
-                "SST" #for VIP
-                )
-
-values_to_keep <- c("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", "11", "17", "8", "1", "6", "15", "20", "21")
-
-data_IN <- IN[, IN$clusters_subset %in% values_to_keep]
-data_IN$clusters_subset <- factor(data_IN$clusters_subset, level=values_to_keep)
-
-data_IN <- SetIdent(data_IN, value = "clusters_subset")
-
-pdf(paste0(myfolder, "innervation/dotplot_markers_IN_2.pdf"), width = 8, height = 8)
-DotPlot(data_IN, features = my_markers) +
-  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
-  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
-  scale_x_discrete() +
-  scale_y_discrete(limits = rev) +
-  labs(x = "", y = "") + 
-  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
-dev.off()
-
-gc()
-```
-
-
-### DEG IN-4, 7, 12, 11, 8, 19, 17, 3, 13, 1 - top5 ordered
+### DEG subset of clusters - top5 ordered
 
 ```{r}
 values_to_keep <- c("4", "7", "12", "11", "8", "19", "17", "3", "13", "1")
@@ -627,11 +299,12 @@ rm(detable, DGE_DATA, top5, DGE_cells, sample_size)
 ```
 
 
-### DEG IN selection of cl, spe markers
+### DEG IN selection of markers
 
 ```{r}
 # specific list of marker to project the dotplot on
-my_markers <- c("SOX10", "FOXD3", "MPZ", "PMP22", "MBP", "ASCL1", "PHOX2B", "PHOX2A", "HTR3A", "PRPH", "CHAT", "SST", "TH", "DBH", "PNMT", "CHGA", "CHGB", "PENK", "EPAS1", "COX4I2", "NDUFS2", "HIGD1C")
+my_markers <- c("SOX10", "FOXD3", "MPZ", "PMP22", "MBP", "ASCL1", "PHOX2B", "PHOX2A", "HTR3A", "PRPH",
+                "CHGA", "CHGB", "PENK", "SST", "CHAT", "TH", "DBH", "PNMT", "EPAS1", "COX4I2", "HIGD1C")
 
 values_to_keep <- c("4", "7", "12", "11", "8", "19", "17", "3", "13", "1")
 
@@ -651,27 +324,6 @@ DotPlot(data_IN, features = my_markers) +
 dev.off()
 
 gc()
-```
-
-
-### FeaturePlot
-
-```{r}
-feature_list <- c("TH", "PENK", "CHGB", "CHAT", "ELAVL4", "STMN2",
-                  "SOX10", "FOXD3", "MBP", "DHH",
-                  "PHOX2B", "PHOX2A", "ASCL1",
-                  "PRRX1", "PRRX2", "TWIST1", "TWIST2",
-                  "DCX", "SOX2", "PRPH", "ISL1",
-                  "MKI67", "CENPA", "TOP2A",
-                  "FLI1", "PECAM1")
-
-for (feature in feature_list){
-  p <-   FeaturePlot(IN, reduction = "umap_subset", features = feature, raster = FALSE, order = TRUE)
-
-  pdf(paste0(myfolder, "innervation/feature_plots/", feature, ".pdf"), width = 10, height = 10)
-  print(p)
-  dev.off()
-}
 ```
 
 

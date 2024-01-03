@@ -130,46 +130,11 @@ cl <- LouvainClustering(nn = nn, seed = 1, resolution = 1.5)
 FB$clusters_subset <- factor(cl)
 
 pdf(paste0(myfolder, "fibroblast/fibroblast_subclusters.pdf"), width = 10, height = 10)
-DimPlot(FB, reduction = "umap_subset", group.by = "clusters_subset", label = T) + labs(title = "Fibroblast subclusters")
+DimPlot(FB, reduction = "umap_subset", group.by = "clusters_subset", label = T) + labs(title = "Fibroblast subclusters") +
+NoLegend()
 dev.off()
 
 gc()
-```
-
-
-## UMAP 3D
-
-```{r}
-FB <- RunUMAP(FB,
-                dims = 1:50,
-                reduction = "harmony_subset",
-                n.neighbors = 10,
-                metric = "cosine",
-                min.dist = 0.3,
-                spread = 1,
-                repulsion.strength = 1,
-                negative.sample.rate = 5,
-                n.epochs = 100,
-                reduction.key = "subset",
-                reduction.name = "umap_subset_3d",
-                seed.use = 42,
-                n.components = 3)
-gc()
-
-df_FB <- data.frame(FB@reductions$umap_subset_3d@cell.embeddings)
-df_FB <- data.frame(df_FB, seurat_clusters=FB$clusters_subset, sampleid = FB$sampleID , age = FB$age)
-colnames(df_FB)[1:3] <- c("UMAP_1", "UMAP_2", "UMAP_3")
-pal <- c(scales::hue_pal()(8), RColorBrewer::brewer.pal(9, "Set1"), RColorBrewer::brewer.pal(8, "Set2"))
-
-p <- plot_ly(df_FB, 
-             x = ~UMAP_1, y = ~UMAP_2, z = ~UMAP_3,
-             color = ~seurat_clusters,
-             colors = pal,
-             size = 0.5) %>%
-  add_markers() %>%
-  layout(scene = list(xaxis = list(title = "UMAP_1"), yaxix = list(title = "UMAP_2"), zaxis = list(title = "UMAP_3")))
-
-htmlwidgets::saveWidget(p, paste0(myfolder, "fibroblast/umap3d.html"))
 ```
 
 
@@ -183,163 +148,6 @@ de_markers <- FindAllMarkers(FB, logfc.threshold = 0.25,
 
 openxlsx::write.xlsx(de_markers %>% filter(p_val_adj < 0.01),
                      file = paste0(myfolder, "fibroblast/detable_fibroblasts.xlsx"))
-```
-
-
-### DE dotplot
-
-```{r}
-top20_markers <- de_markers %>% 
-  group_by(cluster) %>% 
-  slice_head(n = 20) %>% 
-  pull(gene)
-
-FB <- SetIdent(FB, value = "clusters_subset")
-
-p <- DotPlot(FB, features = unique(top20_markers)) +
-  coord_flip() +  # This flips the plot vertically
-  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
-  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
-  scale_x_discrete(limits = rev) +
-  labs(x = "Cluster", y = "Genes")  # Flipped labels
-
-pdf(paste0(myfolder, "fibroblast/dotplot_de_genes.pdf"), width = 10, height = 100)
-print(p)
-dev.off()
-
-rm(p)
-gc()
-```
-
-
-### Save images and data
-
-```{r}
-# FB subclusters projected on high level UMAP
-p <- DimPlot(FB, reduction = "umap_oi", group.by = "clusters_subset", label = TRUE) + labs(title = "Subclustered fibroblasts over the nonsubsetted UMAP")
-pdf(file = paste0(myfolder, "fibroblast/clusters_fibroblast_big_umap.pdf"),
-     width = 10, height = 10)
-p
-dev.off()
-
-# High level FB clusters projected on the deep level FB UMAP or Rough clusters
-p <- DimPlot(FB, reduction = "umap_subset", group.by = "clusters_louvain_oi", label = TRUE) + labs(title = "Rough clusters on the new fibroblast umap")
-pdf(file = paste0(myfolder, "fibroblast/rough_clusters_fibroblast.pdf"),
-     width = 10, height = 10)
-p
-dev.off()
-
-# nCounts
-pdf(paste0(myfolder, "fibroblast/nCounts_fibroblast.pdf"), width = 10, height = 10)
-FeaturePlot(FB, reduction = "umap_subset", features = "nCount_RNA", raster = FALSE)
-dev.off()
-
-# nFeatures
-pdf(paste0(myfolder, "fibroblast/nFeatures_fibroblast.pdf"), width = 10, height = 10)
-FeaturePlot(FB, reduction = "umap_subset", features = "nFeature_RNA", raster = FALSE)
-dev.off()
-```
-
-
-### Cell type proportion by age group in entire FB object
-
-```{r}
-age1 <- FB[,FB$age <= 6]
-age2 <- FB[,FB$age == 7 | FB$age == 8 | FB$age == 8.5]
-age3 <- FB[,FB$age == 9 | FB$age == 10 | FB$age == 11.5]
-age4 <- FB[,FB$age >= 12]
-
-FB_age <- c(age1, age2, age3, age4)
-rm(age1, age2, age3, age4)
-
-# create df by age grouping the number of cell per cluster
-cell_by_cluster_entire_1 <- as.data.frame(table(FB_age[[1]]@meta.data[["clusters_subset"]]))
-cell_by_cluster_entire_2 <- as.data.frame(table(FB_age[[2]]@meta.data[["clusters_subset"]]))
-cell_by_cluster_entire_3 <- as.data.frame(table(FB_age[[3]]@meta.data[["clusters_subset"]]))
-cell_by_cluster_entire_4 <- as.data.frame(table(FB_age[[4]]@meta.data[["clusters_subset"]]))
-
-# add the proportion of each cell type
-cell_by_cluster_entire_1$proportion <- cell_by_cluster_entire_1$Freq/sum(cell_by_cluster_entire_1$Freq)
-cell_by_cluster_entire_2$proportion <- cell_by_cluster_entire_2$Freq/sum(cell_by_cluster_entire_2$Freq)
-cell_by_cluster_entire_3$proportion <- cell_by_cluster_entire_3$Freq/sum(cell_by_cluster_entire_3$Freq)
-cell_by_cluster_entire_4$proportion <- cell_by_cluster_entire_4$Freq/sum(cell_by_cluster_entire_4$Freq)
-
-# export the df as .csv
-write.csv2(cell_by_cluster_entire_1, paste0(myfolder, "fibroblast/cell_by_cluster_entire_1.csv"))
-write.csv2(cell_by_cluster_entire_2, paste0(myfolder, "fibroblast/cell_by_cluster_entire_2.csv"))
-write.csv2(cell_by_cluster_entire_3, paste0(myfolder, "fibroblast/cell_by_cluster_entire_3.csv"))
-write.csv2(cell_by_cluster_entire_4, paste0(myfolder, "fibroblast/cell_by_cluster_entire_4.csv"))
-```
-
-
-### DEG rough FB - top20
-
-From the cells in FB, plot the DotPlot on the High Level origin of those cell (rough)
-
-```{r}
-# Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
-sample_size <- table(FB$clusters_subset)
-sample_size[sample_size > 150] <- 150
-sample_size
-
-# Randomly sample the cells that will be included when calculating DGE (same number of cells as selected above).
-# Samples without replacement, so each cell only can be included once.
-DGE_cells <- lapply(names(sample_size), function(x){ 
-  set.seed(1)
-  sample(colnames(FB)[FB$clusters_subset == x], size = sample_size[x])
-  })
-DGE_cells <- unlist(DGE_cells)
-
-# Select all data that relates to the sampled DGE cells.
-DGE_DATA <- data[, DGE_cells]
-
-#Find differential expressed genes based on groups defined by "high_level_clusters_removed".
-DGE_DATA <- SetIdent(DGE_DATA, value = "high_level_clusters_removed")
-
-# The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).
-detable <- FindAllMarkers(DGE_DATA,
-                          only.pos = TRUE,
-                          max.cells.per.ident = 300,
-                          logfc.threshold = .1,
-                          assay = "RNA",
-                          min.pct = 0.05)
-
-# Only keep DEG that have a p-value below 0.05.
-detable <- detable[detable$p_val < 0.05, ]
-
-# Adding two extra columns giving the difference (and log difference) between pct1 and pct2.
-# pct1 is the percentage of cells in the specific cluster that express this gene.
-# pct2 is the percentage of cells in all other clusters that express this gene.
-detable$pct.diff <- detable$pct.1 - detable$pct.2
-detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
-
-# Save the detable as a csv file.
-write.csv2(detable, paste0(myfolder, "fibroblast/detable_rough_clusters.csv"))
-
-# Pick the 60 genes with the lowest p value for each age group, then 40 highest based on pct.diff, then 20 highest based on log.pct.diff.
-detable %>%
-  group_by(cluster) %>%
-  top_n(-60, p_val) %>%
-  top_n(40, pct.diff) %>%
-  top_n(20, log.pct.diff) ->
-  top20
-
-# Genes get matched to one specific cluster, and the factor is leveled based on cluster number.
-ord <- factor(sapply(unique(as.character(top20$gene)), function(x){niceRplots::getcluster(DGE_DATA, x, "high_level_clusters_removed")}))
-
-pdf(paste0(myfolder, "fibroblast/DGE_rough_FB.pdf"), width = 15, height = length(ord)/6+1)
-par(mfrow=c(1,1), mar=c(3,6,2,5))
-DotPlot(DGE_DATA, features = unique(as.character(top20$gene))[order(as.numeric(as.character(ord)))]) +
-  coord_flip() +
-  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
-  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
-  scale_x_discrete(limits = rev) +
-  scale_y_discrete() +
-  #labs(x = "", y = "") +
-  theme(axis.text.x = element_text(angle = 0, hjust = 0.5))
-dev.off()
-
-rm(detable, DGE_DATA, top20, DGE_cells, ord, sample_size)
 ```
 
 
@@ -455,7 +263,7 @@ gc()
 ```
 
 
-### DEG FB selection of markers
+### DEG FB subtype selection of markers - keep but need to modify
 
 ```{r}
 # specific list of marker to project the dotplot on
@@ -493,7 +301,7 @@ values_to_keep <- c("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", 
 
 data_FB <- FB[, FB$clusters_subset %in% values_to_keep]
 
-feature_list <- c("WT1", "TCF21", "TWIST1", "DDR2", "COL1A1", "POSTN", "MKI67", "THY1", "APCDD1", "ERBB4", "PENK", "PDGFRA", "PDGFRB", "ACTA2", "CCL2", "DCN", "CD34", "CLEC3B", "PLA2G5", "SCN7A", "SEMA5A")
+feature_list <- c("WT1", "TCF21", "CCL2", "APCDD1", "ERBB4",  "PENK", "PLA2G5",  "ACTA2", "CLEC3B")
 
 for (feature in feature_list){
   p <-   FeaturePlot(data_FB, reduction = "umap_subset", features = feature, raster = FALSE, order = FALSE)

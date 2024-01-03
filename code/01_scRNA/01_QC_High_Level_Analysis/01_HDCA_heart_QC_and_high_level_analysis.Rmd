@@ -276,39 +276,6 @@ data
 
 #[1]  59480 107673
 
-### Patchword of QC plots from different metrics from metadata
-
-```{r}
-features_cat <- c("clusters_louvain_unfilt", "orig.ident", "apoptotic_maybe")
-features_num <- c("nCount_RNA", "nFeature_RNA", "percent_ribo", "percent_mito", "percent_hb", "percent_hsp", "S.Score", "G2M.Score", "DoubletFlag", "DoubletScore", "XIST", "age")
-
-png(paste0(myfolder, "QC/01.QC_umap_unfiltered.png"), width = 600*5, height = 600*5, res = 200)
-par(mfrow = c(5,5), mar = c(4,4,4,4))
-for (i in features_cat){
-  plot_meta(data, red = "umap_unfilt", feat = i, label = TRUE)
-}
-for (i in features_num){
-  plot_feat(data, red = "umap_unfilt", feat = i)
-}
-dev.off()
-
-rm(features_cat, features_num, i, metadata, nn, temp, cl, identities)
-gc()
-```
-
-
-### Samples Quality: nCount & nFeature *before filtering*
-
-```{r}
-pdf(paste0(myfolder, "p_nFeature_RNA_before_filter.pdf"), width = 15, height = 15)
-VlnPlot(data, features = "nFeature_RNA")
-dev.off()
-
-pdf(paste0(myfolder, "p_nCount_RNA_before_filter.pdf"), width = 15, height = 15)
-VlnPlot(data, features = "nCount_RNA")
-dev.off()
-```
-
 
 ## Filtering
 
@@ -325,25 +292,6 @@ cells_to_filter_out3 <- data@meta.data$nFeature_RNA < 250 & data@meta.data$perce
 to_filter <- cells_to_filter_out1 | cells_to_filter_out2 | cells_to_filter_out3
 
 rm(cells_to_filter_out1, cells_to_filter_out2, cells_to_filter_out3)
-gc()
-```
-
-
-### Visualize the filtering
-
-```{r}
-plan(multicore, workers = 7)
-
-QC_03_plot(data = data, 
-           filename = paste0(myfolder, "QC/03.Quality_metrics_filtering.png"), 
-           to_filter = to_filter)
-
-features_cat <- c("seurat_clusters", "orig.ident", "clusters_louvain_unfilt", 
-                  "scpred_prediction", "apoptotic_maybe")
-features_num <- c("nCount_RNA", "nFeature_RNA", "percent_ribo", "percent_mito", 
-                  "percent_hsp", "percent_hb", "S.Score", "G2M.Score", "DoubletFlag", "DoubletScore")
-
-rm(features_cat, features_num)
 gc()
 ```
 
@@ -444,55 +392,6 @@ dev.off()
 ```
 
 
-### Plot results from doublet detection workflow
-
-```{r}
-# Plot results
-p1 <- DimPlot(data, group.by = "sampleID", reduction = "umap_df",
-              raster = FALSE, order = TRUE) + NoAxes()
-p2 <- DimPlot(data, group.by = "DF.classifications", reduction = "umap_df",
-              raster = FALSE, order = TRUE) + NoAxes()
-
-# Export plot
-png(filename = paste0(myfolder, "QC/Doublet_Finding/DoubletFinder.png"), 
-    width = 4500, height = 2500, res = 300)
-p1 | p2
-dev.off()
-gc()
-```
-
-
-### Compare doublet finding results
-
-1. Plot Doublet Score on umap
-2. Plot probability of annotations on umap
-3. Plot Doublet Flag on umap
-4. Plot Doublet Finder classifications on umap
-
-```{r}
-p1 <- FeaturePlot(data, reduction = "umap_df", features = "DoubletScore", raster = FALSE)
-p2 <- FeaturePlot(data, reduction = "umap_df", features = "pANN", raster = FALSE)
-p3 <- DimPlot(data, reduction = "umap_df", group.by = "DoubletFlag", raster = FALSE)
-p4 <- DimPlot(data, reduction = "umap_df", group.by = "DF.classifications", raster = FALSE)
-
-# Export plots
-png(paste0(myfolder, "QC/Doublet_Finding/Doublet_option_1.png"), 
-    width = 2400*4, height = 2400*2, res = 300)
-p1 | p3
-dev.off()
-
-png(paste0(myfolder, "QC/Doublet_Finding/Doublet_option_2.png"), 
-    width = 2400*4, height = 2400*2, res = 300)
-p2 | p4
-dev.off()
-```
-
-```{r}
-#remove plots from environment to free space
-rm(p1, p2, p3, p4)
-```
-
-
 ## Second filtering (RBC & doublets)
 
 * Remove erythrocytes (RBCs) based on percentage of hemoglobin counts. These were not removed in the previous filter because they were used for the doublet detection. 
@@ -503,21 +402,6 @@ cells_to_filter_out1 <- data@meta.data$percent_hb > 10
 cells_to_filter_out2 <- data@meta.data$DF.classifications == "Doublet"
 to_filter <- cells_to_filter_out1 | cells_to_filter_out2
 rm(cells_to_filter_out1, cells_to_filter_out2)
-```
-
-
-### Visualize the second filtering
-
-```{r}
-QC_03_plot(data = data, 
-           filename = paste0(myfolder, "QC/03.Quality_metrics_filtering_2nd.png"), 
-           to_filter = to_filter)
-
-features_cat <- c("seurat_clusters", "orig.ident", "clusters_louvain_unfilt", "scpred_prediction", "apoptotic_maybe")
-features_num <- c("nCount_RNA", "nFeature_RNA", "percent_ribo", "percent_mito", "percent_hsp", "percent_hb", "DF.classification", "pANN")
-
-rm(features_cat, features_num)
-gc()
 ```
 
 
@@ -626,15 +510,6 @@ data <- RunUMAP(data,
 ```
 
 
-### Check the result
-
-```{r}
-png(paste0(myfolder, "integration_sampleID.png"), width = 3000, height = 3000, res = 300)
-DimPlot(data, reduction = "umap_oi", group.by = "sampleID", raster = F)
-dev.off()
-```
-
-
 ## Clustering
 
 ```{r}
@@ -659,78 +534,8 @@ rm(nn, cl)
 ### Visualize clusters
 
 ```{r}
-png(paste0(myfolder, "clusters.png"), width = 2400*3, height = 2400*3, res = 600)
-DimPlot(data, reduction = "umap_oi", group.by = "clusters_louvain_oi", label = T, raster = F) + NoLegend() + labs(title = "Clusters Louvain")
-dev.off()
-
 pdf(paste0(myfolder, "clusters.pdf"), width = 15, height = 15)
 DimPlot(data, reduction = "umap_oi", group.by = "clusters_louvain_oi", label = T, raster = F)
-dev.off()
-```
-
-
-### Visualize dataset proportions per cluster
-
-```{r}
-png(paste0(myfolder, "cluster_dataset_distributions.png"), width = 400*12, height = 400*4, res = 300)
-df <- as.data.frame(table(data.frame(clusters = data$clusters_louvain_oi, dataset = data$orig.ident)))
-df <- df %>% 
-  group_by(dataset) %>% 
-  mutate(prop_cluster = Freq/sum(Freq)) %>% 
-  group_by(clusters) %>% 
-  mutate(prop_dataset = Freq/sum(Freq))
-
-ggplot(df, aes(clusters, prop_dataset, fill = dataset)) +
-  geom_bar(stat = "identity") +
-  coord_flip()
-
-dev.off()
-```
-
-
-### Visualize composition of clusters per dataset
-
-```{r}
-png(paste0(myfolder, "age_dataset_cluster_distributions.png"), width = 800*12, height = 800*4, res = 600)
-par(mfrow=c(2,2), mar=c(4,4,4,4))
-
-# Count cells per cluster and dataset
-df <- as.data.frame(table(data.frame(clusters = data$clusters_louvain_oi, dataset = data$orig.ident)))
-conv <- data@meta.data[, c("orig.ident", "age_round_up")]
-conv <- conv[!duplicated(conv), ]
-conv <- setNames(conv$age, nm = conv$orig.ident)
-df$age <- conv[df$dataset]
-
-df <- df %>% 
-  group_by(dataset, age) %>% 
-  mutate(prop_cluster = Freq/sum(Freq)) %>%
-  mutate(age_dataset = paste0(age, "_", dataset))
-df$age_dataset <- factor(df$age_dataset)
-
-ggplot(df, aes(age_dataset, prop_cluster, fill = clusters)) +
-  geom_bar(stat = "identity") +
-  coord_flip()
-
-dev.off()
-rm(df, conv)
-```
-
-
-### Split UMAP
-
-1. Split by age and individual heart
-2. Split by age and sample
-
-```{r}
-data$age_heart <- paste0(data$age_round_down, "_", data$orig.ident)
-data$age_dataset <- paste0(data$age_round_down, "_", data$sampleID)
-
-png(paste0(myfolder, "umap_age_heart.png"), width = 3000, height = 2000, res = 300)
-DimPlot(data, reduction = "umap_oi", group.by = "clusters_louvain_oi", split.by = "age_heart", ncol = 5, raster = TRUE) + NoLegend() + labs(title = "Clusters Louvain for each heart")
-dev.off()
-
-png(paste0(myfolder, "umap_age_dataset.png"), width = 3000, height = 2000, res = 300)
-DimPlot(data, reduction = "umap_oi", group.by = "clusters_louvain_oi", split.by = "age_dataset", ncol = 5, raster = TRUE) + NoLegend() + labs(title = "Clusters Louvain for each dataset")
 dev.off()
 ```
 
@@ -785,107 +590,7 @@ detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
 # Save the detable as a csv file.
 write.csv2(detable, paste0(myfolder, "detable_rough_clusters.csv"))
 
-# Pick the 60 genes with the lowest p value for each age group, then 40 highest based on pct.diff, then 20 highest based on log.pct.diff.
-# This gives a total of 140 genes (20 per age group).
-detable %>%
-  group_by(cluster) %>%
-  top_n(-60, p_val) %>%
-  top_n(40, pct.diff) %>%
-  top_n(20, log.pct.diff) ->
-  top20
-
-# Genes get matched to one specific cluster and the factor is leveled based on cluster number.
-ord <- factor(sapply(unique(as.character(top20$gene)), function(x){niceRplots::getcluster(DGE_DATA, x, "clusters_louvain_oi")}))
-
-pdf(paste0(myfolder, "DGE_rough_before_ann.pdf"), width = 15, height = 115)
-par(mfrow=c(1,1), mar=c(3,6,2,5))
-DotPlot(DGE_DATA, features = unique(as.character(top20$gene))[order(as.numeric(as.character(ord)))]) +
-  coord_flip() +
-  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
-  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
-  scale_x_discrete(limits = rev) +
-  scale_y_discrete() +
-  labs(x = "", y = "") +
-  theme(axis.text.x = element_text(angle = 0, hjust = 0.5))
-dev.off()
-
-rm(detable, DGE_DATA, top20, DGE_cells, ord, sample_size)
-```
-
-
-### DEG clusters 18 and 27 (CM) only
-
-Based on `DGE_rough_before_ann.pdf` clusters 18 and 27 were selected for a in depth analysis of DEG separately.
-
-```{r}
-data_18_27 <- data[, data$clusters_louvain_oi == "18" | 
-             data$clusters_louvain_oi =="27"]
-
-# Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
-sample_size <- table(data_18_27$clusters_louvain_oi)
-sample_size[sample_size > 150] <- 150
-sample_size
-
-
-# Randomly sample the cells that will be included when calculating DGE (same number of cells as selected above).
-# Samples without replacement, so each cell only can be included once.
-DGE_cells <- lapply(names(sample_size), function(x){ 
-  set.seed(1)
-  sample(colnames(data_18_27)[data_18_27$clusters_louvain_oi == x], size = sample_size[x])
-  })
-DGE_cells <- unlist(DGE_cells)
-
-# Select all data that relates to the sampled DGE cells.
-DGE_DATA <- data_18_27[, DGE_cells]
-
-#Find differentially expressed genes based on groups defined by "clusters_louvain_oi".
-DGE_DATA <- SetIdent(DGE_DATA, value = "clusters_louvain_oi")
-
-# The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).
-detable_18_27 <- FindAllMarkers(DGE_DATA,
-                          only.pos = TRUE,
-                          max.cells.per.ident = 300,
-                          logfc.threshold = .1,
-                          assay = "RNA",
-                          min.pct = 0.05)
-
-# Only keep DEGs that have a p-value below 0.05.
-detable_18_27 <- detable_18_27[detable_18_27$p_val < 0.05, ]
-
-# Adding two extra columns giving the difference (and log difference) between pct1 and pct2.
-# pct1 is the percentage of cells in the specific cluster that express this gene.
-# pct2 is the percentage of cells in all other clusters that express this gene.
-detable_18_27$pct.diff <- detable_18_27$pct.1 - detable_18_27$pct.2
-detable_18_27$log.pct.diff <- log2((detable_18_27$pct.1*99+1) / (detable_18_27$pct.2*99+1))
-
-# Save the detable as a csv file.
-write.csv2(detable_18_27, paste0(myfolder, "detable_rough_clusters_18_27.csv"))
-
-# Pick the 60 genes with the lowest p value for each age group, then 40 highest based on pct.diff, then 20 highest based on log.pct.diff.
-# This gives a total of 140 genes (20 per age group).
-detable_18_27 %>%
-  group_by(cluster) %>%
-  top_n(-60, p_val) %>%
-  top_n(40, pct.diff) %>%
-  top_n(20, log.pct.diff) ->
-  top20
-
-# Genes get matched to one specific cluster and the factor is leveled based on cluster number.
-ord <- factor(sapply(unique(as.character(top20$gene)), function(x){niceRplots::getcluster(DGE_DATA, x, "clusters_louvain_oi")}))
-
-pdf(paste0(myfolder, "DGE_rough_18_27.pdf"), width = 15, height = 10)
-par(mfrow=c(1,1), mar=c(3,6,2,5))
-DotPlot(DGE_DATA, features = unique(as.character(top20$gene))[order(as.numeric(as.character(ord)))]) +
-  coord_flip() +
-  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
-  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
-  scale_x_discrete(limits = rev) +
-  scale_y_discrete() +
-  labs(x = "", y = "") +
-  theme(axis.text.x = element_text(angle = 0, hjust = 0.5))
-dev.off()
-
-rm(detable_18_27, DGE_DATA, top20, DGE_cells, ord, sample_size)
+rm(detable, DGE_DATA, DGE_cells, sample_size)
 ```
 
 
@@ -997,7 +702,7 @@ dev.off()
 ```
 
 
-### Remove low quality clusters (6, 19, 27, 34)
+### Remove low quality and red blood cells clusters (6, 19, 27, 34)
 
 ```{r}
 data$high_level_clusters_removed <- factor(data$high_level_clusters, levels = c(1, 2, 3, "4_35", 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, "18_1", "18_2", 20, 21, 22, 23, 24, 25, 26, 28, 29, 30, 31, 32, 33))
@@ -1027,7 +732,7 @@ data <- readRDS(paste0(myfolder, "rds_objects/HDCA_heart_sc_full_before_annotati
 The annotation was imported from an external .csv file. The annotation is added as a new metadata row `cell.types` by matching the cluster numbers.
 
 ```{r}
-annotation <- read.csv2("/home/rstudio/project/data/metadata/hl_annotation_2023-08-23.csv", header = 1, sep = ";")
+annotation <- read.csv2("/home/rstudio/project/data/metadata/hl_annotation_2023-12-21.csv", header = 1, sep = ";")
 cells_clusters <- setNames(annotation$cell_type, nm = annotation$cluster)
 data$cell.types <- cells_clusters[as.character(data$high_level_clusters)]
 rm(annotation, cells_clusters)
@@ -1109,55 +814,9 @@ detable$pct.diff <- detable$pct.1 - detable$pct.2
 detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
 
 # Save the detable as a csv file.
-write.csv2(detable, paste0(myfolder, "detable_rough_clusters.csv"))
+write.csv2(detable, paste0(myfolder, "detable_rough_clusters_after_ann.csv"))
 
-# Pick the 60 genes with the lowest p value for each group, then 40 highest based on pct.diff, then 20 highest based on log.pct.diff.
-# This gives a total of 140 genes (20 per group).
-detable %>%
-  group_by(cluster) %>%
-  top_n(-60, p_val) %>%
-  top_n(40, pct.diff) %>%
-  top_n(20, log.pct.diff) ->
-  top20
-
-# Genes get matched to one specific cluster and the factor is leveled based on cluster number.
-ord <- factor(sapply(unique(as.character(top20$gene)), function(x){niceRplots::getcluster(DGE_DATA, x, "high_level_clusters_removed")}))
-
-pdf(paste0(myfolder, "DGE_rough_after_ann.pdf"), width = 15, height = 115)
-par(mfrow=c(1,1), mar=c(3,6,2,5))
-DotPlot(DGE_DATA, features = unique(as.character(top20$gene))[order(as.numeric(as.character(ord)))]) +
-  coord_flip() +
-  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
-  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
-  scale_x_discrete(limits = rev) +
-  scale_y_discrete() +
-  labs(x = "", y = "") +
-  theme(axis.text.x = element_text(angle = 0, hjust = 0.5))
-dev.off()
-
-gc()
-```
-
-
-### Functional enrichment analysis (FEA)
-
-Using `gprofiler2` using the sources "Biological Process" (BP) from "Gene Ontology" (GO:BP) and "REAC" from Reactome.
-
-```{r}
-GeneSets <- detable %>%
-  filter(p_val_adj < 0.01, avg_log2FC > 0.5) %>%
-  group_by(cluster) %>%
-  group_split()
-
-pathways <- lapply(seq_along(GeneSets), function(i) {
-  print(i)
-  set <- GeneSets[[i]]
-  res <- gost(query = set$gene, organism = "hsapiens", sources = c("GO:BP", "REAC"), significant = FALSE)
-  return(res$result)
-})
-pathways <- setNames(pathways, nm = paste0(unique(detable$cluster)))
-
-openxlsx::write.xlsx(pathways, file = paste0(myfolder, "HL_fea_cluster_removed_split.xlsx"))
+rm(detable, DGE_DATA, DGE_cells, sample_size)
 ```
 
 
@@ -1276,6 +935,11 @@ write.csv2(cell_by_cluster_entire_3, paste0(myfolder, "cell_by_cluster_entire_3.
 write.csv2(cell_by_cluster_entire_4, paste0(myfolder, "cell_by_cluster_entire_4.csv"))
 ```
 
+```{r}
+rm(cell_by_cluster_entire_1, cell_by_cluster_entire_2, cell_by_cluster_entire_3, cell_by_cluster_entire_4, data_age, ages)
+gc()
+```
+
 
 ## DotPlots
 
@@ -1286,48 +950,47 @@ write.csv2(cell_by_cluster_entire_4, paste0(myfolder, "cell_by_cluster_entire_4.
 my_markers <- c("MYH7", "MYH6", "MYBPC3", "TNNI1", "MYOZ2", "FABP3", "TMSB10", "S100A11", "GNG11", "FABP4", "VWF", "CDH5", "PECAM1", "LYVE1", "NPR3", "BMPER", "POSTN", "APCDD1", "TWIST1", "DDR2", "TCF21", "COL1A1", "MYH11", "ENPEP", "ITLN1", "PCSK1N", "MPZ", "C1QC", "JCHAIN", "CD3E", "KLRB1")
 
 # remove undesired cells
-cells_to_remove <- data$cell.types == "Immature RBC + PLT" | 
-                   data$cell.types == "Mixed low quality cells" | 
-                   data$cell.types == "RBC" | 
-                   data$cell.types == "Cardiomyocytes - check quality/sample distribution!"
+cells_to_remove <- data$cell.types == "HL_excl_1" | 
+                   data$cell.types == "HL_excl_2" | 
+                   data$cell.types == "HL_excl_3" | 
+                   data$cell.types == "HL_excl_4"
 
 data_HL <- data[,!cells_to_remove]
 rm(cells_to_remove)
 
 # reorder the cell types desired
 data_HL$high_level_clusters_removed <- factor(data_HL$cell.types, 
-                                              levels = c("Ventricular CM_1",
-                                                         "Atrial CM_1",
-                                                         "Ventricular CM_2",
-                                                         "Ventricular CM_3",
-                                                         "Atrial CM_2",
-                                                         "Proliferating CM",
-                                                         "Immature CM",
-                                                         "TMSB10high_1",
-                                                         "TMSB10high_2",
-                                                         "Macrovascular EC",
-                                                         "Microvascular EC",
-                                                         "SEMA4Ahigh EC",
-                                                         "Lymphatic EC",
-                                                         "Endocardial EC",
-                                                         "Valve-related EC",
-                                                         "Valve-related FB",
-                                                         "SEMA4Ahigh FB",
-                                                         "Interstitial FB",
-                                                         "Vessel-related FB",
-                                                         "Outflow tract FB",
-                                                         "Epicardium-derived progenitor cells",
-                                                         "Atrioventricular plane FB",
-                                                         "Proliferating FB",
-                                                         "Outflow tract SMC",
-                                                         "Coronary SMC",
-                                                         "Pericytes",
-                                                         "Epicardial cells",
-                                                         "Cardiac neural crest cells",
-                                                         "Schwann cell progenitor cells",
-                                                         "Myeloid cells",
-                                                         "Lymphoid cells"
-                                                         ))
+                                              levels = c("Mat_vCM",
+                                                         "Mat_aCM",
+                                                         "MetAct_vCM_1",
+                                                         "MetAct_vCM_2",
+                                                         "MetAct_aCM",
+                                                         "Prol_CM",
+                                                         "Immat_CM",
+                                                         "TMSB10high_C_1",
+                                                         "TMSB10high_C_2",
+                                                         "MacroVasc_EC",
+                                                         "MicroVasc_EC",
+                                                         "PDE4Chigh_EC",
+                                                         "LEC",
+                                                         "Endoc_EC",
+                                                         "EndocCush_EC",
+                                                         "Valve_MC",
+                                                         "PDE4Chigh_FB",
+                                                         "Int_FB",
+                                                         "Peric_MC",
+                                                         "OFT_FB",
+                                                         "EPDC",
+                                                         "AnnFibr_FB",
+                                                         "Prol_FB",
+                                                         "OFT_SMC",
+                                                         "CA_SMC",
+                                                         "PC",
+                                                         "EpC",
+                                                         "NB-N",
+                                                         "SCP-GC",
+                                                         "MyC",
+                                                         "LyC"))
 
 data_HL <- SetIdent(data_HL, value = "high_level_clusters_removed")
 
@@ -1348,57 +1011,12 @@ gc()
 ```
 
 
-### High Level dotplot from selected markers
+### Enrichment of ST cluster markers in HL single-cell clusters
 
 ```{r}
 # specific list of marker to project the dotplot on
 my_markers <- c("MT3", "HEY2", "NREP", "CKM", "FHL2", "MB", "LGALS3", "IRX3", "MASP1", "PPP1R12B", "ANGPT1", "BMP10", "DKK3", "PITX2", "ADAMTS8", "COL2A1", "ACTA1", "NPPB", "PGK1")
 
-# remove undesired cells
-cells_to_remove <- data$cell.types == "Immature RBC + PLT" | 
-                   data$cell.types == "Mixed low quality cells" | 
-                   data$cell.types == "RBC" | 
-                   data$cell.types == "Cardiomyocytes - check quality/sample distribution!"
-
-data_HL <- data[,!cells_to_remove]
-rm(cells_to_remove)
-
-# reorder the cell types desired
-data_HL$high_level_clusters_removed <- factor(data_HL$cell.types, 
-                                              levels = c("Ventricular CM_1",
-                                                         "Atrial CM_1",
-                                                         "Ventricular CM_2",
-                                                         "Ventricular CM_3",
-                                                         "Atrial CM_2",
-                                                         "Proliferating CM",
-                                                         "Immature CM",
-                                                         "TMSB10high_1",
-                                                         "TMSB10high_2",
-                                                         "Macrovascular EC",
-                                                         "Microvascular EC",
-                                                         "SEMA4Ahigh EC",
-                                                         "Lymphatic EC",
-                                                         "Endocardial EC",
-                                                         "Valve-related EC",
-                                                         "Valve-related FB",
-                                                         "SEMA4Ahigh FB",
-                                                         "Interstitial FB",
-                                                         "Vessel-related FB",
-                                                         "Outflow tract FB",
-                                                         "Epicardium-derived progenitor cells",
-                                                         "Atrioventricular plane FB",
-                                                         "Proliferating FB",
-                                                         "Outflow tract SMC",
-                                                         "Coronary SMC",
-                                                         "Pericytes",
-                                                         "Epicardial cells",
-                                                         "Cardiac neural crest cells",
-                                                         "Schwann cell progenitor cells",
-                                                         "Myeloid cells",
-                                                         "Lymphoid cells"
-                                                         ))
-
-data_HL <- SetIdent(data_HL, value = "high_level_clusters_removed")
 
 p <- DotPlot(data_HL, features = my_markers) +
   theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
@@ -1417,154 +1035,6 @@ gc()
 ```
 
 
-### High Level dotplot from ST enriched markers
-
-```{r}
-# specific list of marker to project the dotplot on
-my_markers_ST <- c("COL2A1", "PITX2", "ADAMTS8", "DUOX2", "MYH6", "PAM", "DUOXA2", "NPPA", "BMP10", "DKK3", "ATP2A2", "NR2F1", "ANGPT1", "NREP", "HEY2", "MT3", "MYH7", "CKM", "MYL2", "LGALS3", "IRX3", "TGM2", "MB", "MASP1", "FHL2", "PPP1R12B", "NUDT4", "POSTN", "IRX1", "ATP1B4", "SEMA3A", "IRX2", "RCAN1", "EPHA4", "RSPO3", "NELL2", "HAMP", "BMP2", "TBX3", "SPON1", "DOK4", "IGFBP5", "ACTA1", "COL1A2", "COL1A1", "PTN", "TAGLN", "TNFRSF19", "NPPB", "MIF", "LDHA", "BNIP3", "ENO1", "SLC2A1"
-)
-
-# remove undesired cells
-cells_to_remove <- data$cell.types == "Immature RBC + PLT" | 
-                   data$cell.types == "Mixed low quality cells" | 
-                   data$cell.types == "RBC" | 
-                   data$cell.types == "Cardiomyocytes - check quality/sample distribution!"
-
-data_HL <- data[,!cells_to_remove]
-rm(cells_to_remove)
-
-# reorder the cell types desired
-data_HL$high_level_clusters_removed <- factor(data_HL$cell.types, 
-                                              levels = c("Ventricular CM_1",
-                                                         "Atrial CM_1",
-                                                         "Ventricular CM_2",
-                                                         "Ventricular CM_3",
-                                                         "Atrial CM_2",
-                                                         "Proliferating CM",
-                                                         "Immature CM",
-                                                         "TMSB10high_1",
-                                                         "TMSB10high_2",
-                                                         "Macrovascular EC",
-                                                         "Microvascular EC",
-                                                         "SEMA4Ahigh EC",
-                                                         "Lymphatic EC",
-                                                         "Endocardial EC",
-                                                         "Valve-related EC",
-                                                         "Valve-related FB",
-                                                         "SEMA4Ahigh FB",
-                                                         "Interstitial FB",
-                                                         "Vessel-related FB",
-                                                         "Outflow tract FB",
-                                                         "Epicardium-derived progenitor cells",
-                                                         "Atrioventricular plane FB",
-                                                         "Proliferating FB",
-                                                         "Outflow tract SMC",
-                                                         "Coronary SMC",
-                                                         "Pericytes",
-                                                         "Epicardial cells",
-                                                         "Cardiac neural crest cells",
-                                                         "Schwann cell progenitor cells",
-                                                         "Myeloid cells",
-                                                         "Lymphoid cells"
-                                                         ))
-
-data_HL <- SetIdent(data_HL, value = "high_level_clusters_removed")
-
-p <- DotPlot(data_HL, features = my_markers_ST) +
-  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
-  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
-  scale_x_discrete() +
-  scale_y_discrete(limits = rev) +
-  labs(x = "", y = "") + 
-  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
-
-pdf(paste0(myfolder, "HL_dotplot_DEG_ST_markers.pdf"), width = 16, height = 11)
-print(p)
-dev.off()
-
-rm(p)
-gc()
-```
-
-
-### DEG rough CM top5
-
-```{r}
-# Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
-data_CM <- data[, data$high_level_clusters_removed == "4_35" |
-                  data$high_level_clusters_removed == "5"    |
-                  data$high_level_clusters_removed ==  "7"   |
-                  data$high_level_clusters_removed == "9"    |
-                  data$high_level_clusters_removed ==  "11"  |
-                  data$high_level_clusters_removed == "17"   |
-                  data$high_level_clusters_removed == "18_2" ]
-
-sample_size <- table(data_CM$high_level_clusters_removed)
-sample_size[sample_size > 1500] <- 1500
-sample_size
-
-# Randomly sample the cells that will be included when calculating DGE (same number of cells as selected above).
-# Samples without replacement, so each cell only can be included once.
-DGE_cells <- lapply(names(sample_size), function(x){ 
-  set.seed(1)
-  sample(colnames(data_CM)[data_CM$high_level_clusters_removed == x], size = sample_size[x])
-  })
-DGE_cells <- unlist(DGE_cells)
-
-# Select all data that relates to the sampled DGE cells.
-DGE_DATA <- data_CM[, DGE_cells]
-
-# reorder the cell types desired
-DGE_DATA$high_level_clusters_removed <- factor(DGE_DATA$high_level_clusters_removed, 
-                                              levels = c("4_35", "17", "9", "5", "11", "7", "18_2"))
-
-#Find differential expressed genes based on groups defined by "high_level_clusters_removed".
-DGE_DATA <- SetIdent(DGE_DATA, value = "high_level_clusters_removed")
-
-# The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).
-detable <- FindAllMarkers(DGE_DATA,
-                          only.pos = TRUE,
-                          max.cells.per.ident = 300,
-                          logfc.threshold = .1,
-                          assay = "RNA",
-                          min.pct = 0.05)
-
-# Only keep DEG that have a p-value below 0.05.
-detable <- detable[detable$p_val < 0.05, ]
-
-# Adding two extra columns giving the difference (and log difference) between pct1 and pct2.
-# pct1 is the percentage of cells in the specific cluster that express this gene.
-# pct2 is the percentage of cells in all other clusters that express this gene.
-detable$pct.diff <- detable$pct.1 - detable$pct.2
-detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
-
-# Save the detable as a csv file.
-write.csv2(detable, paste0(myfolder, "cardiomyocytes/detable_rough_CM.csv"))
-
-# Pick the 30 genes with the lowest p value for cluster, then 20 highest based on log.pct.diff, then 5 highest based on avg_log2FC.
-detable %>%
-  group_by(cluster) %>%
-  top_n(-30, p_val) %>%
-  top_n(20, log.pct.diff) %>%
-  top_n(5, avg_log2FC) ->
-  top5
-
-pdf(paste0(myfolder, "cardiomyocytes/DGE_rough_CM_top5.pdf"), width = 7, height = 8)
-par(mfrow=c(1,1), mar=c(3,6,2,5))
-DotPlot(DGE_DATA, features = top5 %>% pull(gene) %>% unique()) +
-  coord_flip() +
-  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
-  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
-  scale_x_discrete(limits = rev) +
-  scale_y_discrete() +
-  labs(x = "", y = "") +
-  theme(axis.text.x = element_text(angle = 0, hjust = 0.5))
-dev.off()
-
-rm(detable, DGE_DATA, top5, DGE_cells, ord, sample_size)
-```
-
-
 #### CM from High Level dotplot from selected markers
 
 ```{r}
@@ -1577,18 +1047,23 @@ data_CM <- data[, data$high_level_clusters_removed == "4_35" |
                   data$high_level_clusters_removed == "18_2" ]
 
 # specific list of marker to project the dotplot on
-# my_markers <- c("MYH6", "MYH7", "MYL7", "MYL2", "TNNI1", "TNNI3", "KCNJ2", "KCNJ12", "SCN5A", "CACNA1C", "CACNB2", "RYR2", "ATP2A2", "SLC8A1", "JPH2", "NEXN", "MFN1", "MFN2", "HK1", "HK2", "PKM", "ALDOA", "ENO1", "PPARGC1A", "PPARGC1B", "PPARA", "ESRRA", "ESRRB", "ESRRG", "NRF1", "COX8A", "GJA1", "OPA1", "MICOS10", "MICOS13", "SRF", "MRTFA", "MRTFB", "HOPX", "NDUFA1", "NDUFB4", "SDHD", "SDHC", "UQCRH", "UQCRB", "UQCR11", "COX7C", "COX5A", "ATP5MC2", "ATP5MC3", "ATP5MD", "DRP1", "NRF2", "COX8B", "COX6B")
-
-my_markers <- c("MYH6", "MYH7", "MYL2", "MYL3", "MYL4", "MYL7", "CSRP3", "MYOZ2", "ACTN2", "TTN", "TNNI1", "TNNI3", "TNNC1", "TNNT2", "TPM1", "TPM2", "CACNA1C", "CACNB2", "RYR2", "ATP2A2", "SLC8A1", "PLN", "JPH2", "NEXN", "PPARGC1A", "ESRRG", "OPA1", "HK1", "HK2", "PKM", "ALDOA", "ENO1", "NDUFA1", "NDUFB4", "UQCRH", "UQCRB", "COX7C", "COX5A", "ATP5F1A", "ATP5MD"
-)
+my_markers <- c("CACNA1C", "CACNB2", "RYR2", "ATP2A2", "SLC8A1", "JPH2", "NEXN", "PPARGC1A", "ESRRG", "OPA1", "HK1", "HK2", "PKM", "ALDOA", "ENO1", "NDUFA1", "NDUFB4", "UQCRH", "UQCRB", "COX7C", "COX5A", "ATP5F1A", "ATP5MD")
 
 # reorder the cell types desired
-data_CM$high_level_clusters_removed <- factor(data_CM$high_level_clusters_removed, 
-                                              levels = c("4_35", "17", "9", "5", "11", "7", "18_2"))
+data_CM$cell.types <- factor(data_CM$cell.types,
+                             levels = c("Mat_vCM", 
+                                        "Mat_aCM", 
+                                        "MetAct_vCM_1", 
+                                        "MetAct_vCM_2", 
+                                        "MetAct_aCM", 
+                                        "Prol_CM", 
+                                        "Immat_CM"))
 
-data_CM <- SetIdent(data_CM, value = "high_level_clusters_removed")
+#data_CM <- SetIdent(data_CM, value = "high_level_clusters_removed")
+data_CM <- SetIdent(data_CM, value = "cell.types")
 
-pdf(paste0(myfolder, "cardiomyocytes/dotplot_markers_high_level_CM_2.pdf"), width = 7, height = 10)
+
+pdf(paste0(myfolder, "cardiomyocytes/dotplot_markers_high_level_CM_annot.pdf"), width = 7, height = 10)
 par(mfrow=c(1,1), mar=c(3,6,2,5))
 DotPlot(data_CM, features = my_markers) +
   coord_flip() +
@@ -1597,497 +1072,11 @@ DotPlot(data_CM, features = my_markers) +
   scale_x_discrete(limits = rev) +
   scale_y_discrete() +
   #labs(x = "", y = "") +
-  theme(axis.text.x = element_text(angle = 0, hjust = 0.5))
+  theme(axis.text.x = element_text(angle = 90, hjust = 0.5))
 dev.off()
 
 rm(p)
 gc()
-```
-
-
-### DEG rough EN top5
-
-```{r}
-# Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
-data_EN <- data[, data$high_level_clusters_removed == "3"   |
-                  data$high_level_clusters_removed == "12"  |
-                  data$high_level_clusters_removed ==  "21" |
-                  data$high_level_clusters_removed == "24"  |
-                  data$high_level_clusters_removed ==  "28" |
-                  data$high_level_clusters_removed == "32"  ]
-
-sample_size <- table(data_EN$high_level_clusters_removed)
-sample_size[sample_size > 500] <- 500
-sample_size
-
-# Randomly sample the cells that will be included when calculating DGE (same number of cells as selected above).
-# Samples without replacement, so each cell only can be included once.
-DGE_cells <- lapply(names(sample_size), function(x){ 
-  set.seed(1)
-  sample(colnames(data_EN)[data_EN$high_level_clusters_removed == x], size = sample_size[x])
-  })
-DGE_cells <- unlist(DGE_cells)
-
-# Select all data that relates to the sampled DGE cells.
-DGE_DATA <- data_EN[, DGE_cells]
-
-# reorder the cell types desired
-DGE_DATA$high_level_clusters_removed <- factor(DGE_DATA$high_level_clusters_removed, 
-                                              levels = c("28", "12", "24", "32", "3", "21"))
-
-#Find differential expressed genes based on groups defined by "high_level_clusters_removed".
-DGE_DATA <- SetIdent(DGE_DATA, value = "high_level_clusters_removed")
-
-# The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).
-detable <- FindAllMarkers(DGE_DATA,
-                          only.pos = TRUE,
-                          max.cells.per.ident = 300,
-                          logfc.threshold = .1,
-                          assay = "RNA",
-                          min.pct = 0.05)
-
-# Only keep DEG that have a p-value below 0.05.
-detable <- detable[detable$p_val < 0.05, ]
-
-# Adding two extra columns giving the difference (and log difference) between pct1 and pct2.
-# pct1 is the percentage of cells in the specific cluster that express this gene.
-# pct2 is the percentage of cells in all other clusters that express this gene.
-detable$pct.diff <- detable$pct.1 - detable$pct.2
-detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
-
-# Save the detable as a csv file.
-write.csv2(detable, paste0(myfolder, "endothelial/detable_rough_EN.csv"))
-
-# Pick the 30 genes with the lowest p value for cluster, then 20 highest based on log.pct.diff, then 5 highest based on avg_log2FC.
-detable %>%
-  group_by(cluster) %>%
-  top_n(-30, p_val) %>%
-  top_n(20, log.pct.diff) %>%
-  top_n(5, avg_log2FC) ->
-  top5
-
-pdf(paste0(myfolder, "endothelial/DGE_rough_EN_top5.pdf"), width = 7, height = 8)
-par(mfrow=c(1,1), mar=c(3,6,2,5))
-DotPlot(DGE_DATA, features = top5 %>% pull(gene) %>% unique()) +
-  coord_flip() +
-  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
-  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
-  scale_x_discrete(limits = rev) +
-  scale_y_discrete() +
-  labs(x = "", y = "") +
-  theme(axis.text.x = element_text(angle = 0, hjust = 0.5))
-dev.off()
-
-rm(detable, DGE_DATA, top5, DGE_cells, ord, sample_size)
-```
-
-
-### DEG rough FB top5
-
-```{r}
-# Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
-data_FB <- data[, data$high_level_clusters_removed == "1"   |
-                  data$high_level_clusters_removed == "2"   |
-                  data$high_level_clusters_removed == "13"  |
-                  data$high_level_clusters_removed == "14"  |
-                  data$high_level_clusters_removed == "16"  |
-                  data$high_level_clusters_removed == "23"  |
-                  data$high_level_clusters_removed == "30"  |
-                  data$high_level_clusters_removed == "31"  ]
-
-sample_size <- table(data_FB$high_level_clusters_removed)
-sample_size[sample_size > 500] <- 500
-sample_size
-
-# Randomly sample the cells that will be included when calculating DGE (same number of cells as selected above).
-# Samples without replacement, so each cell only can be included once.
-DGE_cells <- lapply(names(sample_size), function(x){ 
-  set.seed(1)
-  sample(colnames(data_FB)[data_FB$high_level_clusters_removed == x], size = sample_size[x])
-  })
-DGE_cells <- unlist(DGE_cells)
-
-# Select all data that relates to the sampled DGE cells.
-DGE_DATA <- data_FB[, DGE_cells]
-
-# reorder the cell types desired
-DGE_DATA$high_level_clusters_removed <- factor(DGE_DATA$high_level_clusters_removed, 
-                                              levels = c("13", "30", "2", "23", "1", "14", "16", "31"))
-
-#Find differential expressed genes based on groups defined by "high_level_clusters_removed".
-DGE_DATA <- SetIdent(DGE_DATA, value = "high_level_clusters_removed")
-
-# The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).
-detable <- FindAllMarkers(DGE_DATA,
-                          only.pos = TRUE,
-                          max.cells.per.ident = 300,
-                          logfc.threshold = .1,
-                          assay = "RNA",
-                          min.pct = 0.05)
-
-# Only keep DEG that have a p-value below 0.05.
-detable <- detable[detable$p_val < 0.05, ]
-
-# Adding two extra columns giving the difference (and log difference) between pct1 and pct2.
-# pct1 is the percentage of cells in the specific cluster that express this gene.
-# pct2 is the percentage of cells in all other clusters that express this gene.
-detable$pct.diff <- detable$pct.1 - detable$pct.2
-detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
-
-# Save the detable as a csv file.
-write.csv2(detable, paste0(myfolder, "fibroblast/detable_rough_FB.csv"))
-
-# Pick the 30 genes with the lowest p value for cluster, then 20 highest based on log.pct.diff, then 5 highest based on avg_log2FC.
-detable %>%
-  group_by(cluster) %>%
-  top_n(-30, p_val) %>%
-  top_n(20, log.pct.diff) %>%
-  top_n(5, avg_log2FC) ->
-  top5
-
-pdf(paste0(myfolder, "fibroblast/DGE_rough_FB_top5.pdf"), width = 8, height = 8)
-par(mfrow=c(1,1), mar=c(3,6,2,5))
-DotPlot(DGE_DATA, features = top5 %>% pull(gene) %>% unique()) +
-  coord_flip() +
-  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
-  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
-  scale_x_discrete(limits = rev) +
-  scale_y_discrete() +
-  labs(x = "", y = "") +
-  theme(axis.text.x = element_text(angle = 0, hjust = 0.5))
-dev.off()
-
-rm(detable, DGE_DATA, top5, DGE_cells, ord, sample_size)
-```
-
-
-## nFeature and nCount plots on UMAP
-
-```{r}
-#Projection on UMAP
-pdf(paste0(myfolder, "p_UMAP_nCount_RNA_after_filter.pdf"), width = 15, height = 15)
-FeaturePlot(data, reduction = "umap_oi", features = "nCount_RNA", raster = FALSE)
-dev.off()
-
-pdf(paste0(myfolder, "p_UMAP_nFeature_RNA_after_filter.pdf"), width = 15, height = 15)
-FeaturePlot(data, reduction = "umap_oi", features = "nFeature_RNA", raster = FALSE)
-dev.off()
-```
-
-
-## UMAP 3D
-
-```{r}
-data <- RunUMAP(data,
-                dims = 1:50,
-                reduction = "harmony_oi",
-                n.neighbors = 10,
-                metric = "cosine",
-                min.dist = 0.3,
-                spread = 1,
-                repulsion.strength = 1,
-                negative.sample.rate = 5,
-                n.epochs = 100,
-                reduction.key = "oi_",
-                reduction.name = "umap_oi_3d",
-                seed.use = 42,
-                n.components = 3)
-gc()
-
-df_data <- data.frame(data@reductions$umap_oi_3d@cell.embeddings)
-df_data <- data.frame(df_data, seurat_clusters=data$cell.types, sampleid = data$sampleID , age = data$age)
-colnames(df_data)[1:3] <- c("UMAP_1", "UMAP_2", "UMAP_3")
-pal <- c(scales::hue_pal()(8), RColorBrewer::brewer.pal(9, "Set1"), RColorBrewer::brewer.pal(8, "Set2"))
-
-p <- plot_ly(df_data, 
-             x = ~UMAP_1, y = ~UMAP_2, z = ~UMAP_3,
-             color = ~seurat_clusters,
-             colors = pal,
-             size = 0.5) %>%
-  add_markers() %>%
-  layout(scene = list(xaxis = list(title = "UMAP_1"), yaxix = list(title = "UMAP_2"), zaxis = list(title = "UMAP_3")))
-
-htmlwidgets::saveWidget(p, paste0(myfolder, "umap3d.html"))
-```
-
-
-## Cell number per sample per clusters
-
-```{r}
-table(data@meta.data[["orig.ident"]])
-unique(data@meta.data[["orig.ident"]])
-
-# Create list of data frame by splitting by orig.ident
-sampleID_list <- unique(data@meta.data$orig.ident)
-df_list <- list()
-
-for (ID in sampleID_list) {
-subsetID <- data@meta.data$orig.ident == ID
-data_subsetID <- data[,subsetID]
-df_list[[ID]] <- data_subsetID
-}
-
-# Create table of cell proportions 
-df <-  data.frame(ID = 1:31)
-
-for (ID in 1:length(df_list)) {
-name_ID <- unique(df_list[[ID]]@meta.data[["orig.ident"]])
-table_ID <- table(df_list[[ID]]@meta.data[["high_level_clusters_removed"]])
-
-# write single sheet
-df[[paste0(name_ID, ID)]] <- table_ID
-write.csv2(df,paste0(myfolder, "sampleID/xcell_", "cell_by_cluster.csv"))
-
-# write 1 sheet per sample ID
-write.csv2(table(df_list[[ID]]@meta.data[["high_level_clusters_removed"]]),
-           paste0(myfolder, "sampleID/xcell_", name_ID, "_cell_by_cluster.csv"))
-}
-```
-
-
-## DEG subsets
-
-#### Round 1: CM_21, EN_14, FB_20
-
-```{r}
-#keep only CM_21, EN_14, FB_20
-round1_1 <- CM[, CM$clusters_subset == "21"]
-round1_2 <- EN[, EN$clusters_subset == "14"]
-round1_3 <- FB[, FB$clusters_subset == "20"]
-
-round1 <-  merge(round1_1, y = list(round1_2, round1_3), add.cell.ids = c("1", "2", "3"))
-
-round1$clusters_subset[round1$clusters_subset == "21"] <- "CM_21"
-round1$clusters_subset[round1$clusters_subset == "14"] <- "EC_14"
-round1$clusters_subset[round1$clusters_subset == "20"] <- "FB_20"
-
-# Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
-sample_size <- table(round1$clusters_subset)
-sample_size[sample_size > 200] <- 200
-sample_size
-
-
-# Randomly sample the cells that will be included when calculating DGE (same number of cells as selected above).
-# Samples without replacement, so each cell only can be included once.
-DGE_cells <- lapply(names(sample_size), function(x){ 
-  set.seed(1)
-  sample(colnames(round1)[round1$clusters_subset == x], size = sample_size[x])
-  })
-DGE_cells <- unlist(DGE_cells)
-
-# Select all data that relates to the sampled DGE cells.
-DGE_DATA <- round1[, DGE_cells]
-
-#Find differential expressed genes based on groups defined by "clusters_subset_split".
-DGE_DATA <- SetIdent(DGE_DATA, value = "clusters_subset")
-
-# The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).
-detable_round1 <- FindAllMarkers(DGE_DATA,
-                          only.pos = TRUE,
-                          max.cells.per.ident = 300,
-                          logfc.threshold = .1,
-                          assay = "RNA",
-                          min.pct = 0.05)
-
-# Only keep DEG that have a p-value below 0.05.
-detable_round1 <- detable_round1[detable_round1$p_val < 0.05, ]
-
-# Adding two extra columns giving the difference (and log difference) between pct1 and pct2.
-# pct1 is the percentage of cells in the specific cluster that express this gene.
-# pct2 is the percentage of cells in all other clusters that express this gene.
-detable_round1$pct.diff <- detable_round1$pct.1 - detable_round1$pct.2
-detable_round1$log.pct.diff <- log2((detable_round1$pct.1*99+1) / (detable_round1$pct.2*99+1))
-
-# Save the detable as a csv file.
-write.csv2(detable_round1, paste0(myfolder, "DEG_special/detable_round1.csv"))
-
-# Pick the 60 genes with the lowest p value for each age group, then 40 highest based on pct.diff, then 20 highest based on log.pct.diff.
-detable_round1 %>%
-  group_by(cluster) %>%
-  top_n(-60, p_val) %>%
-  top_n(40, pct.diff) %>%
-  top_n(20, log.pct.diff) ->
-  top20
-
-# Unclear what this does since there is no documentation for getcluster(). But my guess is that the genes get matched to one specific cluster somehow, and the factor is leveled based on cluster number.
-ord <- factor(sapply(unique(as.character(top20$gene)), function(x){niceRplots::getcluster(DGE_DATA, x, "clusters_subset")}))
-
-
-pdf(paste0(myfolder, "DEG_special/DGE_round1.pdf"), width = 15, height = length(ord)/6+1)
-par(mfrow=c(1,1), mar=c(3,6,2,5))
-DotPlot(DGE_DATA, features = unique(as.character(top20$gene))[order(as.numeric(as.character(ord)))]) +
-  coord_flip() +
-  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
-  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
-  scale_x_discrete(limits = rev) +
-  scale_y_discrete() +
-  #labs(x = "", y = "") +
-  theme(axis.text.x = element_text(angle = 0, hjust = 0.5))
-dev.off()
-
-rm(detable_round1, DGE_DATA, top20, DGE_cells, ord, sample_size, round1_1, round1_2, round1_3)
-```
-
-
-#### Round 2: HL_22, EC_22, FB_21, FB_15
-
-```{r}
-#keep only HL_22, EC_22, FB_21, FB_15
-round2_1 <- data[, data$high_level_clusters_removed == "22"]
-round2_1$clusters_subset <- round2_1$high_level_clusters
-round2_1$clusters_subset[round2_1$clusters_subset == "22"] <- "HL_22"
-
-round2_2 <- EN[, EN$clusters_subset == "22"]
-
-round2_3 <- FB[, FB$clusters_subset == "21"]
-
-round2_4 <- FB[, FB$clusters_subset == "15"]
-
-round2 <-  merge(round2_1, y = list(round2_2, round2_3, round2_4), add.cell.ids = c("1", "2", "3", "4"))
-
-round2$clusters_subset[round2$clusters_subset == "22"] <- "EC_22"
-round2$clusters_subset[round2$clusters_subset == "21"] <- "FB_21"
-round2$clusters_subset[round2$clusters_subset == "15"] <- "FB_15"
-
-
-# Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
-sample_size <- table(round2$clusters_subset)
-sample_size[sample_size > 200] <- 200
-sample_size
-
-
-# Randomly sample the cells that will be included when calculating DGE (same number of cells as selected above).
-# Samples without replacement, so each cell only can be included once.
-DGE_cells <- lapply(names(sample_size), function(x){ 
-  set.seed(1)
-  sample(colnames(round2)[round2$clusters_subset == x], size = sample_size[x])
-  })
-DGE_cells <- unlist(DGE_cells)
-
-# Select all data that relates to the sampled DGE cells.
-DGE_DATA <- round2[, DGE_cells]
-
-#Find differential expressed genes based on groups defined by "clusters_subset_split".
-DGE_DATA <- SetIdent(DGE_DATA, value = "clusters_subset")
-
-# The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).
-detable_round2 <- FindAllMarkers(DGE_DATA,
-                          only.pos = TRUE,
-                          max.cells.per.ident = 300,
-                          logfc.threshold = .1,
-                          assay = "RNA",
-                          min.pct = 0.05)
-
-# Only keep DEG that have a p-value below 0.05.
-detable_round2 <- detable_round2[detable_round2$p_val < 0.05, ]
-
-# Adding two extra columns giving the difference (and log difference) between pct1 and pct2.
-# pct1 is the percentage of cells in the specific cluster that express this gene.
-# pct2 is the percentage of cells in all other clusters that express this gene.
-detable_round2$pct.diff <- detable_round2$pct.1 - detable_round2$pct.2
-detable_round2$log.pct.diff <- log2((detable_round2$pct.1*99+1) / (detable_round2$pct.2*99+1))
-
-# Save the detable as a csv file.
-write.csv2(detable_round2, paste0(myfolder, "DEG_special/detable_round2.csv"))
-
-# Pick the 60 genes with the lowest p value for each age group, then 40 highest based on pct.diff, then 20 highest based on log.pct.diff.
-detable_round2 %>%
-  group_by(cluster) %>%
-  top_n(-60, p_val) %>%
-  top_n(40, pct.diff) %>%
-  top_n(20, log.pct.diff) ->
-  top20
-
-# Unclear what this does since there is no documentation for getcluster(). But my guess is that the genes get matched to one specific cluster somehow, and the factor is leveled based on cluster number.
-ord <- factor(sapply(unique(as.character(top20$gene)), function(x){niceRplots::getcluster(DGE_DATA, x, "clusters_subset")}))
-
-
-pdf(paste0(myfolder, "DEG_special/DGE_round2.pdf"), width = 15, height = length(ord)/6+1)
-par(mfrow=c(1,1), mar=c(3,6,2,5))
-DotPlot(DGE_DATA, features = unique(as.character(top20$gene))[order(as.numeric(as.character(ord)))]) +
-  coord_flip() +
-  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
-  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
-  scale_x_discrete(limits = rev) +
-  scale_y_discrete() +
-  #labs(x = "", y = "") +
-  theme(axis.text.x = element_text(angle = 0, hjust = 0.5))
-dev.off()
-
-rm(detable_round2, DGE_DATA, top20, DGE_cells, ord, sample_size, round2_1, round2_2, round2_3, round2_4)
-```
-
-
-#### Round 3: CM_21, EC_14, FB_20, HL_22, EC_22, FB_21, FB_15
-
-```{r}
-round3 <-  merge(round2, y = list(round1), add.cell.ids = c("1", "2"))
-
-# Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
-sample_size <- table(round3$clusters_subset)
-sample_size[sample_size > 200] <- 200
-sample_size
-
-
-# Randomly sample the cells that will be included when calculating DGE (same number of cells as selected above).
-# Samples without replacement, so each cell only can be included once.
-DGE_cells <- lapply(names(sample_size), function(x){ 
-  set.seed(1)
-  sample(colnames(round3)[round3$clusters_subset == x], size = sample_size[x])
-  })
-DGE_cells <- unlist(DGE_cells)
-
-# Select all data that relates to the sampled DGE cells.
-DGE_DATA <- round3[, DGE_cells]
-
-#Find differential expressed genes based on groups defined by "clusters_subset_split".
-DGE_DATA <- SetIdent(DGE_DATA, value = "clusters_subset")
-
-# The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).
-detable_round3 <- FindAllMarkers(DGE_DATA,
-                          only.pos = TRUE,
-                          max.cells.per.ident = 300,
-                          logfc.threshold = .1,
-                          assay = "RNA",
-                          min.pct = 0.05)
-
-# Only keep DEG that have a p-value below 0.05.
-detable_round3 <- detable_round3[detable_round3$p_val < 0.05, ]
-
-# Adding two extra columns giving the difference (and log difference) between pct1 and pct2.
-# pct1 is the percentage of cells in the specific cluster that express this gene.
-# pct2 is the percentage of cells in all other clusters that express this gene.
-detable_round3$pct.diff <- detable_round3$pct.1 - detable_round3$pct.2
-detable_round3$log.pct.diff <- log2((detable_round3$pct.1*99+1) / (detable_round3$pct.2*99+1))
-
-# Save the detable as a csv file.
-write.csv2(detable_round3, paste0(myfolder, "DEG_special/detable_round3.csv"))
-
-# Pick the 60 genes with the lowest p value for each age group, then 40 highest based on pct.diff, then 20 highest based on log.pct.diff.
-detable_round3 %>%
-  group_by(cluster) %>%
-  top_n(-60, p_val) %>%
-  top_n(40, pct.diff) %>%
-  top_n(20, log.pct.diff) ->
-  top20
-
-# Unclear what this does since there is no documentation for getcluster(). But my guess is that the genes get matched to one specific cluster somehow, and the factor is leveled based on cluster number.
-ord <- factor(sapply(unique(as.character(top20$gene)), function(x){niceRplots::getcluster(DGE_DATA, x, "clusters_subset")}))
-
-
-pdf(paste0(myfolder, "DEG_special/DGE_round3.pdf"), width = 15, height = length(ord)/6+1)
-par(mfrow=c(1,1), mar=c(3,6,2,5))
-DotPlot(DGE_DATA, features = unique(as.character(top20$gene))[order(as.numeric(as.character(ord)))]) +
-  coord_flip() +
-  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
-  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
-  scale_x_discrete(limits = rev) +
-  scale_y_discrete() +
-  #labs(x = "", y = "") +
-  theme(axis.text.x = element_text(angle = 0, hjust = 0.5))
-dev.off()
-
-rm(detable_round3, DGE_DATA, top20, DGE_cells, ord, sample_size)
 ```
 
 
