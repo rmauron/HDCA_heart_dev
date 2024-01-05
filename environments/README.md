@@ -108,7 +108,7 @@ Change `<environment>` with one of the freshly cloned conda environments (`r-sem
 
 <br>
 
-5. Restore ```r-semla``` using ```renv::restore()``` function following the instructions from [renv package](https://rstudio.github.io/renv/articles/renv.html) to get the exact R-package used in that environment.
+5. Restore ```r-semla``` using ```renv::restore()``` function following the instructions from [renv package](https://rstudio.github.io/renv/articles/renv.html) to get the exact R-packages used in that environment.
 
 ---
 
