@@ -1,14 +1,16 @@
 ---
-title: "07_01_HDCA_heart_SCENIC"
+title: "07_2_HDCA_heart_SCENIC_EN_18_and_regulon_enrichment"
 author: "Raphaël Mauron"
 output: html_document
 editor_options: 
   chunk_output_type: console
 ---
 
-# HDCA heart SCENIC EN7, EN17, EN18 ???
+# HDCA heart SCENIC EN18
 
 Calculate Gene Regulatory Network and infer Transcription Factors activity (Regulons) with SCENIC.
+
+Regulons enrichment in EN_7, EN_17, EN_18 in time.
 
 NOTE: The path to load the data and the path to save the figures should be changed at your convenience.
 
@@ -61,16 +63,42 @@ set.seed(1)
 ```
 
 
-### Sub-sample to specific cluster of interest
+## Sub-sample to specific cluster of interest
 
-If interested in only 1 cluster, can take all the cells:
-Ran independently for EN7, EN17, EN18
+Prepare data_enrich for enrichment done later on.
 
 ```{r}
-# CHANGE HERE
 data_cell <- EN
 cluster <- "18"
 data_sub <- data_cell[,data_cell$clusters_subset %in% cluster]
+
+to_keep_for_enrich <- c("7", "17", "18")
+data_enrich <- data_cell[,data_cell$clusters_subset %in% to_keep_for_enrich]
+```
+
+
+### Cells per cluster per age group
+
+```{r}
+table(data_enrich$age_groups, data_enrich$clusters_subset)
+```
+
+
+### Add additional age groups to the metadata (age_group_refined)
+
+```{r}
+df <- data.frame(age = c(5.5, 6, 7, 8, 8.5, 9, 10, 11.5, 12, 13.25, 14), age_group = c("5-6", "5-6", "7-8", "7-8", "7-8", "9-14", "9-14", "9-14", "9-14", "9-14", "9-14"))
+age_to_age_group <- setNames(df$age_group, nm = df$age)
+data_enrich$age_group_refined <- factor(age_to_age_group[as.character(data_enrich$age)], levels = c("5-6", "7-8", "9-14"))
+rm(df, age_to_age_group)
+gc()
+```
+
+
+### Cells per cluster per new age group
+
+```{r}
+table(data_enrich$age_group_refined, data_enrich$clusters_subset)
 ```
 
 
@@ -140,6 +168,9 @@ genie_list <- loadInt(scenicOptions, "genie3ll")
 table(genie_list$TF)
 list_unique_TF <- c(sort(unique(genie_list$TF)))
 list_unique_TF <- factor(list_unique_TF, levels = list_unique_TF)
+
+# Save unique list_unique_TF
+write.csv(list_unique_TF, file = paste0(myfolder, "scenic/markers_table/", "list_unique_TF","_EN_", cluster, ".tsv"))
 ```
 
 
@@ -281,7 +312,6 @@ motifEnrichment <- loadInt(scenicOptions, "motifEnrichment_full")
 motifEnrichment_selfMotifs <- motifEnrichment[which(motifEnrichment$TF_highConf != ""),, drop=FALSE]
 motifEnrichment_selfMotifs <- motifEnrichment_selfMotifs[which(motifEnrichment_selfMotifs$AUC > 0.1),, drop=FALSE]
 motifEnrichment_selfMotifs <- motifEnrichment_selfMotifs[which(motifEnrichment_selfMotifs$NES > 3.9),, drop=FALSE]
-
 ```
 
 
@@ -332,6 +362,73 @@ regulonTargetsInfo <- rbindlist(regulonTargetsInfo)
 colnames(regulonTargetsInfo) <- c("TF", "gene", "nMotifs", "bestMotif", "NES", "highConfAnnot")
 ```
 
+
+#### Create modules based on the regulonTargetsInfo
+
+```{r}
+# Split the dataframe by TF
+TF_modules <- split(regulonTargetsInfo, regulonTargetsInfo$TF)
+
+# Extract target genes for each TF
+TF_modules_list <- lapply(TF_modules, function(sub_df) sub_df$gene)
+```
+
+
+#### Export TF_modules_list
+
+```{r}
+regulonTargetsInfo_export <- regulonTargetsInfo[, c("TF", "gene")]
+write.csv(regulonTargetsInfo_export, file = paste0(myfolder, "scenic/EN_enrichment/EN_modules.csv"), row.names = FALSE)
+```
+
+
+#### Use TF_modules_list
+
+```{r}
+my_TF <- "NFKB1" #"KLF4"
+my_targets <- TF_modules_list[my_TF]
+my_targets
+```
+
+
+#### Enrichment of Targets in clusters
+
+```{r}
+# Compute module score in clusters
+data_sub_en <- data_enrich
+data_sub_en <- AddModuleScore(data_sub_en, features = my_targets, name = "Enrichment_Score")
+
+pdf(file = paste0(myfolder, "scenic/EN_enrichment/",my_TF, ".pdf"), width = 15, height = 10)
+VlnPlot(data_sub_en, features = "Enrichment_Score1", group.by = "clusters_subset", split.by = "age_group_refined", pt.size = 0) +
+  ggtitle(paste0("Enrichment of ", my_TF, " target genes"))
+dev.off()
+```
+
+
+#### Enrichment of multiple TF
+
+```{r}
+TF_list <- c("NFKB1", "KLF4", "MECOM", "HAND2", "ZNF385D", "SALL3", "PROX1", "SOX6", "PRDM16", "FOXC2", "HMGA2", "MEIS2", "SMAD6", "HEY2", "LMO2", "NFATC1", "SP6", "ARID5A", "ARID5B", "RFX2", "GLIS3", "LEF1", "FOS", "MSX1", "SOX6", "FOXP2", "ESRRG", "MAF", "FREM1")
+for (my_TF in TF_list){
+  print(my_TF)
+  
+  my_targets <- TF_modules_list[my_TF]
+  print(my_targets)
+  
+  data_sub_en <- data_enrich
+  data_sub_en <- AddModuleScore(data_sub_en, features = my_targets, name = "Enrichment_Score")
+  
+  p <-   VlnPlot(data_sub_en, features = "Enrichment_Score1", group.by = "clusters_subset", split.by = "age_group_refined", pt.size = 0) +
+    ggtitle(paste0("Enrichment of ", my_TF, " target genes"))
+  
+  pdf(file = paste0(myfolder, "scenic/EN_enrichment/", my_TF, ".pdf"), width = 15, height = 10)
+  print(p)
+  dev.off()
+}
+```
+
+
+### Plot GRN
 
 #### Select TF
 
@@ -408,7 +505,7 @@ p <- ggraph(tg, layout = layout) +
   theme(legend.position = "none")
 
 #Save plot
-pdf(paste0(myfolder, "scenic/figures/", "EN", "_", cluster, ".pdf"), width = 7, height = 7) #FB14 saved in 11x11
+pdf(paste0(myfolder, "scenic/figures/", "FB", "_", cluster, ".pdf"), width = 7, height = 7) #FB14 saved in 11x11
 p
 dev.off()
 ```

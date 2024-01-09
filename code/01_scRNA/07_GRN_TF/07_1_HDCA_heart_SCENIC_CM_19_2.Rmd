@@ -1,12 +1,12 @@
 ---
-title: "15_HDCA_heart_SCENIC"
+title: "07_1_HDCA_heart_SCENIC_CM_19_2"
 author: "Raphaël Mauron"
 output: html_document
 editor_options: 
   chunk_output_type: console
 ---
 
-# HDCA heart SCENIC CM19-2, CM19-1, CM4-2, EN7, EN17, EN18, FB14, FB4 ???
+# HDCA heart SCENIC CM19-2
 
 Calculate Gene Regulatory Network and infer Transcription Factors activity (Regulons) with SCENIC.
 
@@ -51,9 +51,6 @@ myfolder <- "/home/rstudio/project/output/HDCA_heart_sc_analysis_docker/"
 
 ```{r}
 CM <- readRDS(file = paste0(myfolder, "rds_objects/cardiomyocytes02.rds"))
-EN <- readRDS(file = paste0(myfolder, "rds_objects/endothelial.rds"))
-FB <- readRDS(paste0(myfolder, "rds_objects/fibroblasts.rds"))
-IN <- readRDS(paste0(myfolder, "rds_objects/innervation.rds"))
 ```
 
 
@@ -66,14 +63,11 @@ set.seed(1)
 
 ### Sub-sample to specific cluster of interest
 
-If interested in only 1 cluster, can take all the cells:
-Ran independently for CM19-2, CM19-1, CM4-2, EN7, EN17, EN18, FB14, FB4
-
 ```{r}
 # CHANGE HERE
-data_cell <- EN
-cluster <- "17"
-data_sub <- data_cell[,data_cell$clusters_subset %in% cluster] #clusters_subset_split for CM
+data_cell <- CM
+cluster <- "19-2"
+data_sub <- data_cell[,data_cell$clusters_subset_split %in% cluster]
 ```
 
 
@@ -143,25 +137,22 @@ genie_list <- loadInt(scenicOptions, "genie3ll")
 table(genie_list$TF)
 list_unique_TF <- c(sort(unique(genie_list$TF)))
 list_unique_TF <- factor(list_unique_TF, levels = list_unique_TF)
+
+# Save unique list_unique_TF
+write.csv(list_unique_TF, file = paste0(myfolder, "scenic/markers_table/", "list_unique_TF","_CM_", cluster, ".tsv"))
 ```
 
 
 #### Enrichment of unique TF in remaining clusters
 
 ```{r}
-data_cell <- SetIdent(data_cell, value = "clusters_subset") #clusters_subset_split (for CM), clusters_subset (for EN, FB, IN)
-data_cell$clusters_subset <- factor(data_cell$clusters_subset, 
-                                              levels = c("7","17", "18"))
+data_cell <- SetIdent(data_cell, value = "clusters_subset_split")
+data_cell$clusters_subset_split <- factor(data_cell$clusters_subset_split, 
+                                              levels = c("1", "2", "3", "4-1", "4-2", "5", "6", "7", "8-1", "8-2", "8-3", "9", "10", "12", "14", "17", "19-1", "19-2"))
 
-#remaining CM
-# c("1", "2", "3", "4-1", "4-2", "5", "6", "7", "8-1", "8-2", "8-3", "9", "10", "12", "14", "17", "19-1", "19-2")
-#remaining EN
-# c("1", "12", "3", "6", "18", "17", "7", "19", "15", "13", "10", "2", "5", "21", "16", "20", "11", "14")
-#remaining FB
-# ("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", "11", "17", "8", "1", "6", "15", "20")
 
 # Identify all other clusters
-all_clusters <- levels(data_cell$clusters_subset) #clusters_subset_split (for CM), clusters_subset (for EN, FB, IN)
+all_clusters <- levels(data_cell$clusters_subset_split)
 other_clusters <- setdiff(all_clusters, cluster)
 
 # Run FindMarkers to compare the cluster of interest against all other clusters combined
@@ -175,8 +166,7 @@ markers_table <- FindMarkers(data_cell,
 markers_table$pct.diff <- markers_table$pct.1 - markers_table$pct.2
 
 # Save markers_table
-write.csv(markers_table, file = paste0(myfolder, "scenic/markers_table/", "EN_", cluster, ".tsv"))
-
+write.csv(markers_table, file = paste0(myfolder, "scenic/markers_table/", "CM_", cluster, ".tsv"))
 ```
 
 
@@ -411,7 +401,7 @@ p <- ggraph(tg, layout = layout) +
   theme(legend.position = "none")
 
 #Save plot
-pdf(paste0(myfolder, "scenic/figures/", "FB", "_", cluster, ".pdf"), width = 7, height = 7) #FB14 saved in 11x11
+pdf(paste0(myfolder, "scenic/figures/", "CM", "_", cluster, ".pdf"), width = 7, height = 7)
 p
 dev.off()
 ```

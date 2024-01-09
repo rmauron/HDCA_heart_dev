@@ -1,16 +1,14 @@
 ---
-title: "07_2_HDCA_heart_SCENIC_regulon_enrichment"
+title: "07_3_HDCA_heart_SCENIC_FB_14"
 author: "Raphaël Mauron"
 output: html_document
 editor_options: 
   chunk_output_type: console
 ---
 
-# HDCA heart SCENIC regulon enrichment
+# HDCA heart SCENIC FB14
 
 Calculate Gene Regulatory Network and infer Transcription Factors activity (Regulons) with SCENIC.
-
-Regulons enrichment in EN_7, EN_17, EN_18 in time.
 
 NOTE: The path to load the data and the path to save the figures should be changed at your convenience.
 
@@ -52,7 +50,7 @@ myfolder <- "/home/rstudio/project/output/HDCA_heart_sc_analysis_docker/"
 ### Load data
 
 ```{r}
-EN <- readRDS(file = paste0(myfolder, "rds_objects/endothelial.rds"))
+FB <- readRDS(paste0(myfolder, "rds_objects/fibroblasts.rds"))
 ```
 
 
@@ -63,37 +61,15 @@ set.seed(1)
 ```
 
 
-## Sub-sample to specific cluster of interest
+### Sub-sample to specific cluster of interest
+
+If interested in only 1 cluster, can take all the cells:
+Ran independently for CM19-2, CM19-1, CM4-2, EN7, EN17, EN18, FB14, FB4
 
 ```{r}
-data_cell <- EN
-cluster <- c("7", "17", "18")
+data_cell <- FB
+cluster <- "14"
 data_sub <- data_cell[,data_cell$clusters_subset %in% cluster]
-```
-
-
-### Cells per cluster per age group
-
-```{r}
-table(data_sub$age_groups, data_sub$clusters_subset)
-```
-
-
-### Add additional age groups to the metadata (age_group_refined)
-
-```{r}
-df <- data.frame(age = c(5.5, 6, 7, 8, 8.5, 9, 10, 11.5, 12, 13.25, 14), age_group = c("5-6", "5-6", "7-8", "7-8", "7-8", "9-14", "9-14", "9-14", "9-14", "9-14", "9-14"))
-age_to_age_group <- setNames(df$age_group, nm = df$age)
-data_sub$age_group_refined <- factor(age_to_age_group[as.character(data_sub$age)], levels = c("5-6", "7-8", "9-14"))
-rm(df, age_to_age_group)
-gc()
-```
-
-
-### Cells per cluster per new age group
-
-```{r}
-table(data_sub$age_group_refined, data_sub$clusters_subset)
 ```
 
 
@@ -144,7 +120,7 @@ genesKept <- geneFiltering(exprMat, scenicOptions) #create list of markers from 
 #filter expression matrix
 exprMat_filtered <- exprMat[genesKept, ] #filter based on genes found in database
 dim(exprMat_filtered)
-exprMat_filtered <- exprMat[VariableFeatures(EN),] #keeps only the highly variable genes
+exprMat_filtered <- exprMat[VariableFeatures(data_cell),] #keeps only the highly variable genes
 dim(exprMat_filtered)
 
 #run correlation
@@ -163,6 +139,36 @@ genie_list <- loadInt(scenicOptions, "genie3ll")
 table(genie_list$TF)
 list_unique_TF <- c(sort(unique(genie_list$TF)))
 list_unique_TF <- factor(list_unique_TF, levels = list_unique_TF)
+
+# Save unique list_unique_TF
+write.csv(list_unique_TF, file = paste0(myfolder, "scenic/markers_table/", "list_unique_TF","_FB_", cluster, ".tsv"))
+```
+
+
+#### Enrichment of unique TF in remaining clusters
+
+```{r}
+data_cell <- SetIdent(data_cell, value = "clusters_subset")
+data_cell$clusters_subset <- factor(data_cell$clusters_subset, 
+                                              levels = c("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", "11", "17", "8", "1", "6", "15", "20"))
+
+# Identify all other clusters
+all_clusters <- levels(data_cell$clusters_subset) #clusters_subset_split (for CM), clusters_subset (for EN, FB, IN)
+other_clusters <- setdiff(all_clusters, cluster)
+
+# Run FindMarkers to compare the cluster of interest against all other clusters combined
+markers_table <- FindMarkers(data_cell, 
+                             ident.1 = cluster, 
+                             ident.2 = other_clusters, 
+                             test.use = "wilcox", 
+                             features = list_unique_TF)
+
+# Print the resulting table
+markers_table$pct.diff <- markers_table$pct.1 - markers_table$pct.2
+
+# Save markers_table
+write.csv(markers_table, file = paste0(myfolder, "scenic/markers_table/", "FB_", cluster, ".tsv"))
+
 ```
 
 
@@ -325,68 +331,83 @@ colnames(regulonTargetsInfo) <- c("TF", "gene", "nMotifs", "bestMotif", "NES", "
 ```
 
 
-#### Create modules based on the regulonTargetsInfo
+#### Select TF
 
 ```{r}
-# Split the dataframe by TF
-TF_modules <- split(regulonTargetsInfo, regulonTargetsInfo$TF)
-
-# Extract target genes for each TF
-TF_modules_list <- lapply(TF_modules, function(sub_df) sub_df$gene)
+TF_for_regulons <- markers_table %>%
+  arrange(p_val) %>%
+  filter(avg_log2FC > 0) %>%
+  top_n(10, -p_val)
+TF_for_regulons <- rownames(TF_for_regulons)
 ```
 
 
-#### Export TF_modules_list
+#### Select GN
 
 ```{r}
-regulonTargetsInfo_export <- regulonTargetsInfo[, c("TF", "gene")]
-write.csv(regulonTargetsInfo_export, file = paste0(myfolder, "scenic/EN_enrichment/EN_modules.csv"), row.names = FALSE)
+list_unique_GN <- unique(regulonTargetsInfo$gene)
+
+# Run FindMarkers to compare the cluster of interest against all other clusters combined
+gene_table <- FindMarkers(data_cell, 
+                             ident.1 = cluster, 
+                             ident.2 = other_clusters, 
+                             test.use = "wilcox", 
+                             features = list_unique_GN)
+
+# Print the resulting table
+gene_table <- gene_table %>%
+  top_n(1000, -p_val)
+genes <- rownames(gene_table)
 ```
 
 
-#### Use TF_modules_list
+#### Keep regulons that are from TF_for_regulons
 
 ```{r}
-my_TF <- "NFKB1" #"KLF4"
-my_targets <- TF_modules_list[my_TF]
-my_targets
+# Filter rows based on the "TF" column
+regulons <- regulonTargetsInfo[regulonTargetsInfo$TF %in% TF_for_regulons, ]
+
+# Filter rows based on the "gene" column
+regulons <- regulons[regulons$gene %in% genes, ]
+
+unique(regulons$TF)
 ```
 
 
-#### Enrichment of Targets in clusters
+### Plot Gene Regulatory Networks
 
 ```{r}
-# Compute module score in clusters
-data_sub_en <- data_sub
-data_sub_en <- AddModuleScore(data_sub_en, features = my_targets, name = "Enrichment_Score")
+net <- igraph::graph_from_data_frame(regulons, directed=T)
+deg <- igraph::degree(net, mode = "all", normalized = TRUE)
+bet = igraph::betweenness(net, normalized = TRUE)
+tg <- tidygraph::as_tbl_graph(net) %>% 
+  tidygraph::activate(nodes) %>% 
+  dplyr::mutate(label=name,
+		size = 2*deg)
 
-pdf(file = paste0(myfolder, "scenic/EN_enrichment/",my_TF, ".pdf"), width = 15, height = 10)
-VlnPlot(data_sub_en, features = "Enrichment_Score1", group.by = "clusters_subset", split.by = "age_group_refined", pt.size = 0) +
-  ggtitle(paste0("Enrichment of ", my_TF, " target genes"))
+
+set.seed(1)
+
+layout <- layout.fruchterman.reingold(tg, niter=400)
+unique_TF <- unique(regulons$TF)
+
+
+# Fixed size for TF and fixed size for genes
+p <- ggraph(tg, layout = layout) +
+  geom_edge_link0(color = "grey20", alpha = 0.25) +
+  geom_node_point(aes(size = ifelse(name %in% unique_TF, 1200, 400),
+                      fill = ifelse(name %in% unique_TF, 'orange', 'turquoise'), 
+                      color = 'black'), shape = 21, stroke = 0.3) +
+  geom_node_text(aes(label = name, size = size*20), color = "black", repel = F) +
+  scale_fill_manual(values = c('orange', 'turquoise')) +
+  scale_color_manual(values = 'black') +
+  theme_graph(background = "white") +
+  theme(legend.position = "none")
+
+#Save plot
+pdf(paste0(myfolder, "scenic/figures/", "FB", "_", cluster, ".pdf"), width = 7, height = 7) #FB14 saved in 11x11
+p
 dev.off()
-```
-
-
-#### Enrichment of multiple TF
-
-```{r}
-TF_list <- c("NFKB1", "KLF4", "MECOM", "HAND2", "ZNF385D", "SALL3", "PROX1", "SOX6", "PRDM16", "FOXC2", "HMGA2", "MEIS2", "SMAD6", "HEY2", "LMO2", "NFATC1", "SP6", "ARID5A", "ARID5B", "RFX2", "GLIS3", "LEF1", "FOS", "MSX1", "SOX6", "FOXP2", "ESRRG", "MAF", "FREM1")
-for (my_TF in TF_list){
-  print(my_TF)
-  
-  my_targets <- TF_modules_list[my_TF]
-  print(my_targets)
-  
-  data_sub_en <- data_sub
-  data_sub_en <- AddModuleScore(data_sub_en, features = my_targets, name = "Enrichment_Score")
-  
-  p <-   VlnPlot(data_sub_en, features = "Enrichment_Score1", group.by = "clusters_subset", split.by = "age_group_refined", pt.size = 0) +
-    ggtitle(paste0("Enrichment of ", my_TF, " target genes"))
-  
-  pdf(file = paste0(myfolder, "scenic/EN_enrichment/", my_TF, ".pdf"), width = 15, height = 10)
-  print(p)
-  dev.off()
-}
 ```
 
 
