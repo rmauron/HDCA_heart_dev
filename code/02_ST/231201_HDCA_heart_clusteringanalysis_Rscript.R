@@ -125,6 +125,9 @@ grid.arrange(k, l, ncol=2)
 se_harmony <- PrepSCTFindMarkers(se_harmony)
 de.markers.heart <- FindAllMarkers(se_harmony, only.pos = TRUE, logfc.threshold = 0.5)
 
+### Save the detable as a csv file. (Supp Tab. 1)
+write.csv2(detable, paste0(myfolder, "supplementary_tables/supplementary_table_1_DEG_ST.csv"))
+
 top10 <- de.markers.heart %>%
   group_by(cluster) %>%
   filter(p_val_adj < 0.01) %>%
