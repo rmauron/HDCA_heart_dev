@@ -125,8 +125,13 @@ grid.arrange(k, l, ncol=2)
 se_harmony <- PrepSCTFindMarkers(se_harmony)
 de.markers.heart <- FindAllMarkers(se_harmony, only.pos = TRUE, logfc.threshold = 0.5)
 
+### Rename clusters
+annotation <- read.csv2("~/metadata/HDCA_heart_ST_annotations.csv", header = 1, sep = ";")
+cells_clusters <- setNames(annotation$cluster_name, nm = annotation$cluster)
+de.markers.heart$cluster <- cells_clusters[as.character(de.markers.heart$cluster)]
+
 ### Save the detable as a csv file. (Supp Tab. 1)
-write.csv2(detable, paste0(myfolder, "supplementary_tables/supplementary_table_1_DEG_ST.csv"))
+write.csv2(de.markers.heart, "~/supplementary_tables/supplementary_table_1_DEG_ST.csv")
 
 top10 <- de.markers.heart %>%
   group_by(cluster) %>%
