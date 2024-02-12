@@ -732,7 +732,7 @@ data <- readRDS(paste0(myfolder, "rds_objects/HDCA_heart_sc_full_before_annotati
 The annotation was imported from an external .csv file. The annotation is added as a new metadata row `cell.types` by matching the cluster numbers.
 
 ```{r}
-annotation <- read.csv2("/home/rstudio/project/data/metadata/hl_annotation_2023-12-21.csv", header = 1, sep = ";")
+annotation <- read.csv2("/home/rstudio/project/data/metadata/HDCA_heart_SC annotations_HL_240115.csv", header = 1, sep = ";")
 cells_clusters <- setNames(annotation$cell_type, nm = annotation$cluster)
 data$cell.types <- cells_clusters[as.character(data$high_level_clusters)]
 rm(annotation, cells_clusters)
@@ -742,7 +742,7 @@ gc()
 
 ## *After annotation*
 
-### Plot UMAP with annotations
+### Plot UMAP with annotations (Fig. 2B, E)
 
 ```{r}
 pdf(paste0(myfolder, "annotation.pdf"), width = 20, height = 15)
@@ -774,7 +774,7 @@ data <- readRDS(paste0(myfolder, "rds_objects/HDCA_heart_sc_full_extended.rds"))
 ```
 
 
-## Calculate differentially expressed genes (DEG) after annotation
+## Differentially expressed genes (DEG) after annotation (Supp Tab. 2)
 
 ```{r}
 # Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
@@ -793,8 +793,11 @@ DGE_cells <- unlist(DGE_cells)
 # Select all data that relates to the sampled DGE cells.
 DGE_DATA <- data[, DGE_cells]
 
+# reorder the cell types desired
+DGE_DATA$high_level_clusters_removed <- factor(DGE_DATA$cell.types, levels = c("OFT_FB", "Int_FB", "Endoc_EC", "Mat_vCM", "MetAct_vCM_2", "Prol_CM", "OFT_SMC", "MetAct_vCM_1", "CA_SMC", "MetAct_aCM", "MicroVasc_EC", "Valve_MC", "EPDC", "MyC", "AnnFibr_FB", "Mat_aCM", "TMSB10high_C_1", "Immat_CM", "EpC", "EndocCush_EC", "PC", "Peric_MC", "PDE4Chigh_EC", "NB-N", "SCP-GC", "MacroVasc_EC", "LyC", "PDE4Chigh_FB", "Prol_FB", "LEC", "TMSB10high_C_2"))
+
 #Find differentially expressed genes based on groups defined by "high_level_clusters_removed".
-DGE_DATA <- SetIdent(DGE_DATA, value = "high_level_clusters_removed")
+DGE_DATA <- SetIdent(DGE_DATA, value = "cell.types")
 
 # The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).
 detable <- FindAllMarkers(DGE_DATA,
@@ -814,11 +817,10 @@ detable$pct.diff <- detable$pct.1 - detable$pct.2
 detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
 
 # Save the detable as a csv file.
-write.csv2(detable, paste0(myfolder, "detable_rough_clusters_after_ann.csv"))
+write.csv2(detable, paste0(myfolder, "supplementary_tables/supplementary_table_2_DEG_HL.csv"))
 
 rm(detable, DGE_DATA, DGE_cells, sample_size)
 ```
-
 
 ## Age groups
 
@@ -883,7 +885,7 @@ ages <- readRDS(paste0(myfolder, "rds_objects/HDCA_heart_sc_age_groups.rds"))
 ```
 
 
-### Temporal evolution of High Level UMAP
+### Temporal evolution of High Level UMAP (Supp Fig. 2D)
 
 ```{r}
 pdf(file = paste0(myfolder, "Clusters_age_5_to_6_weeks_full_size.pdf"), width = 15, height = 15, bg = "transparent")
@@ -904,7 +906,7 @@ dev.off()
 ```
 
 
-### Cell type proportion by age group in entire data
+### Cell type proportion by age group in entire data (Fig. 2F, Supp Fig. 6C)
 
 ```{r}
 age1 <- data[,data$age <= 6]
@@ -943,7 +945,7 @@ gc()
 
 ## DotPlots
 
-### High Level dotplot from selected markers
+### High Level dotplot from selected markers (Fig. 2C)
 
 ```{r}
 # specific list of marker to project the dotplot on
@@ -995,10 +997,11 @@ data_HL$high_level_clusters_removed <- factor(data_HL$cell.types,
 data_HL <- SetIdent(data_HL, value = "high_level_clusters_removed")
 
 p <- DotPlot(data_HL, features = my_markers) +
+  coord_flip() +
   theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
   scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
-  scale_x_discrete() +
-  scale_y_discrete(limits = rev) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
   labs(x = "", y = "") + 
   theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
 
@@ -1006,7 +1009,51 @@ pdf(paste0(myfolder, "HL_dotplot_DEG.pdf"), width = 13, height = 11)
 print(p)
 dev.off()
 
-rm(p)
+# Save detable (markers only)
+# The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).
+detable <- FindAllMarkers(data_HL,
+                          only.pos = TRUE,
+                          features = my_markers,
+                          max.cells.per.ident = 300,
+                          logfc.threshold = .1,
+                          assay = "RNA",
+                          min.pct = 0.05)
+
+# Only keep DEGs that have a p-value below 0.05.
+detable <- detable[detable$p_val < 0.05, ]
+
+# Adding two extra columns giving the difference (and log difference) between pct1 and pct2.
+# pct1 is the percentage of cells in the specific cluster that express this gene.
+# pct2 is the percentage of cells in all other clusters that express this gene.
+detable$pct.diff <- detable$pct.1 - detable$pct.2
+detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
+
+# Save the detable as a csv file.
+write.csv2(detable, paste0(myfolder, "detable_HL_clusters_after_ann.csv"))
+
+
+# Save detable (Complete)
+# The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).
+detable <- FindAllMarkers(data_HL,
+                          only.pos = TRUE,
+                          max.cells.per.ident = 300,
+                          logfc.threshold = .1,
+                          assay = "RNA",
+                          min.pct = 0.05)
+
+# Only keep DEGs that have a p-value below 0.05.
+detable <- detable[detable$p_val < 0.05, ]
+
+# Adding two extra columns giving the difference (and log difference) between pct1 and pct2.
+# pct1 is the percentage of cells in the specific cluster that express this gene.
+# pct2 is the percentage of cells in all other clusters that express this gene.
+detable$pct.diff <- detable$pct.1 - detable$pct.2
+detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
+
+# Save the detable as a csv file.
+write.csv2(detable, paste0(myfolder, "detable_HL_clusters_after_ann_complete.csv"))
+
+#rm(p)
 gc()
 ```
 
@@ -1035,7 +1082,7 @@ gc()
 ```
 
 
-#### CM from High Level dotplot from selected markers
+#### CM from High Level dotplot from selected markers (Supp Fig. 2A)
 
 ```{r}
 data_CM <- data[, data$high_level_clusters_removed == "4_35" |
@@ -1059,7 +1106,6 @@ data_CM$cell.types <- factor(data_CM$cell.types,
                                         "Prol_CM", 
                                         "Immat_CM"))
 
-#data_CM <- SetIdent(data_CM, value = "high_level_clusters_removed")
 data_CM <- SetIdent(data_CM, value = "cell.types")
 
 
@@ -1080,6 +1126,12 @@ gc()
 ```
 
 
+## Load data
+
+```{r}
+data <- readRDS(paste0(myfolder, "rds_objects/HDCA_heart_sc_full_extended.rds"))
+```
+
 At this point, the analysis continues on subsets of the data on other scripts.
 
 ================================================================================
@@ -1089,7 +1141,132 @@ At this point, the analysis continues on subsets of the data on other scripts.
 ================================================================================
 
 
+### Test heatmap level of expression
 
+#### Open gene list: Familial non syndromic congenital heart disease (Version 1.80) - only green marked genes
+https://panelapp.genomicsengland.co.uk/panels/212/
+
+```{r}
+markers_df <- read.csv2("/home/rstudio/project/data/metadata/familial_non_syndromic_congenital_heart_disease.csv", header = 1, sep = ";")
+my_markers <- c(markers_df$gene_name)
+gc()
+```
+
+
+```{r}
+# remove undesired cells
+cells_to_remove <- data$cell.types == "HL_excl_1" | 
+                   data$cell.types == "HL_excl_2" | 
+                   data$cell.types == "HL_excl_3" | 
+                   data$cell.types == "HL_excl_4"
+
+data_HL <- data[,!cells_to_remove]
+rm(cells_to_remove, data)
+
+# reorder the cell types desired
+data_HL$high_level_clusters_removed <- factor(data_HL$cell.types, 
+                                              levels = c("Mat_vCM",
+                                                         "Mat_aCM",
+                                                         "MetAct_vCM_1",
+                                                         "MetAct_vCM_2",
+                                                         "MetAct_aCM",
+                                                         "Prol_CM",
+                                                         "Immat_CM",
+                                                         "TMSB10high_C_1",
+                                                         "TMSB10high_C_2",
+                                                         "MacroVasc_EC",
+                                                         "MicroVasc_EC",
+                                                         "PDE4Chigh_EC",
+                                                         "LEC",
+                                                         "Endoc_EC",
+                                                         "EndocCush_EC",
+                                                         "Valve_MC",
+                                                         "PDE4Chigh_FB",
+                                                         "Int_FB",
+                                                         "Peric_MC",
+                                                         "OFT_FB",
+                                                         "EPDC",
+                                                         "AnnFibr_FB",
+                                                         "Prol_FB",
+                                                         "OFT_SMC",
+                                                         "CA_SMC",
+                                                         "PC",
+                                                         "EpC",
+                                                         "NB-N",
+                                                         "SCP-GC",
+                                                         "MyC",
+                                                         "LyC"))
+
+data_HL <- SetIdent(data_HL, value = "high_level_clusters_removed")
+
+#get matrix average expression from marker genes
+mat <- AverageExpression(object = data_HL, features = my_markers, group.by = 'high_level_clusters_removed')$RNA
+
+#Warning: The following 5 features were not found in the RNA assay: GDF1, NKX2, NKX3, NKX4, NKX5
+
+#remove missing genes:
+mat <- subset(mat, !(rownames(mat) %in% c("GDF1", "NKX2", "NKX3", "NKX4", "NKX5")))
+
+# plot heatmap
+pal <- colorRampPalette(RColorBrewer::brewer.pal(n = 8, name = "Blues"))(25)
+```
+
+```{r}
+library(tibble)
+library(tidyr)
+# normalise average expression gene by gene (z-score)
+gg_mat <- mat |>
+  as.data.frame() |>
+  tibble::rownames_to_column(var = "gene") |>
+  pivot_longer(-gene) |>
+  group_by(gene) |>
+  mutate(value = scale(value, center = F, scale = T)) |>
+  ungroup()
+
+gg_mat$name <- factor(gg_mat$name, levels = c("Mat_vCM",
+                                                         "Mat_aCM",
+                                                         "MetAct_vCM_1",
+                                                         "MetAct_vCM_2",
+                                                         "MetAct_aCM",
+                                                         "Prol_CM",
+                                                         "Immat_CM",
+                                                         "TMSB10high_C_1",
+                                                         "TMSB10high_C_2",
+                                                         "MacroVasc_EC",
+                                                         "MicroVasc_EC",
+                                                         "PDE4Chigh_EC",
+                                                         "LEC",
+                                                         "Endoc_EC",
+                                                         "EndocCush_EC",
+                                                         "Valve_MC",
+                                                         "PDE4Chigh_FB",
+                                                         "Int_FB",
+                                                         "Peric_MC",
+                                                         "OFT_FB",
+                                                         "EPDC",
+                                                         "AnnFibr_FB",
+                                                         "Prol_FB",
+                                                         "OFT_SMC",
+                                                         "CA_SMC",
+                                                         "PC",
+                                                         "EpC",
+                                                         "NB-N",
+                                                         "SCP-GC",
+                                                         "MyC",
+                                                         "LyC"))
+
+#plot
+p <- ggplot(gg_mat, aes(name, gene, fill = value)) + 
+  geom_tile() +
+  scale_fill_gradientn(colours = pal) +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle = 90)) +
+  labs(fill = "z-score")
+
+pdf(paste0(myfolder, "patho_enrich/familial_non_syndromic_congenital_heart_disease_HL_gg_zscore.pdf"), width = 11, height = 12)
+p
+dev.off()
+```
 
 
 

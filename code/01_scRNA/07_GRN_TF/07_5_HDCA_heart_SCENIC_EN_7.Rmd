@@ -1,0 +1,175 @@
+---
+title: "07_5_HDCA_heart_SCENIC_EN_7"
+author: "Raphaël Mauron"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# HDCA heart SCENIC EN7
+
+Calculate Gene Regulatory Network and infer Transcription Factors activity (Regulons) with SCENIC.
+
+Regulons enrichment in EN_7, EN_17, EN_18 in time.
+
+NOTE: The path to load the data and the path to save the figures should be changed at your convenience.
+
+Environment: **Docker**
+
+
+## Settings
+
+### Set library path
+
+```{r setup, include=FALSE}
+.libPaths("/home/rstudio/project/renv/library/R-4.3/aarch64-unknown-linux-gnu/")
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+### Load Libraries
+
+```{r, message = FALSE}
+library(Seurat)
+library(SCENIC)
+library(SingleCellExperiment)
+library(ggplot2)
+library(tidygraph)
+library(ggraph)
+library(igraph)
+library(feather)
+library(data.table)
+```
+
+
+### Set environment variables
+
+```{r}
+myfolder <- "/home/rstudio/project/output/HDCA_heart_sc_analysis_docker/"
+```
+
+
+### Load data
+
+```{r}
+EN <- readRDS(file = paste0(myfolder, "rds_objects/endothelial.rds"))
+```
+
+
+### Set seed
+
+```{r}
+set.seed(1)
+```
+
+
+## Sub-sample to specific cluster of interest
+
+Prepare data_enrich for enrichment done later on.
+
+```{r}
+data_cell <- EN
+cluster <- "7"
+data_sub <- data_cell[,data_cell$clusters_subset %in% cluster]
+
+to_keep_for_enrich <- c("7", "17", "18")
+data_enrich <- data_cell[,data_cell$clusters_subset %in% to_keep_for_enrich]
+```
+
+
+### Get expression matrix
+
+```{r}
+exprMat <- GetAssayData(data_sub, assay = "RNA", slot = "counts")
+exprMat <- as.matrix(exprMat)
+
+rownames(exprMat)
+dim(exprMat)
+
+Idents(data_sub)
+cellInfo <- data.frame(seuratCluster=Idents(data_sub))
+```
+
+
+### Initialize settings
+
+database selected:
+´´´wget https://resources.aertslab.org/cistarget/databases/old/homo_sapiens/hg19/refseq_r45/mc9nr/gene_based/hg19-500bp-upstream-7species.mc9nr.feather´´´
+
+´´´wget https://resources.aertslab.org/cistarget/databases/old/homo_sapiens/hg19/refseq_r45/mc9nr/gene_based/hg19-tss-centered-10kb-7species.mc9nr.feather´´´
+
+
+```{r}
+org <- "hgnc"
+dbDir <- "/home/rstudio/project/data/db_scenic" # RcisTarget databases location
+dbs <- c("hg19-500bp-upstream-10species.mc9nr.feather",
+         "hg19-tss-centered-10kb-7species.mc9nr.feather")
+scenicOptions <- initializeScenic(org=org, dbDir=dbDir, dbs=dbs, nCores=10) #might give an error so need to rename motifAnnotations
+
+motifAnnotations_hgnc <- motifAnnotations
+
+scenicOptions <- initializeScenic(org=org, dbDir=dbDir, dbs=dbs, nCores=10) #rerun 
+rm(motifAnnotations)
+
+# Add cellInfo to scenicOptions object
+scenicOptions@inputDatasetInfo$cellInfo <- cellInfo
+```
+
+
+### Co-expression network
+
+```{r}
+genesKept <- geneFiltering(exprMat, scenicOptions) #create list of markers from gene set that are found in databases provided
+
+#filter expression matrix
+exprMat_filtered <- exprMat[genesKept, ] #filter based on genes found in database
+dim(exprMat_filtered)
+exprMat_filtered <- exprMat[VariableFeatures(EN),] #keeps only the highly variable genes
+dim(exprMat_filtered)
+
+#run correlation
+runCorrelation(exprMat_filtered, scenicOptions)
+
+#run GENIE3
+exprMat_filtered_log <- log2(exprMat_filtered+1) #check if already normalized in the exprMat_filtered
+runGenie3(exprMat_filtered_log, scenicOptions)
+```
+
+
+#### Extract TF List from GENIE3
+
+```{r}
+genie_list <- loadInt(scenicOptions, "genie3ll")
+table(genie_list$TF)
+list_unique_TF <- c(sort(unique(genie_list$TF)))
+list_unique_TF <- factor(list_unique_TF, levels = list_unique_TF)
+```
+
+
+#### Enrichment of unique TF in remaining clusters (Extended Tab. 7)
+
+```{r}
+data_cell <- SetIdent(data_cell, value = "clusters_subset")
+data_cell$clusters_subset <- factor(data_cell$clusters_subset, 
+                                              levels = c("7","17", "18")) #To find most variable TF between THOSE clusters
+
+# Identify all other clusters
+all_clusters <- levels(data_cell$clusters_subset)
+other_clusters <- setdiff(all_clusters, cluster)
+
+# Run FindMarkers to compare the cluster of interest against all other clusters combined
+markers_table <- FindMarkers(data_cell, 
+                             ident.1 = cluster, 
+                             ident.2 = other_clusters, 
+                             test.use = "wilcox", 
+                             features = list_unique_TF)
+
+# Print the resulting table
+markers_table$pct.diff <- markers_table$pct.1 - markers_table$pct.2
+
+# Save markers_table
+write.csv(markers_table, paste0(myfolder, "supplementary_tables/extended_table_7_TF_DEG_EN_7.csv"))
+```
+
+
+

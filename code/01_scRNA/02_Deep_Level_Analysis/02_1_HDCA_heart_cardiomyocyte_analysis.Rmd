@@ -82,16 +82,15 @@ set.seed(1)
 * Construct knn adjacency matrix with hnsw_knn
 * Cluster cells using cluster_louvain
 
-```{r}
+```{r, message=FALSE}
 # Subset the data to keep only CMs
-CM <- data[, data$cell.types == "Ventricular CM_1" | #4_35
-             data$cell.types == "Ventricular CM_3" | #5
-             data$cell.types == "Proliferating CM" | #7
-             data$cell.types == "Ventricular CM_2" | #9
-             data$cell.types == "Atrial CM_2" |      #11
-             data$cell.types == "Atrial CM_1" |      #17
-             data$cell.types == "Immature CM"        #18_2
-           ]
+CM <- data[, data$cell.types == "Mat_vCM"      |
+             data$cell.types == "MetAct_vCM_2" |
+             data$cell.types == "Prol_CM"      |
+             data$cell.types == "MetAct_vCM_1" |
+             data$cell.types == "MetAct_aCM"   |
+             data$cell.types == "Mat_aCM"      |
+             data$cell.types == "Immat_CM"     ]
 
 # Remove all genes with 0 counts
 CM <- CM[rowSums(GetAssayData(CM, slot = "counts")) > 0, ]
@@ -316,7 +315,7 @@ dev.off()
 ```
 
 
-### Add cl4, cl8 and cl19 subclusters
+### Add cl4, cl8 and cl19 subclusters (Extended Fig. 3A)
 
 ```{r}
 cl4_split <- cl4[[]] %>% 
@@ -354,20 +353,42 @@ dev.off()
 ```
 
 
-## Run DEG for all clusters
+## Add the annotation
+
+The annotation was imported from an external .csv file. The annotation is added as a new metadata row `cell.types` by matching the cluster numbers.
 
 ```{r}
-CM <- SetIdent(CM, value = "clusters_subset_split")
-de_markers_split <- FindAllMarkers(CM, logfc.threshold = 0.25,
-                             only.pos = TRUE, 
-                             min.pct = 0.05)
-
-openxlsx::write.xlsx(de_markers_split %>% filter(p_val_adj < 0.01),
-                     file = paste0(myfolder, "cardiomyocytes/detable_cardiomyocytes_split.xlsx"))
+annotation <- read.csv2("/home/rstudio/project/data/metadata/HDCA_heart_SC annotations_CM_240115.csv", header = 1, sep = ";")
+cells_clusters <- setNames(annotation$cell_type, nm = annotation$cluster)
+CM$cell.types <- cells_clusters[as.character(CM$clusters_subset_split)]
+rm(annotation, cells_clusters)
+gc()
 ```
 
 
-### Save images and data
+## Differentially expressed genes (DEG) for all clusters (Supp Tab. 3)
+
+```{r}
+CM <- SetIdent(CM, value = "cell.types")
+detable <- FindAllMarkers(CM, logfc.threshold = 0.25,
+                          only.pos = TRUE, 
+                          min.pct = 0.05)
+
+# Only keep DEGs that have a p-value below 0.05.
+detable <- detable[detable$p_val_adj < 0.01, ]
+
+# Adding two extra columns giving the difference (and log difference) between pct1 and pct2.
+# pct1 is the percentage of cells in the specific cluster that express this gene.
+# pct2 is the percentage of cells in all other clusters that express this gene.
+detable$pct.diff <- detable$pct.1 - detable$pct.2
+detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
+
+# Save the detable as a csv file.
+write.csv2(detable, paste0(myfolder, "supplementary_tables/supplementary_table_3_DEG_CM.csv"))
+```
+
+
+### Plots
 
 ```{r}
 # CM subclusters projected on high level UMAP
@@ -440,20 +461,20 @@ write.csv2(cell_by_cluster_entire_4, paste0(myfolder, "cardiomyocytes/cell_by_cl
 ```
 
 
-### Cluster remaining clusters
+### UMAP with annotation (Fig. 3A)
 
 ```{r}
 values_to_keep <- c("6",  "1", "10", "8-1", "8-3", "17", "8-2", "18", "4-2",  "4-1", "3", "14",  "9",  "12", "19-2",  "19-1", "7",  "2", "5")
 
 data_CM <- CM[, CM$clusters_subset_split %in% values_to_keep]
 
-pdf(file = paste0(myfolder, "cardiomyocytes/cardiomyocytes_clusters_remaining.pdf"), width = 10, height = 10)
-DimPlot(data_CM, reduction = "umap_subset", group.by = "clusters_subset_split", label = T) + NoLegend() + labs(title = "Cardiomyocyte subclusters")
+pdf(file = paste0(myfolder, "cardiomyocytes/cardiomyocytes_clusters_remaining_annot.pdf"), width = 10, height = 10)
+DimPlot(data_CM, reduction = "umap_subset", group.by = "cell.types", label = T) + NoLegend() + labs(title = "Cardiomyocyte subclusters")
 dev.off()
 ```
 
 
-### DEG CM - top5 ordered
+### DEG CM - top5 ordered (Supp Fig. 3A)
 
 ```{r}
 values_to_keep <- c("19-2", "19-1", "12", "9", "14", "4-2", "4-1", "18", "8-2", "8-1", "8-3", "17", "6", "1", "10", "3", "7", "2", "5")
@@ -480,8 +501,12 @@ DGE_DATA <- data_CM[, DGE_cells]
 DGE_DATA$clusters_subset_split <- factor(DGE_DATA$clusters_subset_split, 
                                               levels = c("19-2", "19-1", "12", "9", "14", "4-2", "4-1", "18", "8-2", "8-1", "8-3", "17", "6", "1", "10", "3", "7", "2", "5"))
 
+# reorder the cell types desired
+DGE_DATA$cell.types <- factor(DGE_DATA$cell.types, 
+                                              levels = c("SAN_CM", "AVN_CM", "Cond_aCM", "Left_aCM", "Right_aCM", "PF_CM", "TsPF_CM", "AVB-BB_CM", "vCM_1", "vCM_2", "vCM_3", "Prol_CM_1", "vCM_4", "vCM_5", "vCM_6", "Immat_CM_1", "Immat_CM_2", "Immat_CM_3", "Prol_CM_2"))
+
 #Find differential expressed genes based on groups defined by "clusters_subset_split".
-DGE_DATA <- SetIdent(DGE_DATA, value = "clusters_subset_split")
+DGE_DATA <- SetIdent(DGE_DATA, value = "cell.types")
 
 # The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).
 detable <- FindAllMarkers(DGE_DATA,
@@ -518,7 +543,7 @@ DotPlot(DGE_DATA, features = top5 %>% pull(gene) %>% unique()) +
   scale_x_discrete(limits = rev) +
   scale_y_discrete() +
   labs(x = "", y = "") +
-  theme(axis.text.x = element_text(angle = 30, hjust = 0.5))
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
 dev.off()
 
 gc()
@@ -526,7 +551,7 @@ rm(detable, DGE_DATA, top5, DGE_cells, sample_size)
 ```
 
 
-### DEG CM selection of markers (not split & all)
+### DEG CM selection of markers (not split & all) (Extended Fig. 3D)
 
 ```{r}
 # specific list of marker to project the dotplot on
@@ -535,14 +560,15 @@ my_markers <- c("MYH7", "MYH6", "MYBPC3", "TNNI1", "MYOZ2", "FABP3", "TMSB10", "
 CM <- SetIdent(CM, value = "clusters_subset")
 
 p <- DotPlot(CM, features = my_markers) +
+  coord_flip() +
   theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
   scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
-  scale_x_discrete() +
-  scale_y_discrete(limits = rev) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
   labs(x = "", y = "") + 
   theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
 
-pdf(paste0(myfolder, "cardiomyocytes/dotplot_markers_CM_subset_not_split.pdf"), width = 10, height = 6)
+pdf(paste0(myfolder, "cardiomyocytes/dotplot_markers_CM_subset_not_split.pdf"), width = 8, height = 8)
 print(p)
 dev.off()
 
@@ -551,7 +577,7 @@ gc()
 ```
 
 
-### DEG CM selection of VCS markers
+### DEG CM selection of VCS markers (Fig. 3E)
 
 ```{r}
 values_to_keep <- c("18", "4-2", "4-1", "6")
@@ -559,22 +585,23 @@ values_to_keep <- c("18", "4-2", "4-1", "6")
 data_CM <- CM[, CM$clusters_subset_split %in% values_to_keep]
 
 # specific list of marker to project the dotplot on
-my_markers <- c("RCAN1", "IRX1", "IRX2", "IRX5", "BRINP3", "SEMA3A", "IRX3","CSMD1", "PLXNA4", "GJA1")
+my_markers <- c("RCAN1", "IRX1", "IRX2", "IRX5", "BRINP3", "SEMA3A", "IRX3","CSMD1", "PLXNA4")
 
-data_CM$clusters_subset_split <- factor(data_CM$clusters_subset_split, 
-                                              levels = c("18", "4-2", "4-1", "6"))
+data_CM$cell.types <- factor(data_CM$cell.types, 
+                                              levels = c("AVB-BB_CM", "PF_CM", "TsPF_CM", "vCM_4"))
 
-data_CM <- SetIdent(data_CM, value = "clusters_subset_split")
+data_CM <- SetIdent(data_CM, value = "cell.types")
 
 p <- DotPlot(data_CM, features = my_markers) +
+  coord_flip() +
   theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
   scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
-  scale_x_discrete() +
-  scale_y_discrete(limits = rev) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
   labs(x = "", y = "") + 
   theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
 
-pdf(paste0(myfolder, "cardiomyocytes/dotplot_markers_CM_subset_selection_18_4-2_4-1_6.pdf"), width = 5, height = 3)
+pdf(paste0(myfolder, "cardiomyocytes/dotplot_markers_CM_subset_selection_18_4-2_4-1_6.pdf"), width = 4, height = 5)
 print(p)
 dev.off()
 
@@ -637,7 +664,7 @@ rm(detable, DGE_DATA, DGE_cells, sample_size)
 ```
 
 
-### DEG CM selection of ACS markers
+### DEG CM selection of ACS markers (Fig. 3D)
 
 ```{r}
 values_to_keep <- c("19-2", "19-1", "12", "9", "14")
@@ -645,22 +672,23 @@ values_to_keep <- c("19-2", "19-1", "12", "9", "14")
 data_CM <- CM[, CM$clusters_subset_split %in% values_to_keep]
 
 # specific list of marker to project the dotplot on
-my_markers <- c("SHOX2", "PRRX1", "TBX18",  "ZNF385B", "TENM2", "TENM3", "TENM4", "GDF10", "SLIT2", "ADAMTS19", "NRXN3")
+my_markers <- c("SHOX2", "PRRX1", "TBX18",  "ZNF385B", "TENM2", "TENM3", "TENM4", "GDF10", "SLIT2")
 
-data_CM$clusters_subset_split <- factor(data_CM$clusters_subset_split, 
-                                              levels = c("19-2", "19-1", "12", "9", "14"))
+data_CM$cell.types <- factor(data_CM$cell.types, 
+                                              levels = c("SAN_CM", "AVN_CM", "Cond_aCM", "Left_aCM", "Right_aCM"))
 
-data_CM <- SetIdent(data_CM, value = "clusters_subset_split")
+data_CM <- SetIdent(data_CM, value = "cell.types")
 
 p <- DotPlot(data_CM, features = my_markers) +
+  coord_flip() +
   theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
   scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
-  scale_x_discrete() +
-  scale_y_discrete(limits = rev) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
   labs(x = "", y = "") + 
   theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
 
-pdf(paste0(myfolder, "cardiomyocytes/dotplot_markers_CM_subset_selection_19-2_19-1_12_9_14.pdf"), width = 7, height = 3.5)
+pdf(paste0(myfolder, "cardiomyocytes/dotplot_markers_CM_subset_selection_19-2_19-1_12_9_14.pdf"), width = 4.5, height = 4)
 print(p)
 dev.off()
 
@@ -723,7 +751,7 @@ rm(detable, DGE_DATA, DGE_cells, sample_size)
 ```
 
 
-### DEG CM ADRB1, CHRM2 (innvervation figure)
+### DEG CM ADRB1, CHRM2 (Fig. 4F)
 
 ```{r}
 values_to_keep <- c("19-2", "19-1", "12", "9", "14", "4-2", "4-1", "18", "6")
@@ -733,10 +761,10 @@ data_CM <- CM[, CM$clusters_subset_split %in% values_to_keep]
 # specific list of marker to project the dotplot on
 my_markers <- c("ADRB1", "CHRM2")
 
-data_CM$clusters_subset_split <- factor(data_CM$clusters_subset_split, 
-                                              levels = c("19-2", "19-1", "12", "9", "14", "4-2", "4-1", "18", "6"))
+data_CM$cell.types <- factor(data_CM$cell.types, 
+                                              levels = c("SAN_CM", "AVN_CM", "Cond_aCM", "Left_aCM", "Right_aCM", "PF_CM", "TsPF_CM", "AVB-BB_CM", "vCM_4"))
 
-data_CM <- SetIdent(data_CM, value = "clusters_subset_split")
+data_CM <- SetIdent(data_CM, value = "cell.types")
 
 p <- DotPlot(data_CM, features = my_markers) +
   coord_flip() +
@@ -766,10 +794,10 @@ data_CM <- CM[, CM$clusters_subset_split %in% values_to_keep]
 # specific list of marker to project the dotplot on
 my_markers <- c("TNFRSF19", "XPO4", "TENM3",   "SPON1", "VCAM1", "IRX1", "IRX2", "RCAN1", "MYOM2", "ATP1A1", "BMP2", "HAMP", "FZD7", "TBX3", "ZFP36L1", "CNN1")
 
-data_CM$clusters_subset_split <- factor(data_CM$clusters_subset_split, 
-                                              levels = c("8-2", "18", "19-1"))
+data_CM$cell.types <- factor(data_CM$cell.types, 
+                                              levels = c("vCM_1", "AVB-BB_CM", "AVN_CM"))
 
-data_CM <- SetIdent(data_CM, value = "clusters_subset_split")
+data_CM <- SetIdent(data_CM, value = "cell.types")
 
 p <- DotPlot(data_CM, features = my_markers) +
   coord_flip() +
@@ -786,6 +814,25 @@ dev.off()
 
 rm(p)
 gc()
+```
+
+
+### FeaturePlot (Fig. ??)
+
+```{r}
+values_to_keep <- c("19-2", "19-1", "12", "9", "14", "4-2", "4-1", "18", "8-2", "8-1", "8-3", "17", "6", "1", "10", "3", "7", "2", "5")
+
+data_CM <- CM[, CM$clusters_subset_split %in% values_to_keep]
+
+feature_list <- c("LRRC4C", "UNC80", "DLGAP1", "SHOX2", "TBX18", "BMP2", "RSPO3", "ADAMTS19", "RCAN1", "HS3ST3A1", "CNTN5", "CRNDE", "BHLHE41", "RORA", "KCNJ2", "KCNJ3", "KCND2", "KCND3", "NRXN3", "ZNF536", "KCNK13", "CACNA1E", "CACNA1B", "KCNJ5", "KCNIP4")
+
+for (feature in feature_list){
+  p <-   FeaturePlot(data_CM, reduction = "umap_subset", features = feature, raster = FALSE, order = FALSE)
+
+  pdf(paste0(myfolder, "cardiomyocytes/feature_plots/", feature, ".pdf"), width = 10, height = 10)
+  print(p)
+  dev.off()
+}
 ```
 
 
@@ -852,6 +899,81 @@ pdf(file = paste0(myfolder, "cardiomyocytes/Violin_enrichment_ST.pdf"),
 VlnPlot(CM_subset, features = new_column_names, group.by = "clusters_subset_split", pt.size = 0) + 
   plot_layout(ncol = 2)
 dev.off()
+```
+
+
+### DE plot 4-2 4-1
+
+```{r}
+values_to_keep <- c("4-2", "4-1")
+
+data_CM <- CM[, CM$clusters_subset_split %in% values_to_keep]
+
+# Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
+sample_size <- table(data_CM$clusters_subset_split)
+sample_size[sample_size > 150] <- 150
+sample_size
+
+# Randomly sample the cells that will be included when calculating DGE (same number of cells as selected above).
+# Samples without replacement, so each cell only can be included once.
+DGE_cells <- lapply(names(sample_size), function(x){ 
+  set.seed(1)
+  sample(colnames(data_CM)[data_CM$clusters_subset_split == x], size = sample_size[x])
+  })
+DGE_cells <- unlist(DGE_cells)
+
+# Select all data that relates to the sampled DGE cells.
+DGE_DATA <- data_CM[, DGE_cells]
+
+# reorder the cell types desired
+DGE_DATA$clusters_subset_split <- factor(DGE_DATA$clusters_subset_split, levels = values_to_keep)
+
+# reorder the cell types desired
+DGE_DATA$cell.types <- factor(DGE_DATA$cell.types, levels = c("PF_CM", "TsPF_CM"))
+
+#Find differential expressed genes based on groups defined by "clusters_subset_split".
+DGE_DATA <- SetIdent(DGE_DATA, value = "cell.types")
+
+# The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).
+detable <- FindAllMarkers(DGE_DATA,
+                          only.pos = TRUE,
+                          max.cells.per.ident = 300,
+                          logfc.threshold = .1,
+                          assay = "RNA",
+                          min.pct = 0.05)
+
+# Only keep DEG that have a p-value below 0.05.
+detable <- detable[detable$p_val < 0.05, ]
+
+# Adding two extra columns giving the difference (and log difference) between pct1 and pct2.
+# pct1 is the percentage of cells in the specific cluster that express this gene.
+# pct2 is the percentage of cells in all other clusters that express this gene.
+detable$pct.diff <- detable$pct.1 - detable$pct.2
+detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
+
+
+# Pick the 40 genes with the lowest p value for each cluster, then 20 highest based on pct.diff, then 5 highest based on avg_log2FC.
+detable %>%
+  group_by(cluster) %>%
+  top_n(-40, p_val) %>%
+  top_n(20, pct.diff) %>%
+  top_n(10, avg_log2FC) ->
+  top10
+
+pdf(paste0(myfolder, "cardiomyocytes/DEG_top10_CM_4_2_4_1.pdf"), width = 5, height = 7)
+par(mfrow=c(1,1), mar=c(3,6,2,5))
+DotPlot(DGE_DATA, features = top10 %>% pull(gene) %>% unique()) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+dev.off()
+
+gc()
+rm(detable, DGE_DATA, top5, DGE_cells, sample_size)
 ```
 
 

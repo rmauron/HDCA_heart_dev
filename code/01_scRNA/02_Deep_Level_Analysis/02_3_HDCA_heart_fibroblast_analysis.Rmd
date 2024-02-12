@@ -68,7 +68,7 @@ set.seed(1)
 ```
 
 
-## Subset, process, clustering
+## Subset, process, clustering (Extended Fig. 3A)
 
 * Keep all cells annotated as endothelial
 * Calculate variable features
@@ -79,16 +79,16 @@ set.seed(1)
 * Construct knn adjacency matrix with hnsw_knn
 * Cluster cells using cluster_louvain
 
-```{r, eval = !file.exists(paste0(myfolder, "rds_objects/15_sc_subset_cardiomyocytes.rds"))}
+```{r, message=FALSE}
 # Subset the data to keep only fibroblasts
-FB <- data[,data$cell.types == "Outflow tract FB"                    | #1
-            data$cell.types == "Interstitial FB"                     | #2
-            data$cell.types == "Valve-related FB"                    | #13
-            data$cell.types == "Epicardium-derived progenitor cells" | #14
-            data$cell.types == "Atrioventricular plane FB"           | #16
-            data$cell.types == "Vessel-related FB"                   | #23
-            data$cell.types == "SEMA4Ahigh FB"                       | #30
-            data$cell.types == "Proliferating FB"                    ] #31
+FB <- data[,data$cell.types == "OFT_FB"       |
+            data$cell.types == "Int_FB"       |
+            data$cell.types == "Valve_MC"     |
+            data$cell.types == "EPDC"         |
+            data$cell.types == "AnnFibr_FB"   |
+            data$cell.types == "Peric_MC"     |
+            data$cell.types == "PDE4Chigh_FB" |
+            data$cell.types == "Prol_FB"      ]
            
 # Process the data
 FB <- NormalizeData(FB)
@@ -138,20 +138,55 @@ gc()
 ```
 
 
-## Run DEG for all clusters
+## Add the annotation
+
+The annotation was imported from an external .csv file. The annotation is added as a new metadata row `cell.types` by matching the cluster numbers.
 
 ```{r}
-FB <- SetIdent(FB, value = "clusters_subset")
-de_markers <- FindAllMarkers(FB, logfc.threshold = 0.25,
-                             only.pos = TRUE, 
-                             min.pct = 0.05)
-
-openxlsx::write.xlsx(de_markers %>% filter(p_val_adj < 0.01),
-                     file = paste0(myfolder, "fibroblast/detable_fibroblasts.xlsx"))
+annotation <- read.csv2("/home/rstudio/project/data/metadata/HDCA_heart_SC annotations_FB_240115.csv", header = 1, sep = ";")
+cells_clusters <- setNames(annotation$cell_type, nm = annotation$cluster)
+FB$cell.types <- cells_clusters[as.character(FB$clusters_subset)]
+rm(annotation, cells_clusters)
+gc()
 ```
 
 
-### DEG FB - top5 ordered
+## Differentially expressed genes (DEG) for all clusters (Supp Tab. 6)
+
+```{r}
+FB <- SetIdent(FB, value = "cell.types")
+detable <- FindAllMarkers(FB, logfc.threshold = 0.25,
+                          only.pos = TRUE, 
+                          min.pct = 0.05)
+
+# Only keep DEGs that have a p-value below 0.05.
+detable <- detable[detable$p_val_adj < 0.01, ]
+
+# Adding two extra columns giving the difference (and log difference) between pct1 and pct2.
+# pct1 is the percentage of cells in the specific cluster that express this gene.
+# pct2 is the percentage of cells in all other clusters that express this gene.
+detable$pct.diff <- detable$pct.1 - detable$pct.2
+detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
+
+# Save the detable as a csv file.
+write.csv2(detable, paste0(myfolder, "supplementary_tables/supplementary_table_6_DEG_FB.csv"))
+```
+
+
+### UMAP with annotation (Fig. 6A)
+
+```{r}
+values_to_keep <- c("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", "11", "17", "8", "1", "6", "15", "20")
+
+data_FB <- FB[, FB$clusters_subset %in% values_to_keep]
+
+pdf(file = paste0(myfolder, "fibroblast/fibroblast_clusters_remaining_annot.pdf"), width = 10, height = 10)
+DimPlot(data_FB, reduction = "umap_subset", group.by = "cell.types", label = T) + NoLegend() + labs(title = "Fibroblast subclusters")
+dev.off()
+```
+
+
+### DEG FB - top5 ordered (Supp Fig. 6A)
 
 ```{r}
 values_to_keep <- c("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", "11", "17", "8", "1", "6", "15", "20")
@@ -175,28 +210,28 @@ DGE_cells <- unlist(DGE_cells)
 DGE_DATA <- data_FB[, DGE_cells]
 
 # reorder the cell types desired
-DGE_DATA$clusters_subset <- factor(DGE_DATA$clusters_subset, 
-                                              levels = c("7", 
-                                                         "3", 
-                                                         "18", 
-                                                         "14", 
-                                                         "5", 
-                                                         "9", 
-                                                         "19", 
-                                                         "2", 
-                                                         "12", 
-                                                         "4", 
-                                                         "13", 
-                                                         "11", 
-                                                         "17", 
-                                                         "8", 
-                                                         "1", 
-                                                         "6", 
-                                                         "15", 
-                                                         "20"))
+DGE_DATA$cell.types <- factor(DGE_DATA$cell.types, 
+                                              levels = c("EPDC_1", 
+                                                         "EPDC_2", 
+                                                         "Infl_FB", 
+                                                         "FAP", 
+                                                         "Int_FB_1", 
+                                                         "Int_FB_2", 
+                                                         "Int_FB_3", 
+                                                         "Prol_FB_2", 
+                                                         "Prol_FB_1", 
+                                                         "VIC", 
+                                                         "Valve_MC_1", 
+                                                         "Valve_MC_2", 
+                                                         "CALN1high_FB", 
+                                                         "AnnFibr_FB^fg", 
+                                                         "Adv_FB_1", 
+                                                         "Adv_FB_2", 
+                                                         "Peric_MC^fg", 
+                                                         "PDE4Chigh_FB^fg"))
 
 #Find differential expressed genes based on groups defined by "clusters_subset_split".
-DGE_DATA <- SetIdent(DGE_DATA, value = "clusters_subset")
+DGE_DATA <- SetIdent(DGE_DATA, value = "cell.types")
 
 # The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).
 detable <- FindAllMarkers(DGE_DATA,
@@ -232,7 +267,7 @@ DotPlot(DGE_DATA, features = top5 %>% pull(gene) %>% unique()) +
   scale_x_discrete(limits = rev) +
   scale_y_discrete() +
   labs(x = "", y = "") +
-  theme(axis.text.x = element_text(angle = 30, hjust = 0.5))
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
 dev.off()
 
 gc()
@@ -240,21 +275,24 @@ rm(detable, DGE_DATA, top5, DGE_cells, sample_size)
 ```
 
 
-### DEG FB selection of markers
+### DEG FB selection of markers (Extended Fig. 3D)
 
 ```{r}
 # specific list of marker to project the dotplot on
 my_markers <- c("MYH7", "MYH6", "MYBPC3", "TNNI1", "MYOZ2", "FABP3", "TMSB10", "S100A11", "GNG11", "FABP4", "VWF", "CDH5", "PECAM1", "LYVE1", "NPR3", "BMPER", "POSTN", "APCDD1", "TWIST1", "DDR2", "TCF21", "COL1A1", "MYH11", "ENPEP", "ITLN1", "PCSK1N", "MPZ", "C1QC", "JCHAIN", "CD3E", "KLRB1", "UBE2C", "H1-1")
 
+FB <- SetIdent(FB, value = "clusters_subset")
+
 p <- DotPlot(FB, features = my_markers) +
+  coord_flip() +
   theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
   scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
-  scale_x_discrete() +
-  scale_y_discrete(limits = rev) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
   labs(x = "", y = "") + 
   theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
 
-pdf(paste0(myfolder, "fibroblast/dotplot_markers_FB.pdf"), width = 10, height = 6)
+pdf(paste0(myfolder, "fibroblast/dotplot_markers_FB.pdf"), width = 8, height = 8)
 print(p)
 dev.off()
 
@@ -263,7 +301,7 @@ gc()
 ```
 
 
-### DEG FB subtype selection of markers - keep but need to modify
+### DEG FB subtype selection of markers
 
 ```{r}
 # specific list of marker to project the dotplot on
@@ -273,9 +311,26 @@ values_to_keep <- c("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", 
 
 data_FB <- FB[, FB$clusters_subset %in% values_to_keep]
 
-data_FB$clusters_subset <- factor(data_FB$clusters_subset, levels = c("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", "11", "17", "8", "1", "6", "15", "20"))
+data_FB$cell.types <- factor(data_FB$cell.types, levels = c("EPDC_1", 
+                                                            "EPDC_2", 
+                                                            "Infl_FB", 
+                                                            "FAP", 
+                                                            "Int_FB_1", 
+                                                            "Int_FB_2", 
+                                                            "Int_FB_3", 
+                                                            "Prol_FB_2", 
+                                                            "Prol_FB_1", 
+                                                            "VIC", 
+                                                            "Valve_MC_1", 
+                                                            "Valve_MC_2", 
+                                                            "CALN1high_FB", 
+                                                            "AnnFibr_FB^fg", 
+                                                            "Adv_FB_1", 
+                                                            "Adv_FB_2", 
+                                                            "Peric_MC^fg", 
+                                                            "PDE4Chigh_FB^fg"))
 
-data_FB <- SetIdent(data_FB, value = "clusters_subset")
+data_FB <- SetIdent(data_FB, value = "cell.types")
 
 p <- DotPlot(data_FB, features = my_markers) +
   theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
@@ -294,14 +349,87 @@ gc()
 ```
 
 
-### FeaturePlot
+### DEG FB - top10 ordered - FB_4, FB_11, FB_13 (Supp Fig. 6E)
+
+```{r}
+values_to_keep <- c("4", "11", "13")
+
+data_FB <- FB[, FB$clusters_subset %in% values_to_keep]
+
+# Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
+sample_size <- table(data_FB$clusters_subset)
+sample_size[sample_size > 150] <- 150
+sample_size
+
+# Randomly sample the cells that will be included when calculating DGE (same number of cells as selected above).
+# Samples without replacement, so each cell only can be included once.
+DGE_cells <- lapply(names(sample_size), function(x){ 
+  set.seed(1)
+  sample(colnames(data_FB)[data_FB$clusters_subset == x], size = sample_size[x])
+  })
+DGE_cells <- unlist(DGE_cells)
+
+# Select all data that relates to the sampled DGE cells.
+DGE_DATA <- data_FB[, DGE_cells]
+
+# reorder the cell types desired
+DGE_DATA$cell.types <- factor(DGE_DATA$cell.types, levels = c("VIC", 
+                                                         "Valve_MC_2", 
+                                                         "Valve_MC_1"))
+
+#Find differential expressed genes based on groups defined by "clusters_subset_split".
+DGE_DATA <- SetIdent(DGE_DATA, value = "cell.types")
+
+# The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).
+detable <- FindAllMarkers(DGE_DATA,
+                          only.pos = TRUE,
+                          max.cells.per.ident = 300,
+                          logfc.threshold = .1,
+                          assay = "RNA",
+                          min.pct = 0.05)
+
+# Only keep DEG that have a p-value below 0.05.
+detable <- detable[detable$p_val < 0.05, ]
+
+# Adding two extra columns giving the difference (and log difference) between pct1 and pct2.
+# pct1 is the percentage of cells in the specific cluster that express this gene.
+# pct2 is the percentage of cells in all other clusters that express this gene.
+detable$pct.diff <- detable$pct.1 - detable$pct.2
+detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
+
+# Pick the 40 genes with the lowest p value for each cluster, then 20 highest based on pct.diff, then 5 highest based on avg_log2FC.
+detable %>%
+  group_by(cluster) %>%
+  top_n(-40, p_val) %>%
+  top_n(20, pct.diff) %>%
+  top_n(10, avg_log2FC) ->
+  top10
+
+pdf(paste0(myfolder, "fibroblast/DEG_top10_FB_ordered_4_11_13.pdf"), width = 4, height = 7.5)
+par(mfrow=c(1,1), mar=c(3,6,2,5))
+DotPlot(DGE_DATA, features = top10 %>% pull(gene) %>% unique()) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+dev.off()
+
+gc()
+rm(detable, DGE_DATA, top10, DGE_cells, sample_size)
+```
+
+
+### FeaturePlot (Supp Fig. 6B)
 
 ```{r}
 values_to_keep <- c("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", "11", "17", "8", "1", "6", "15", "20")
 
 data_FB <- FB[, FB$clusters_subset %in% values_to_keep]
 
-feature_list <- c("WT1", "TCF21", "CCL2", "APCDD1", "ERBB4",  "PENK", "PLA2G5",  "ACTA2", "CLEC3B")
+feature_list <- c("WT1", "PLA2G5", "MKI67", "TCF21", "CD34", "CLEC3B", "APCDD1", "ERBB4",  "PENK",  "ACTA2",  "CCL2", "FGF14", "PDGFRB")
 
 for (feature in feature_list){
   p <-   FeaturePlot(data_FB, reduction = "umap_subset", features = feature, raster = FALSE, order = FALSE)
@@ -310,6 +438,37 @@ for (feature in feature_list){
   print(p)
   dev.off()
 }
+```
+
+
+### Cell type proportion by age group in entire FB object (Supp Fig. 6C)
+
+```{r}
+age1 <- FB[,FB$age <= 6]
+age2 <- FB[,FB$age == 7 | FB$age == 8 | FB$age == 8.5]
+age3 <- FB[,FB$age == 9 | FB$age == 10 | FB$age == 11.5]
+age4 <- FB[,FB$age >= 12]
+
+FB_age <- c(age1, age2, age3, age4)
+rm(age1, age2, age3, age4)
+
+# create df by age grouping the number of cell per cluster
+cell_by_cluster_entire_1 <- as.data.frame(table(FB_age[[1]]@meta.data[["clusters_subset"]]))
+cell_by_cluster_entire_2 <- as.data.frame(table(FB_age[[2]]@meta.data[["clusters_subset"]]))
+cell_by_cluster_entire_3 <- as.data.frame(table(FB_age[[3]]@meta.data[["clusters_subset"]]))
+cell_by_cluster_entire_4 <- as.data.frame(table(FB_age[[4]]@meta.data[["clusters_subset"]]))
+
+# add the proportion of each cell type
+cell_by_cluster_entire_1$proportion <- cell_by_cluster_entire_1$Freq/sum(cell_by_cluster_entire_1$Freq)
+cell_by_cluster_entire_2$proportion <- cell_by_cluster_entire_2$Freq/sum(cell_by_cluster_entire_2$Freq)
+cell_by_cluster_entire_3$proportion <- cell_by_cluster_entire_3$Freq/sum(cell_by_cluster_entire_3$Freq)
+cell_by_cluster_entire_4$proportion <- cell_by_cluster_entire_4$Freq/sum(cell_by_cluster_entire_4$Freq)
+
+# export the df as .csv
+write.csv2(cell_by_cluster_entire_1, paste0(myfolder, "fibroblast/cell_by_cluster_entire_1.csv"))
+write.csv2(cell_by_cluster_entire_2, paste0(myfolder, "fibroblast/cell_by_cluster_entire_2.csv"))
+write.csv2(cell_by_cluster_entire_3, paste0(myfolder, "fibroblast/cell_by_cluster_entire_3.csv"))
+write.csv2(cell_by_cluster_entire_4, paste0(myfolder, "fibroblast/cell_by_cluster_entire_4.csv"))
 ```
 
 
@@ -330,6 +489,15 @@ FB <- readRDS(paste0(myfolder, "rds_objects/fibroblasts.rds"))
 ================================================================================
 ================================================================================
 ================================================================================
+
+#### Table HL vs DL cells
+
+```{r}
+cell_HL_DL <- table(FB$cell.types, FB$clusters_subset)
+
+# Save markers_table
+write.csv(cell_HL_DL, file = paste0(myfolder, "fibroblast/", "cell_HL_DL", "_FB", ".tsv"))
+```
 
 
 

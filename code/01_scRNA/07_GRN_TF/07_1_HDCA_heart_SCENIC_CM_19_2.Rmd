@@ -139,11 +139,11 @@ list_unique_TF <- c(sort(unique(genie_list$TF)))
 list_unique_TF <- factor(list_unique_TF, levels = list_unique_TF)
 
 # Save unique list_unique_TF
-write.csv(list_unique_TF, file = paste0(myfolder, "scenic/markers_table/", "list_unique_TF","_CM_", cluster, ".tsv"))
+# write.csv(list_unique_TF, file = paste0(myfolder, "scenic/markers_table/", "list_unique_TF","_CM_", cluster, ".tsv"))
 ```
 
 
-#### Enrichment of unique TF in remaining clusters
+#### Enrichment of unique TF in remaining clusters (Extended Tab. 3)
 
 ```{r}
 data_cell <- SetIdent(data_cell, value = "clusters_subset_split")
@@ -166,7 +166,7 @@ markers_table <- FindMarkers(data_cell,
 markers_table$pct.diff <- markers_table$pct.1 - markers_table$pct.2
 
 # Save markers_table
-write.csv(markers_table, file = paste0(myfolder, "scenic/markers_table/", "CM_", cluster, ".tsv"))
+write.csv(markers_table, paste0(myfolder, "supplementary_tables/extended_table_3_TF_DEG_CM.csv"))
 ```
 
 
@@ -277,7 +277,6 @@ motifEnrichment <- loadInt(scenicOptions, "motifEnrichment_full")
 motifEnrichment_selfMotifs <- motifEnrichment[which(motifEnrichment$TF_highConf != ""),, drop=FALSE]
 motifEnrichment_selfMotifs <- motifEnrichment_selfMotifs[which(motifEnrichment_selfMotifs$AUC > 0.1),, drop=FALSE]
 motifEnrichment_selfMotifs <- motifEnrichment_selfMotifs[which(motifEnrichment_selfMotifs$NES > 3.9),, drop=FALSE]
-
 ```
 
 
@@ -329,6 +328,16 @@ colnames(regulonTargetsInfo) <- c("TF", "gene", "nMotifs", "bestMotif", "NES", "
 ```
 
 
+### Regulons (Extended Tab. 2)
+
+```{r}
+regulon_table <- regulonTargetsInfo[,1:4]
+
+# Save the detable as a csv file.
+write.csv2(regulon_table, paste0(myfolder, "supplementary_tables/extended_table_2_regulon_CM.csv"))
+```
+
+
 #### Select TF
 
 ```{r}
@@ -370,7 +379,7 @@ unique(regulons$TF)
 ```
 
 
-### Plot Gene Regulatory Networks
+### Plot Gene Regulatory Networks (Fig. 3G)
 
 ```{r}
 net <- igraph::graph_from_data_frame(regulons, directed=T)

@@ -63,9 +63,6 @@ set.seed(1)
 
 ### Sub-sample to specific cluster of interest
 
-If interested in only 1 cluster, can take all the cells:
-Ran independently for CM19-2, CM19-1, CM4-2, EN7, EN17, EN18, FB14, FB4
-
 ```{r}
 data_cell <- FB
 cluster <- "14"
@@ -141,11 +138,11 @@ list_unique_TF <- c(sort(unique(genie_list$TF)))
 list_unique_TF <- factor(list_unique_TF, levels = list_unique_TF)
 
 # Save unique list_unique_TF
-write.csv(list_unique_TF, file = paste0(myfolder, "scenic/markers_table/", "list_unique_TF","_FB_", cluster, ".tsv"))
+# write.csv(list_unique_TF, file = paste0(myfolder, "scenic/markers_table/", "list_unique_TF","_FB_", cluster, ".tsv"))
 ```
 
 
-#### Enrichment of unique TF in remaining clusters
+#### Enrichment of unique TF in remaining clusters (Extended Tab. 9)
 
 ```{r}
 data_cell <- SetIdent(data_cell, value = "clusters_subset")
@@ -167,8 +164,7 @@ markers_table <- FindMarkers(data_cell,
 markers_table$pct.diff <- markers_table$pct.1 - markers_table$pct.2
 
 # Save markers_table
-write.csv(markers_table, file = paste0(myfolder, "scenic/markers_table/", "FB_", cluster, ".tsv"))
-
+write.csv(markers_table, paste0(myfolder, "supplementary_tables/extended_table_9_TF_DEG_FB.csv"))
 ```
 
 
@@ -331,6 +327,16 @@ colnames(regulonTargetsInfo) <- c("TF", "gene", "nMotifs", "bestMotif", "NES", "
 ```
 
 
+### Regulons (Extended Tab. 8)
+
+```{r}
+regulon_table <- regulonTargetsInfo[,1:4]
+
+# Save the detable as a csv file.
+write.csv2(regulon_table, paste0(myfolder, "supplementary_tables/extended_table_8_regulon_FB_14.csv"))
+```
+
+
 #### Select TF
 
 ```{r}
@@ -374,7 +380,7 @@ unique(regulons$TF)
 ```
 
 
-### Plot Gene Regulatory Networks
+### Plot Gene Regulatory Networks (Supp Fig. 6D)
 
 ```{r}
 net <- igraph::graph_from_data_frame(regulons, directed=T)

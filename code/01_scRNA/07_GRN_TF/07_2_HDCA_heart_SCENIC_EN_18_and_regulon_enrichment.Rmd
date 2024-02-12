@@ -170,11 +170,11 @@ list_unique_TF <- c(sort(unique(genie_list$TF)))
 list_unique_TF <- factor(list_unique_TF, levels = list_unique_TF)
 
 # Save unique list_unique_TF
-write.csv(list_unique_TF, file = paste0(myfolder, "scenic/markers_table/", "list_unique_TF","_EN_", cluster, ".tsv"))
+# write.csv(list_unique_TF, file = paste0(myfolder, "scenic/markers_table/", "list_unique_TF","_EN_", cluster, ".tsv"))
 ```
 
 
-#### Enrichment of unique TF in remaining clusters
+#### Enrichment of unique TF in remaining clusters (Extended Tab. 5)
 
 ```{r}
 data_cell <- SetIdent(data_cell, value = "clusters_subset")
@@ -196,7 +196,7 @@ markers_table <- FindMarkers(data_cell,
 markers_table$pct.diff <- markers_table$pct.1 - markers_table$pct.2
 
 # Save markers_table
-#write.csv(markers_table, file = paste0(myfolder, "scenic/markers_table/", "EN_", cluster, ".tsv"))
+write.csv(markers_table, paste0(myfolder, "supplementary_tables/extended_table_5_TF_DEG_EN_18.csv"))
 
 markers_table_to_keep <- markers_table %>%
   arrange(p_val) %>%
@@ -363,7 +363,17 @@ colnames(regulonTargetsInfo) <- c("TF", "gene", "nMotifs", "bestMotif", "NES", "
 ```
 
 
-#### Create modules based on the regulonTargetsInfo
+### Regulons (Extended Tab. 4)
+
+```{r}
+regulon_table <- regulonTargetsInfo[,1:4]
+
+# Save the detable as a csv file.
+write.csv2(regulon_table, paste0(myfolder, "supplementary_tables/extended_table_4_regulon_EN_18.csv"))
+```
+
+
+### Create modules based on the regulonTargetsInfo
 
 ```{r}
 # Split the dataframe by TF
@@ -405,7 +415,7 @@ dev.off()
 ```
 
 
-#### Enrichment of multiple TF
+#### Enrichment of multiple TF (Fig. 5F)
 
 ```{r}
 TF_list <- c("NFKB1", "KLF4", "MECOM", "HAND2", "ZNF385D", "SALL3", "PROX1", "SOX6", "PRDM16", "FOXC2", "HMGA2", "MEIS2", "SMAD6", "HEY2", "LMO2", "NFATC1", "SP6", "ARID5A", "ARID5B", "RFX2", "GLIS3", "LEF1", "FOS", "MSX1", "SOX6", "FOXP2", "ESRRG", "MAF", "FREM1")
@@ -427,8 +437,6 @@ for (my_TF in TF_list){
 }
 ```
 
-
-### Plot GRN
 
 #### Select TF
 
@@ -474,7 +482,7 @@ unique(regulons$TF)
 ```
 
 
-### Plot Gene Regulatory Networks
+### Plot Gene Regulatory Networks (Fig. 5E)
 
 ```{r}
 net <- igraph::graph_from_data_frame(regulons, directed=T)

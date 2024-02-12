@@ -15,7 +15,6 @@ NOTE: The path to load the data and the path to save the figures should be chang
 
 Environment: **Conda: r-semla**
 
-
 ## Set up and loading material
 
 ### Knit setup
@@ -104,7 +103,7 @@ rownames(ST)
 ```
 
 
-#### Plot all sections (1 patchwork per cluster)
+#### Plot all sections (1 patchwork per cluster) (Fig. 2D, 4E, Supp Fig. 2B)
 Here we project the gene expression of cluster individually on every section
 
 ```{r}

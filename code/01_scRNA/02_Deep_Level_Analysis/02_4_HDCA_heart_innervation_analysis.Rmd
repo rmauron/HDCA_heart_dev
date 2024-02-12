@@ -68,7 +68,7 @@ set.seed(1)
 ```
 
 
-## Subset, process, clustering
+## Subset, process, clustering (Extended Fig. 4E)
 
 * Keep all cells annotated as endothelial
 * Calculate variable features
@@ -81,8 +81,8 @@ set.seed(1)
 
 ```{r, message=FALSE}
 # Subset the data to keep only endothelial cells
-IN <- data[,data$high_level_clusters_removed == 25   | #25
-            data$high_level_clusters_removed == 26 ] #26
+IN <- data[,data$cell.types == "NB-N"   |
+            data$cell.types == "SCP-GC" ]
            
 # Remove all genes with 0 counts
 IN <- IN[rowSums(GetAssayData(IN, slot = "counts")) > 0, ]
@@ -126,38 +126,43 @@ set.seed(1)
 nn <- CreateNNAdjacencyMatrix(data = IN, reduction = "harmony_subset", k = 10, dims = 1:50)
 
 # add the clusters to the metadata
-cl <- LouvainClustering(nn = nn, seed = 1, resolution = 1) # change resolution
+cl <- LouvainClustering(nn = nn, seed = 1, resolution = 1)
 IN$clusters_subset <- factor(cl)
 
-pdf(paste0(myfolder, "innervation/innervationl_subclusters.pdf"), width = 10, height = 10)
-DimPlot(IN, reduction = "umap_subset", group.by = "clusters_subset", label = T) + labs(title = "Innervation subclusters")  +
-NoLegend()
+pdf(paste0(myfolder, "innervation/innervation_subclusters.pdf"), width = 10, height = 10)
+  DimPlot(IN, reduction = "umap_subset", group.by = "clusters_subset", label = T) + labs(title = "Innervation subclusters")  +
+  NoLegend()
 dev.off()
 
 gc()
 ```
 
 
+## Add the annotation
+
+The annotation was imported from an external .csv file. The annotation is added as a new metadata row `cell.types` by matching the cluster numbers.
+
+```{r}
+annotation <- read.csv2("/home/rstudio/project/data/metadata/HDCA_heart_SC annotations_IN_240115.csv", header = 1, sep = ";")
+cells_clusters <- setNames(annotation$cell_type, nm = annotation$cluster)
+IN$cell.types <- cells_clusters[as.character(IN$clusters_subset)]
+rm(annotation, cells_clusters)
+gc()
+```
+
 ### Subset good clusters and rebuild umap
 
 ```{r}
-IN_subset <- IN[,
-                  IN$clusters_subset == 1   |
-                  IN$clusters_subset == 3   |
-                  IN$clusters_subset == 4   |
-                  IN$clusters_subset == 7   |
-                  IN$clusters_subset == 8   |
-                  IN$clusters_subset == 11   |
-                  IN$clusters_subset == 12   |
-                  IN$clusters_subset == 13   |
-                  IN$clusters_subset == 17   |
-                  IN$clusters_subset == 19   ]
+values_to_keep <- c("1", "3", "4", "7", "8", "11", "12", "13", "17", "19")
+
+IN_subset <- IN[, IN$clusters_subset %in% values_to_keep]
+
 IN_subset$clusters_subset <- factor(IN_subset$clusters_subset, levels = c("1", "3", "4", "7", "8", "11", "12", "13", "17", "19"))
 
 IN_subset <- RunUMAP(IN_subset,
               dims = 1:50,
               reduction = "harmony_subset",
-              n.neighbors = 20, # Maybe 20 looks better, was set to 10
+              n.neighbors = 20,
               metric = "cosine",
               min.dist = 0.3,
               spread = 1,
@@ -168,58 +173,72 @@ IN_subset <- RunUMAP(IN_subset,
               reduction.name = "umap_subset_sub",
               seed.use = 42)
 
-pdf(paste0(myfolder, "innervation/innervationl_subclusters_selection.pdf"), width = 10, height = 10)
+pdf(paste0(myfolder, "innervation/innervation_subclusters_selection.pdf"), width = 10, height = 10)
 DimPlot(IN_subset, reduction = "umap_subset_sub", group.by = "clusters_subset", label = T) +
 NoLegend()
 dev.off()
-
 ```
 
 ```{r}
 saveRDS(IN_subset, paste0(myfolder, "/rds_objects/innervation_selection.rds"))
 ```
 
-
-## Run DEG for all clusters
-
-```{r, message=FALSE}
-IN <- SetIdent(IN, value = "clusters_subset")
-de_markers <- FindAllMarkers(IN, logfc.threshold = 0.25,
-                             only.pos = TRUE, 
-                             min.pct = 0.05)
-
-openxlsx::write.xlsx(de_markers %>% filter(p_val_adj < 0.01),
-                     file = paste0(myfolder, "innervation/detable_innervation.xlsx"))
+```{r}
+IN_subset <- readRDS(paste0(myfolder, "rds_objects/innervation_selection.rds"))
 ```
 
 
-### DEG IN selection of markers
+### UMAP with annotation (Fig. 4A)
+
+```{r}
+pdf(paste0(myfolder, "innervation/innervation_subclusters_annot.pdf"), width = 10, height = 10)
+  DimPlot(IN_subset, reduction = "umap_subset", group.by = "cell.types", label = T) + labs(title = "Innervation subclusters")  +
+  NoLegend()
+dev.off()
+```
+
+
+## Differentially expressed genes (DEG) for all clusters (Supp Tab. 4)
+
+```{r}
+IN <- SetIdent(IN, value = "cell.types")
+detable <- FindAllMarkers(IN, logfc.threshold = 0.25,
+                          only.pos = TRUE, 
+                          min.pct = 0.05)
+
+# Only keep DEGs that have a p-value below 0.05.
+detable <- detable[detable$p_val_adj < 0.01, ]
+
+# Adding two extra columns giving the difference (and log difference) between pct1 and pct2.
+# pct1 is the percentage of cells in the specific cluster that express this gene.
+# pct2 is the percentage of cells in all other clusters that express this gene.
+detable$pct.diff <- detable$pct.1 - detable$pct.2
+detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
+
+# Save the detable as a csv file.
+write.csv2(detable, paste0(myfolder, "supplementary_tables/supplementary_table_4_DEG_IN.csv"))
+```
+
+
+### DEG IN selection of markers (Extended Fig. 4D)
 
 ```{r}
 # specific list of marker to project the dotplot on
-my_markers <- c("SOX10",
-                "FOXD3",
-                "PHOX2B", 
-                "PHOX2A",
-                "PRPH",
-                "ASCL1",
-                "CHGB",
-                "CHGA",
-                "PENK",
-                "MBP",
-                "PMP22",
-                "HTR3A",
-                "HTR3B",
-                "TH")
+my_markers <- c("TH", "HTR3B", "HTR3A", "PMP22", "MBP", "PENK", "CHGA", "CHGB", "ASCL1", "PRPH", "PHOX2A", "PHOX2B", "FOXD3", "SOX10")
 
-pdf(paste0(myfolder, "innervation/dotplot_markers_IN.pdf"), width = 8, height = 8)
-DotPlot(IN, features = my_markers) +
+IN <- SetIdent(IN, value = "clusters_subset")
+
+p <- DotPlot(IN, features = my_markers) +
+  coord_flip() +
   theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
   scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
-  scale_x_discrete() +
-  scale_y_discrete(limits = rev) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
   labs(x = "", y = "") + 
   theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+
+pdf(paste0(myfolder, "innervation/dotplot_markers_IN.pdf"), width = 8, height = 6)
+print(p)
 dev.off()
 
 rm(p)
@@ -227,7 +246,7 @@ gc()
 ```
 
 
-### DEG subset of clusters - top5 ordered
+### DEG subset of clusters - top5 ordered (Supp Fig. 4A)
 
 ```{r}
 values_to_keep <- c("4", "7", "12", "11", "8", "19", "17", "3", "13", "1")
@@ -251,11 +270,20 @@ DGE_cells <- unlist(DGE_cells)
 DGE_DATA <- data_IN[, DGE_cells]
 
 # reorder the cell types desired
-DGE_DATA$clusters_subset <- factor(DGE_DATA$clusters_subset, 
-                                              levels = c("4", "7", "12", "11", "8", "19", "17", "3", "13", "1"))
+DGE_DATA$cell.types <- factor(DGE_DATA$cell.types, 
+                                              levels = c("SCP_1", 
+                                                         "SCP_2", 
+                                                         "SCP_3", 
+                                                         "SCP_4", 
+                                                         "SCP_5", 
+                                                         "My_SC", 
+                                                         "Bridge_state", 
+                                                         "Aut_Neu_1", 
+                                                         "Aut_Neu_2", 
+                                                         "Chrom_C"))
 
 #Find differential expressed genes based on groups defined by "clusters_subset_split".
-DGE_DATA <- SetIdent(DGE_DATA, value = "clusters_subset")
+DGE_DATA <- SetIdent(DGE_DATA, value = "cell.types")
 
 # The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).
 detable <- FindAllMarkers(DGE_DATA,
@@ -291,7 +319,7 @@ DotPlot(DGE_DATA, features = top5 %>% pull(gene) %>% unique()) +
   scale_x_discrete(limits = rev) +
   scale_y_discrete() +
   labs(x = "", y = "") +
-  theme(axis.text.x = element_text(angle = 0, hjust = 0.5))
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
 dev.off()
 
 gc()
@@ -299,7 +327,7 @@ rm(detable, DGE_DATA, top5, DGE_cells, sample_size)
 ```
 
 
-### DEG IN selection of markers
+### DEG IN selection of markers (Supp Fig. 4B)
 
 ```{r}
 # specific list of marker to project the dotplot on
@@ -309,9 +337,19 @@ my_markers <- c("SOX10", "FOXD3", "MPZ", "PMP22", "MBP", "ASCL1", "PHOX2B", "PHO
 values_to_keep <- c("4", "7", "12", "11", "8", "19", "17", "3", "13", "1")
 
 data_IN <- IN[, IN$clusters_subset %in% values_to_keep]
-data_IN$clusters_subset <- factor(data_IN$clusters_subset, level=values_to_keep)
 
-data_IN <- SetIdent(data_IN, value = "clusters_subset")
+data_IN$cell.types <- factor(data_IN$cell.types, levels = c("SCP_1", 
+                                                         "SCP_2", 
+                                                         "SCP_3", 
+                                                         "SCP_4", 
+                                                         "SCP_5", 
+                                                         "My_SC", 
+                                                         "Bridge_state", 
+                                                         "Aut_Neu_1", 
+                                                         "Aut_Neu_2", 
+                                                         "Chrom_C"))
+
+data_IN <- SetIdent(data_IN, value = "cell.types")
 
 pdf(paste0(myfolder, "innervation/dotplot_markers_IN_cl_ord_3.pdf"), width = 7, height = 4)
 DotPlot(data_IN, features = my_markers) +

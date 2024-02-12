@@ -15,7 +15,6 @@ NOTE: The path to load the data and the path to save the figures should be chang
 
 Environment: **Conda: r-semla**
 
-
 ## Set up and loading material
 
 ### Knit setup
@@ -109,24 +108,11 @@ diag(corMat) <- NA
 ```{r}
 heatmap_colors <- colorRampPalette(RColorBrewer::brewer.pal(n = 11, name = "RdBu") |> rev())(50)
 
-#pdf(file = paste0(myfolder, "heatmaps/colocalization_hl_all.pdf"), width = 15, height = 15)
 pheatmap(corMat, border_color = NA, color = heatmap_colors)
-#dev.off()
 ```
 
 
-#### Add the annotation
-
-```{r}
-annotation <- read.csv2("~/hdca_DevHeart/data/metadata/hl_annotation_2023-08-23.csv", header = 1, sep = ";")
-
-annotation$cluster <- gsub("_", "-", annotation$cluster)
-
-cells_clusters <- setNames(annotation$cell_type, nm = annotation$cluster)
-```
-
-
-#### Better control of the Heatmap with ggplot2
+#### Correlation heatmap with ggplot2
 
 ```{r}
 # Cluster data for arrangement
@@ -158,46 +144,6 @@ p <- ggplot(cors, aes(x = celltype, y = name, fill = value)) +
 p
 
 pdf(file = paste0(myfolder, "heatmaps/colocalization_hl_all.pdf"), width = 15, height = 15)
-p
-dev.off()
-```
-
-
-#### Better control of the Heatmap with ggplot2 (re-organize annotations) - delete?
-
-```{r}
-# Cluster data for arrangement
-distMat <- dist(corMat, method = "euclidean") # Compute distance matrix
-clusters <- hclust(distMat, method = "complete") # Cluster distance matrix
-cluster_levels <- colnames(corMat)[clusters$order] # Fetch rearranged cell type labels
-
-# Pivot corMat to long data format
-cors <- tidyr::pivot_longer(corMat |> 
-                              as.data.frame() |> 
-                              tibble::rownames_to_column(var = "celltype"), where(is.numeric))
-
-# Set factor levels
-cors <- cors |> 
-  mutate(name = factor(name, levels = cluster_levels),
-         celltype = factor(celltype, levels = cluster_levels))
-
-cors$celltype_names <- cells_clusters[as.character(cors$celltype)]
-cors$name_names <- cells_clusters[as.character(cors$name)]
-
-# Calculate the absolute max value to define the limits of the fill scale
-max_val_abs <- max(abs(corMat), na.rm = TRUE)
-
-p <- ggplot(cors, aes(x = celltype_names, y = name_names, fill = value)) +
-  geom_tile() + # Use geom_tile to create the heatmap
-  geom_text(aes(label = round(value, 2)), vjust = 1, size = 3) + # Add numerical values on top of each cells
-  scale_y_discrete(limits = rev) + # Flip y axis
-  scale_fill_gradientn(colours = heatmap_colors, limit = c(-max_val_abs, max_val_abs)) + # Set fill scale limits using max_val_abs
-  theme(panel.grid = element_blank(),
-        axis.text.x = element_text(angle = 90)) + # Remove panel borders
-  labs(x = "cell type", y = "cell type")
-p
-
-pdf(file = paste0(myfolder, "heatmaps/colocalization_hl_all_celltype_names.pdf"), width = 15, height = 15)
 p
 dev.off()
 ```
@@ -273,7 +219,7 @@ pheatmap(corMat, border_color = NA, color = heatmap_colors)
 ```
 
 
-#### Better control of the Heatmap with ggplot2
+#### Correlation heatmap with ggplot2
 
 ```{r}
 # Cluster data for arrangement
@@ -335,7 +281,7 @@ pheatmap(corMat, border_color = NA, color = heatmap_colors)
 ```
 
 
-#### Better control of the Heatmap with ggplot2
+#### Correlation heatmap with ggplot2
 
 ```{r}
 # Cluster data for arrangement
@@ -397,7 +343,7 @@ pheatmap(corMat, border_color = NA, color = heatmap_colors)
 ```
 
 
-#### Better control of the Heatmap with ggplot2
+#### Correlation heatmap with ggplot2
 
 ```{r}
 # Cluster data for arrangement
@@ -483,7 +429,28 @@ pheatmap(corMat, border_color = NA, color = heatmap_colors)
 ```
 
 
-#### Better control of the Heatmap with ggplot2
+#### Add the annotation
+
+```{r}
+annotation <- read.csv2("~/hdca_DevHeart/data/metadata/HDCA_heart_SC_annotations_DL_240204.csv", header = 1, sep = ";")
+annotation$cluster <- gsub("_", "-", annotation$cluster)
+cells_clusters <- setNames(annotation$cell_type, nm = annotation$cluster)
+```
+
+
+#### Correlation matrix with names (Supp Tab. 7)
+
+```{r}
+corMat_annot <- corMat
+colnames(corMat_annot) <- cells_clusters[as.character(colnames(corMat_annot))]
+rownames(corMat_annot) <- cells_clusters[as.character(rownames(corMat_annot))]
+
+# Save the detable as a csv file.
+write.csv2(corMat_annot, paste0("~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/", "supplementary_tables/supplementary_table_7_corMat_DL.csv"))
+```
+
+
+#### Correlation heatmap with ggplot2
 
 ```{r}
 # Cluster data for arrangement
@@ -520,26 +487,16 @@ dev.off()
 ```
 
 
-### SUBSETS_1: "CM-4-1", "CM-4-2", "EN-1", "EN-12", "CM-18"
-
-```{r}
-split_corMat <- corMat[c("CM-4-1", "CM-4-2", "EN-1", "EN-12", "CM-18"), 
-                       c("CM-4-1", "CM-4-2", "EN-1", "EN-12", "CM-18")]
-pheatmap(split_corMat, border_color = NA, color = heatmap_colors)
-```
-
-
-#### Better control of the Heatmap with ggplot2
+#### Correlation heatmap with ggplot2 - no label (Fig. 7A)
 
 ```{r}
 # Cluster data for arrangement
-distMat <- dist(split_corMat, method = "euclidean") # Compute distance matrix
+distMat <- dist(corMat, method = "euclidean") # Compute distance matrix
 clusters <- hclust(distMat, method = "complete") # Cluster distance matrix
-#cluster_levels <- colnames(split_corMat)[clusters$order] # Fetch rearranged cell type labels
-cluster_levels <- c("CM-4-1", "CM-4-2", "EN-1", "EN-12", "CM-18")
+cluster_levels <- colnames(corMat)[clusters$order] # Fetch rearranged cell type labels
 
-# Pivot split_corMat to long data format
-cors <- tidyr::pivot_longer(split_corMat |> 
+# Pivot corMat to long data format
+cors <- tidyr::pivot_longer(corMat |> 
                               as.data.frame() |> 
                               tibble::rownames_to_column(var = "celltype"), where(is.numeric))
 
@@ -549,115 +506,85 @@ cors <- cors |>
          celltype = factor(celltype, levels = cluster_levels))
 
 # Calculate the absolute max value to define the limits of the fill scale
-max_val_abs <- max(abs(split_corMat), na.rm = TRUE)
+max_val_abs <- max(abs(corMat), na.rm = TRUE)
 
 p <- ggplot(cors, aes(x = celltype, y = name, fill = value)) +
   geom_tile() + # Use geom_tile to create the heatmap
-  geom_text(aes(label = round(value, 2)), vjust = 1, size = 3) + # Add numerical values on top of each cells
+  #geom_text(aes(label = round(value, 2)), vjust = 1, size = 3) + # Add numerical values on top of each cells
   scale_y_discrete(limits = rev) + # Flip y axis
   scale_fill_gradientn(colours = heatmap_colors, limit = c(-max_val_abs, max_val_abs)) + # Set fill scale limits using max_val_abs
   theme(panel.grid = element_blank(),
-        axis.text.x = element_text(angle = 90)) + # Remove panel borders
-  labs(x = "cell type", y = "cell type")
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank()) + # Remove panel borders
+  labs(x = "", y = "")
 p
 
-pdf(file = paste0(myfolder, "heatmaps/colocalization_dl_subset_1.pdf"), width = 5, height = 4)
+pdf(file = paste0(myfolder, "heatmaps/colocalization_dl_all_no_label.pdf"), width = 30, height = 30)
 p
 dev.off()
 ```
 
 
-### SUBSETS_2: "CM-19-2", "CM-19-1", "FB-17", "EN-18"
+### Niches
+
+#### Heatmap of niches (Fig. 7B, 7C, Supp Fig. 7C)
 
 ```{r}
-split_corMat <- corMat[c("CM-19-2", "CM-19-1", "FB-17", "EN-18"), 
-                       c("CM-19-2", "CM-19-1", "FB-17", "EN-18")]
-pheatmap(split_corMat, border_color = NA, color = heatmap_colors)
-```
+niches <- list(c("CM-18", "CM-4-2", "CM-4-1", "EN-1", "EN-12"),
+               c("EN-15", "HL-10", "FB-6"),
+               c("EN-19", "EN-15", "EN-13", "EN-10", "EN-2"),
+               c("EN-19", "HL-8", "FB-1"),
+               c("EN-7", "EN-17", "FB-4"),
+               c("EN-1", "EN-12", "CM-4-2"),
+               c("HL-10", "FB-6", "EN-15"),
+               c("FB-1", "FB-6", "HL-8", "EN-19"),
+               c("FB-1", "HL-15", "EN-20"),
+               c("CM-19-2", "CM-19-1", "FB-17", "EN-18", "EN-16"),
+               c("CM-19-1", "CM-19-2", "FB-17"),
+               c("EN-17", "EN-7", "FB-4", "FB-13", "FB-11", "CM-8-2"),
+               c("HL-15", "EN-20", "FB-1", "FB-6", "HL-8", "EN-19", "HL-10", "EN-15"))
 
-
-#### Better control of the Heatmap with ggplot2
-
-```{r}
-# Cluster data for arrangement
-distMat <- dist(split_corMat, method = "euclidean") # Compute distance matrix
-clusters <- hclust(distMat, method = "complete") # Cluster distance matrix
-#cluster_levels <- colnames(split_corMat)[clusters$order] # Fetch rearranged cell type labels
-cluster_levels <- c("CM-19-2", "CM-19-1", "FB-17", "EN-18")
-
-# Pivot split_corMat to long data format
-cors <- tidyr::pivot_longer(split_corMat |> 
-                              as.data.frame() |> 
-                              tibble::rownames_to_column(var = "celltype"), where(is.numeric))
-
-# Set factor levels
-cors <- cors |> 
-  mutate(name = factor(name, levels = cluster_levels),
-         celltype = factor(celltype, levels = cluster_levels))
-
-# Calculate the absolute max value to define the limits of the fill scale
-max_val_abs <- max(abs(split_corMat), na.rm = TRUE)
-
-p <- ggplot(cors, aes(x = celltype, y = name, fill = value)) +
-  geom_tile() + # Use geom_tile to create the heatmap
-  geom_text(aes(label = round(value, 2)), vjust = 1, size = 3) + # Add numerical values on top of each cells
-  scale_y_discrete(limits = rev) + # Flip y axis
-  scale_fill_gradientn(colours = heatmap_colors, limit = c(-max_val_abs, max_val_abs)) + # Set fill scale limits using max_val_abs
-  theme(panel.grid = element_blank(),
-        axis.text.x = element_text(angle = 90)) + # Remove panel borders
-  labs(x = "cell type", y = "cell type")
-p
-
-pdf(file = paste0(myfolder, "heatmaps/colocalization_dl_subset_2.pdf"), width = 5, height = 4)
-p
-dev.off()
-```
-
-
-### SUBSETS_3: "FB-4", "EN-7", "EN-17"
-
-```{r}
-split_corMat <- corMat[c("FB-4", "EN-7", "EN-17"), 
-                       c("FB-4", "EN-7", "EN-17")]
-pheatmap(split_corMat, border_color = NA, color = heatmap_colors)
-```
-
-
-#### Better control of the Heatmap with ggplot2
-
-```{r}
-# Cluster data for arrangement
-distMat <- dist(split_corMat, method = "euclidean") # Compute distance matrix
-clusters <- hclust(distMat, method = "complete") # Cluster distance matrix
-#cluster_levels <- colnames(split_corMat)[clusters$order] # Fetch rearranged cell type labels
-cluster_levels <- c("FB-4", "EN-7", "EN-17")
-
-# Pivot split_corMat to long data format
-cors <- tidyr::pivot_longer(split_corMat |> 
-                              as.data.frame() |> 
-                              tibble::rownames_to_column(var = "celltype"), where(is.numeric))
-
-# Set factor levels
-cors <- cors |> 
-  mutate(name = factor(name, levels = cluster_levels),
-         celltype = factor(celltype, levels = cluster_levels))
-
-# Calculate the absolute max value to define the limits of the fill scale
-max_val_abs <- max(abs(split_corMat), na.rm = TRUE)
-
-p <- ggplot(cors, aes(x = celltype, y = name, fill = value)) +
-  geom_tile() + # Use geom_tile to create the heatmap
-  geom_text(aes(label = round(value, 2)), vjust = 1, size = 3) + # Add numerical values on top of each cells
-  scale_y_discrete(limits = rev) + # Flip y axis
-  scale_fill_gradientn(colours = heatmap_colors, limit = c(-max_val_abs, max_val_abs)) + # Set fill scale limits using max_val_abs
-  theme(panel.grid = element_blank(),
-        axis.text.x = element_text(angle = 90)) + # Remove panel borders
-  labs(x = "cell type", y = "cell type")
-p
-
-pdf(file = paste0(myfolder, "heatmaps/colocalization_dl_subset_3.pdf"), width = 5, height = 4)
-p
-dev.off()
+for (niche in niches){
+  heatmap_name <- paste0("niche_", paste(niche, collapse = "_"))
+  print(heatmap_name)
+  
+  split_corMat <- corMat[niche, 
+                        niche]
+  
+  #plot
+  # Cluster data for arrangement
+  distMat <- dist(split_corMat, method = "euclidean") # Compute distance matrix
+  clusters <- hclust(distMat, method = "complete") # Cluster distance matrix
+  cluster_levels <- niche
+  
+  # Pivot split_corMat to long data format
+  cors <- tidyr::pivot_longer(split_corMat |> 
+                                as.data.frame() |> 
+                                tibble::rownames_to_column(var = "celltype"), where(is.numeric))
+  
+  # Set factor levels
+  cors <- cors |> 
+    mutate(name = factor(name, levels = cluster_levels),
+           celltype = factor(celltype, levels = cluster_levels))
+  
+  # Calculate the absolute max value to define the limits of the fill scale
+  max_val_abs <- max(abs(split_corMat), na.rm = TRUE)
+  
+  p <- ggplot(cors, aes(x = celltype, y = name, fill = value)) +
+    geom_tile() + # Use geom_tile to create the heatmap
+    geom_text(aes(label = round(value, 2)), vjust = 1, size = 3) + # Add numerical values on top of each cells
+    scale_y_discrete(limits = rev) + # Flip y axis
+    scale_fill_gradientn(colours = heatmap_colors, limit = c(-max_val_abs, max_val_abs)) + # Set fill scale limits using max_val_abs
+    theme(panel.grid = element_blank(),
+          axis.text.x = element_text(angle = 90)) + # Remove panel borders
+    labs(x = "cell type", y = "cell type")
+  #p
+  
+  pdf(file = paste0(myfolder, "heatmaps/niche_colocalization_dl_", heatmap_name, ".pdf"), width = 10, height = 10)
+  print(p)
+  dev.off()
+}
 ```
 
 
@@ -707,7 +634,7 @@ pheatmap(corMat, border_color = NA, color = heatmap_colors)
 ```
 
 
-#### Better control of the Heatmap with ggplot2
+#### Correlation heatmap with ggplot2
 
 ```{r}
 # Cluster data for arrangement
@@ -744,26 +671,16 @@ dev.off()
 ```
 
 
-### SUBSETS_1: "CM-4-1", "CM-4-2", "EN-1", "EN-12", "CM-18"
-
-```{r}
-split_corMat <- corMat[c("CM-4-1", "CM-4-2", "EN-1", "EN-12", "CM-18"), 
-                       c("CM-4-1", "CM-4-2", "EN-1", "EN-12", "CM-18")]
-pheatmap(split_corMat, border_color = NA, color = heatmap_colors)
-```
-
-
-#### Better control of the Heatmap with ggplot2
+#### Correlation heatmap with ggplot2 - no label
 
 ```{r}
 # Cluster data for arrangement
-distMat <- dist(split_corMat, method = "euclidean") # Compute distance matrix
+distMat <- dist(corMat, method = "euclidean") # Compute distance matrix
 clusters <- hclust(distMat, method = "complete") # Cluster distance matrix
-#cluster_levels <- colnames(split_corMat)[clusters$order] # Fetch rearranged cell type labels
-cluster_levels <- c("CM-4-1", "CM-4-2", "EN-1", "EN-12", "CM-18")
+cluster_levels <- colnames(corMat)[clusters$order] # Fetch rearranged cell type labels
 
-# Pivot split_corMat to long data format
-cors <- tidyr::pivot_longer(split_corMat |> 
+# Pivot corMat to long data format
+cors <- tidyr::pivot_longer(corMat |> 
                               as.data.frame() |> 
                               tibble::rownames_to_column(var = "celltype"), where(is.numeric))
 
@@ -773,41 +690,38 @@ cors <- cors |>
          celltype = factor(celltype, levels = cluster_levels))
 
 # Calculate the absolute max value to define the limits of the fill scale
-max_val_abs <- max(abs(split_corMat), na.rm = TRUE)
+max_val_abs <- max(abs(corMat), na.rm = TRUE)
 
 p <- ggplot(cors, aes(x = celltype, y = name, fill = value)) +
   geom_tile() + # Use geom_tile to create the heatmap
-  geom_text(aes(label = round(value, 2)), vjust = 1, size = 3) + # Add numerical values on top of each cells
+  #geom_text(aes(label = round(value, 2)), vjust = 1, size = 3) + # Add numerical values on top of each cells
   scale_y_discrete(limits = rev) + # Flip y axis
   scale_fill_gradientn(colours = heatmap_colors, limit = c(-max_val_abs, max_val_abs)) + # Set fill scale limits using max_val_abs
   theme(panel.grid = element_blank(),
-        axis.text.x = element_text(angle = 90)) + # Remove panel borders
-  labs(x = "cell type", y = "cell type")
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank()) + # Remove panel borders
+  labs(x = "", y = "")
 p
 
-pdf(file = paste0(myfolder, "heatmaps/colocalization_dl_subset_1_age_1.pdf"), width = 5, height = 4)
+pdf(file = paste0(myfolder, "heatmaps/colocalization_dl_age1_no_label.pdf"), width = 30, height = 30)
 p
 dev.off()
 ```
 
 
-### SUBSETS_2: "CM-19-2", "CM-19-1", "FB-17", "EN-18"
+#### Niche 1 "CM-18","CM-4-2", "CM-4-1", "EN-1", "EN-12" (Supp Fig. 7B)
 
 ```{r}
-split_corMat <- corMat[c("CM-19-2", "CM-19-1", "FB-17", "EN-18"), 
-                       c("CM-19-2", "CM-19-1", "FB-17", "EN-18")]
-pheatmap(split_corMat, border_color = NA, color = heatmap_colors)
-```
+niche <- c("CM-18","CM-4-2", "CM-4-1", "EN-1", "EN-12")
+split_corMat <- corMat[niche, 
+                      niche]
 
-
-#### Better control of the Heatmap with ggplot2
-
-```{r}
+#plot
 # Cluster data for arrangement
 distMat <- dist(split_corMat, method = "euclidean") # Compute distance matrix
 clusters <- hclust(distMat, method = "complete") # Cluster distance matrix
-#cluster_levels <- colnames(split_corMat)[clusters$order] # Fetch rearranged cell type labels
-cluster_levels <- c("CM-19-2", "CM-19-1", "FB-17", "EN-18")
+cluster_levels <- niche
 
 # Pivot split_corMat to long data format
 cors <- tidyr::pivot_longer(split_corMat |> 
@@ -832,29 +746,24 @@ p <- ggplot(cors, aes(x = celltype, y = name, fill = value)) +
   labs(x = "cell type", y = "cell type")
 p
 
-pdf(file = paste0(myfolder, "heatmaps/colocalization_dl_subset_2_age_1.pdf"), width = 5, height = 4)
-p
+pdf(file = paste0(myfolder, "heatmaps/niche_colocalization_dl_", "CM-18_CM-4-2_CM-4-1_EN-1_EN-12", "_age1", ".pdf"), width = 10, height = 10)
+print(p)
 dev.off()
 ```
 
 
-### SUBSETS_3: "FB-4", "EN-7", "EN-17"
+#### Niche 2 "EN-19", "EN-15", "EN-13", "EN-10", "EN-2" (Supp Fig. 7D)
 
 ```{r}
-split_corMat <- corMat[c("FB-4", "EN-7", "EN-17"), 
-                       c("FB-4", "EN-7", "EN-17")]
-pheatmap(split_corMat, border_color = NA, color = heatmap_colors)
-```
+niche <- c("EN-19", "EN-15", "EN-13", "EN-10", "EN-2")
+split_corMat <- corMat[niche, 
+                      niche]
 
-
-#### Better control of the Heatmap with ggplot2
-
-```{r}
+#plot
 # Cluster data for arrangement
 distMat <- dist(split_corMat, method = "euclidean") # Compute distance matrix
 clusters <- hclust(distMat, method = "complete") # Cluster distance matrix
-#cluster_levels <- colnames(split_corMat)[clusters$order] # Fetch rearranged cell type labels
-cluster_levels <- c("FB-4", "EN-7", "EN-17")
+cluster_levels <- niche
 
 # Pivot split_corMat to long data format
 cors <- tidyr::pivot_longer(split_corMat |> 
@@ -879,8 +788,8 @@ p <- ggplot(cors, aes(x = celltype, y = name, fill = value)) +
   labs(x = "cell type", y = "cell type")
 p
 
-pdf(file = paste0(myfolder, "heatmaps/colocalization_dl_subset_3_age_1.pdf"), width = 5, height = 4)
-p
+pdf(file = paste0(myfolder, "heatmaps/niche_colocalization_dl_", "EN-19_EN-15_EN-13_EN-10_EN-2", "_age1", ".pdf"), width = 10, height = 10)
+print(p)
 dev.off()
 ```
 
@@ -911,7 +820,7 @@ pheatmap(corMat, border_color = NA, color = heatmap_colors)
 ```
 
 
-#### Better control of the Heatmap with ggplot2
+#### Correlation heatmap with ggplot2
 
 ```{r}
 # Cluster data for arrangement
@@ -948,26 +857,16 @@ dev.off()
 ```
 
 
-### SUBSETS_1: "CM-4-1", "CM-4-2", "EN-1", "EN-12", "CM-18"
-
-```{r}
-split_corMat <- corMat[c("CM-4-1", "CM-4-2", "EN-1", "EN-12", "CM-18"), 
-                       c("CM-4-1", "CM-4-2", "EN-1", "EN-12", "CM-18")]
-pheatmap(split_corMat, border_color = NA, color = heatmap_colors)
-```
-
-
-#### Better control of the Heatmap with ggplot2
+#### Correlation heatmap with ggplot2 - no label
 
 ```{r}
 # Cluster data for arrangement
-distMat <- dist(split_corMat, method = "euclidean") # Compute distance matrix
+distMat <- dist(corMat, method = "euclidean") # Compute distance matrix
 clusters <- hclust(distMat, method = "complete") # Cluster distance matrix
-#cluster_levels <- colnames(split_corMat)[clusters$order] # Fetch rearranged cell type labels
-cluster_levels <- c("CM-4-1", "CM-4-2", "EN-1", "EN-12", "CM-18")
+cluster_levels <- colnames(corMat)[clusters$order] # Fetch rearranged cell type labels
 
-# Pivot split_corMat to long data format
-cors <- tidyr::pivot_longer(split_corMat |> 
+# Pivot corMat to long data format
+cors <- tidyr::pivot_longer(corMat |> 
                               as.data.frame() |> 
                               tibble::rownames_to_column(var = "celltype"), where(is.numeric))
 
@@ -977,41 +876,38 @@ cors <- cors |>
          celltype = factor(celltype, levels = cluster_levels))
 
 # Calculate the absolute max value to define the limits of the fill scale
-max_val_abs <- max(abs(split_corMat), na.rm = TRUE)
+max_val_abs <- max(abs(corMat), na.rm = TRUE)
 
 p <- ggplot(cors, aes(x = celltype, y = name, fill = value)) +
   geom_tile() + # Use geom_tile to create the heatmap
-  geom_text(aes(label = round(value, 2)), vjust = 1, size = 3) + # Add numerical values on top of each cells
+  #geom_text(aes(label = round(value, 2)), vjust = 1, size = 3) + # Add numerical values on top of each cells
   scale_y_discrete(limits = rev) + # Flip y axis
   scale_fill_gradientn(colours = heatmap_colors, limit = c(-max_val_abs, max_val_abs)) + # Set fill scale limits using max_val_abs
   theme(panel.grid = element_blank(),
-        axis.text.x = element_text(angle = 90)) + # Remove panel borders
-  labs(x = "cell type", y = "cell type")
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank()) + # Remove panel borders
+  labs(x = "", y = "")
 p
 
-pdf(file = paste0(myfolder, "heatmaps/colocalization_dl_subset_1_age_2.pdf"), width = 5, height = 4)
+pdf(file = paste0(myfolder, "heatmaps/colocalization_dl_age2_no_label.pdf"), width = 30, height = 30)
 p
 dev.off()
 ```
 
 
-### SUBSETS_2: "CM-19-2", "CM-19-1", "FB-17", "EN-18"
+#### Niche 1 "CM-18","CM-4-2", "CM-4-1", "EN-1", "EN-12" (Supp Fig. 7B)
 
 ```{r}
-split_corMat <- corMat[c("CM-19-2", "CM-19-1", "FB-17", "EN-18"), 
-                       c("CM-19-2", "CM-19-1", "FB-17", "EN-18")]
-pheatmap(split_corMat, border_color = NA, color = heatmap_colors)
-```
+niche <- c("CM-18","CM-4-2", "CM-4-1", "EN-1", "EN-12")
+split_corMat <- corMat[niche, 
+                      niche]
 
-
-#### Better control of the Heatmap with ggplot2
-
-```{r}
+#plot
 # Cluster data for arrangement
 distMat <- dist(split_corMat, method = "euclidean") # Compute distance matrix
 clusters <- hclust(distMat, method = "complete") # Cluster distance matrix
-#cluster_levels <- colnames(split_corMat)[clusters$order] # Fetch rearranged cell type labels
-cluster_levels <- c("CM-19-2", "CM-19-1", "FB-17", "EN-18")
+cluster_levels <- niche
 
 # Pivot split_corMat to long data format
 cors <- tidyr::pivot_longer(split_corMat |> 
@@ -1036,29 +932,24 @@ p <- ggplot(cors, aes(x = celltype, y = name, fill = value)) +
   labs(x = "cell type", y = "cell type")
 p
 
-pdf(file = paste0(myfolder, "heatmaps/colocalization_dl_subset_2_age_2.pdf"), width = 5, height = 4)
-p
+pdf(file = paste0(myfolder, "heatmaps/niche_colocalization_dl_", "CM-18_CM-4-2_CM-4-1_EN-1_EN-12", "_age2", ".pdf"), width = 10, height = 10)
+print(p)
 dev.off()
 ```
 
 
-### SUBSETS_3: "FB-4", "EN-7", "EN-17"
+#### Niche 2 "EN-19", "EN-15", "EN-13", "EN-10", "EN-2" (Supp Fig. 7D)
 
 ```{r}
-split_corMat <- corMat[c("FB-4", "EN-7", "EN-17"), 
-                       c("FB-4", "EN-7", "EN-17")]
-pheatmap(split_corMat, border_color = NA, color = heatmap_colors)
-```
+niche <- c("EN-19", "EN-15", "EN-13", "EN-10", "EN-2")
+split_corMat <- corMat[niche, 
+                      niche]
 
-
-#### Better control of the Heatmap with ggplot2
-
-```{r}
+#plot
 # Cluster data for arrangement
 distMat <- dist(split_corMat, method = "euclidean") # Compute distance matrix
 clusters <- hclust(distMat, method = "complete") # Cluster distance matrix
-#cluster_levels <- colnames(split_corMat)[clusters$order] # Fetch rearranged cell type labels
-cluster_levels <- c("FB-4", "EN-7", "EN-17")
+cluster_levels <- niche
 
 # Pivot split_corMat to long data format
 cors <- tidyr::pivot_longer(split_corMat |> 
@@ -1083,8 +974,8 @@ p <- ggplot(cors, aes(x = celltype, y = name, fill = value)) +
   labs(x = "cell type", y = "cell type")
 p
 
-pdf(file = paste0(myfolder, "heatmaps/colocalization_dl_subset_3_age_2.pdf"), width = 5, height = 4)
-p
+pdf(file = paste0(myfolder, "heatmaps/niche_colocalization_dl_", "EN-19_EN-15_EN-13_EN-10_EN-2", "_age2", ".pdf"), width = 10, height = 10)
+print(p)
 dev.off()
 ```
 
@@ -1115,7 +1006,7 @@ pheatmap(corMat, border_color = NA, color = heatmap_colors)
 ```
 
 
-#### Better control of the Heatmap with ggplot2
+#### Correlation heatmap with ggplot2
 
 ```{r}
 # Cluster data for arrangement
@@ -1152,23 +1043,57 @@ dev.off()
 ```
 
 
-### SUBSETS_1: "CM-4-1", "CM-4-2", "EN-1", "EN-12", "CM-18"
-
-```{r}
-split_corMat <- corMat[c("CM-4-1", "CM-4-2", "EN-1", "EN-12", "CM-18"), 
-                       c("CM-4-1", "CM-4-2", "EN-1", "EN-12", "CM-18")]
-pheatmap(split_corMat, border_color = NA, color = heatmap_colors)
-```
-
-
-#### Better control of the Heatmap with ggplot2
+#### Correlation heatmap with ggplot2 - no label
 
 ```{r}
 # Cluster data for arrangement
+distMat <- dist(corMat, method = "euclidean") # Compute distance matrix
+clusters <- hclust(distMat, method = "complete") # Cluster distance matrix
+cluster_levels <- colnames(corMat)[clusters$order] # Fetch rearranged cell type labels
+
+# Pivot corMat to long data format
+cors <- tidyr::pivot_longer(corMat |> 
+                              as.data.frame() |> 
+                              tibble::rownames_to_column(var = "celltype"), where(is.numeric))
+
+# Set factor levels
+cors <- cors |> 
+  mutate(name = factor(name, levels = cluster_levels),
+         celltype = factor(celltype, levels = cluster_levels))
+
+# Calculate the absolute max value to define the limits of the fill scale
+max_val_abs <- max(abs(corMat), na.rm = TRUE)
+
+p <- ggplot(cors, aes(x = celltype, y = name, fill = value)) +
+  geom_tile() + # Use geom_tile to create the heatmap
+  #geom_text(aes(label = round(value, 2)), vjust = 1, size = 3) + # Add numerical values on top of each cells
+  scale_y_discrete(limits = rev) + # Flip y axis
+  scale_fill_gradientn(colours = heatmap_colors, limit = c(-max_val_abs, max_val_abs)) + # Set fill scale limits using max_val_abs
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank()) + # Remove panel borders
+  labs(x = "", y = "")
+p
+
+pdf(file = paste0(myfolder, "heatmaps/colocalization_dl_age3_no_label.pdf"), width = 30, height = 30)
+p
+dev.off()
+```
+
+
+#### Niche 1 "CM-18","CM-4-2", "CM-4-1", "EN-1", "EN-12" (Supp Fig. 7B)
+
+```{r}
+niche <- c("CM-18","CM-4-2", "CM-4-1", "EN-1", "EN-12")
+split_corMat <- corMat[niche, 
+                      niche]
+
+#plot
+# Cluster data for arrangement
 distMat <- dist(split_corMat, method = "euclidean") # Compute distance matrix
 clusters <- hclust(distMat, method = "complete") # Cluster distance matrix
-#cluster_levels <- colnames(split_corMat)[clusters$order] # Fetch rearranged cell type labels
-cluster_levels <- c("CM-4-1", "CM-4-2", "EN-1", "EN-12", "CM-18")
+cluster_levels <- niche
 
 # Pivot split_corMat to long data format
 cors <- tidyr::pivot_longer(split_corMat |> 
@@ -1193,29 +1118,24 @@ p <- ggplot(cors, aes(x = celltype, y = name, fill = value)) +
   labs(x = "cell type", y = "cell type")
 p
 
-pdf(file = paste0(myfolder, "heatmaps/colocalization_dl_subset_1_age_3.pdf"), width = 5, height = 4)
-p
+pdf(file = paste0(myfolder, "heatmaps/niche_colocalization_dl_", "CM-18_CM-4-2_CM-4-1_EN-1_EN-12", "_age3", ".pdf"), width = 10, height = 10)
+print(p)
 dev.off()
 ```
 
 
-### SUBSETS_2: "CM-19-2", "CM-19-1", "FB-17", "EN-18"
+#### Niche 2 "EN-19", "EN-15", "EN-13", "EN-10", "EN-2" (Supp Fig. 7D)
 
 ```{r}
-split_corMat <- corMat[c("CM-19-2", "CM-19-1", "FB-17", "EN-18"), 
-                       c("CM-19-2", "CM-19-1", "FB-17", "EN-18")]
-pheatmap(split_corMat, border_color = NA, color = heatmap_colors)
-```
+niche <- c("EN-19", "EN-15", "EN-13", "EN-10", "EN-2")
+split_corMat <- corMat[niche, 
+                      niche]
 
-
-#### Better control of the Heatmap with ggplot2
-
-```{r}
+#plot
 # Cluster data for arrangement
 distMat <- dist(split_corMat, method = "euclidean") # Compute distance matrix
 clusters <- hclust(distMat, method = "complete") # Cluster distance matrix
-#cluster_levels <- colnames(split_corMat)[clusters$order] # Fetch rearranged cell type labels
-cluster_levels <- c("CM-19-2", "CM-19-1", "FB-17", "EN-18")
+cluster_levels <- niche
 
 # Pivot split_corMat to long data format
 cors <- tidyr::pivot_longer(split_corMat |> 
@@ -1240,59 +1160,10 @@ p <- ggplot(cors, aes(x = celltype, y = name, fill = value)) +
   labs(x = "cell type", y = "cell type")
 p
 
-pdf(file = paste0(myfolder, "heatmaps/colocalization_dl_subset_2_age_3.pdf"), width = 5, height = 4)
-p
+pdf(file = paste0(myfolder, "heatmaps/niche_colocalization_dl_", "EN-19_EN-15_EN-13_EN-10_EN-2", "_age3", ".pdf"), width = 10, height = 10)
+print(p)
 dev.off()
 ```
-
-
-### SUBSETS_3: "FB-4", "EN-7", "EN-17"
-
-```{r}
-split_corMat <- corMat[c("FB-4", "EN-7", "EN-17"), 
-                       c("FB-4", "EN-7", "EN-17")]
-pheatmap(split_corMat, border_color = NA, color = heatmap_colors)
-```
-
-
-#### Better control of the Heatmap with ggplot2
-
-```{r}
-# Cluster data for arrangement
-distMat <- dist(split_corMat, method = "euclidean") # Compute distance matrix
-clusters <- hclust(distMat, method = "complete") # Cluster distance matrix
-#cluster_levels <- colnames(split_corMat)[clusters$order] # Fetch rearranged cell type labels
-cluster_levels <- c("FB-4", "EN-7", "EN-17")
-
-# Pivot split_corMat to long data format
-cors <- tidyr::pivot_longer(split_corMat |> 
-                              as.data.frame() |> 
-                              tibble::rownames_to_column(var = "celltype"), where(is.numeric))
-
-# Set factor levels
-cors <- cors |> 
-  mutate(name = factor(name, levels = cluster_levels),
-         celltype = factor(celltype, levels = cluster_levels))
-
-# Calculate the absolute max value to define the limits of the fill scale
-max_val_abs <- max(abs(split_corMat), na.rm = TRUE)
-
-p <- ggplot(cors, aes(x = celltype, y = name, fill = value)) +
-  geom_tile() + # Use geom_tile to create the heatmap
-  geom_text(aes(label = round(value, 2)), vjust = 1, size = 3) + # Add numerical values on top of each cells
-  scale_y_discrete(limits = rev) + # Flip y axis
-  scale_fill_gradientn(colours = heatmap_colors, limit = c(-max_val_abs, max_val_abs)) + # Set fill scale limits using max_val_abs
-  theme(panel.grid = element_blank(),
-        axis.text.x = element_text(angle = 90)) + # Remove panel borders
-  labs(x = "cell type", y = "cell type")
-p
-
-pdf(file = paste0(myfolder, "heatmaps/colocalization_dl_subset_3_age_3.pdf"), width = 5, height = 4)
-p
-dev.off()
-```
-
-
 
 ================================================================================
 ================================================================================
@@ -1333,7 +1204,7 @@ cell_types_to_exclude <- c("CM-5", "CM-17", "EN-5", "FB-2", "FB-12", "IN-11", "I
 ```
 
 
-#### ST deep level all ages
+#### ST deep level all ages (Supp Fig. 7A)
 
 ```{r}
 set.seed(1)
@@ -1456,7 +1327,7 @@ ST
 ```
 
 
-#### "CM-19-1", "CM-19-2"
+#### "CM-19-1", "CM-19-2" (Fig. 3C)
 
 ```{r}
 plots <- CellColoc(ST,
@@ -1469,7 +1340,7 @@ dev.off()
 ```
 
 
-#### "CM-4-2", "CM-4-1" - 4 different sections
+#### "CM-4-2", "CM-4-1" - 4 different sections (Supp Fig. 3C)
 
 ```{r}
 # time point 1
@@ -1599,7 +1470,7 @@ dev.off()
 ```
 
 
-#### "CM-4-2", "CM-18"
+#### "CM-4-2", "CM-18" (Fig. 3C)
 
 ```{r}
 plots <- CellColoc(ST,
@@ -1715,7 +1586,7 @@ dev.off()
 ```
 
 
-#### "FB-5", "FB-9", FB-19" - 4 different sections
+#### "FB-5", "FB-9", FB-19" - 4 different sections 
 
 ```{r}
 # time point 1
@@ -1934,7 +1805,7 @@ dev.off()
 ```
 
 
-#### "EN-7", "EN-17"
+#### "EN-7", "EN-17" (Fig. 5C)
 
 ```{r}
 plots <- CellColoc(ST,
@@ -1958,6 +1829,8 @@ dev.off()
 ```
 
 
+##### (Supp Fig. 5D)
+
 ```{r}
 plots <- CellColoc(ST,
                       features = c("EN-7", "EN-17"),
@@ -1969,7 +1842,7 @@ dev.off()
 ```
 
 
-#### "EN-6", "EN-18", "EN-16"
+#### "EN-6", "EN-18", "EN-16" (Supp Fig. 5E)
 
 ```{r}
 plots <- CellColoc3(ST,
@@ -2163,91 +2036,6 @@ dev.off()
 ```
 
 
-
-#### "EN-2", "EN-10" - 4 different sections
-
-```{r}
-# time point 1
-plots1 <- CellColoc(ST,
-                      features = c("EN-2", "EN-10"),
-                      section_number = 5)
-
-# time point 2
-plots2 <- CellColoc(ST,
-                      features = c("EN-2", "EN-10"),
-                      section_number = 2)
-
-# time point 3
-plots3 <- CellColoc(ST,
-                      features = c("EN-2", "EN-10"),
-                      section_number = 11)
-
-# time point 4
-plots4 <- CellColoc(ST,
-                      features = c("EN-2", "EN-10"),
-                      section_number = 24)
-
-p <- plots1[[3]] + plots2[[3]] + plots3[[3]] + plots4[[3]]  +
-    patchwork::plot_layout(ncol = 4)
-
-pdf(file = paste0(myfolder, "colocalization/Capillary.pdf"), width = 15.75, height = 4.5)
-p
-dev.off()
-```
-
-
-##### section5
-
-```{r}
-plots <- CellColoc(ST,
-                      features = c("EN-2", "EN-10"),
-                      section_number = 5)
-
-pdf(file = paste0(myfolder, "colocalization/Capillary_section_5.pdf"), width = 15.75, height = 4.5)
-plots
-dev.off()
-```
-
-
-##### section2
-
-```{r}
-plots <- CellColoc(ST,
-                      features = c("EN-2", "EN-10"),
-                      section_number = 2)
-
-pdf(file = paste0(myfolder, "colocalization/Capillary_section_2.pdf"), width = 15.75, height = 4.5)
-plots
-dev.off()
-```
-
-
-##### section11
-
-```{r}
-plots <- CellColoc(ST,
-                      features = c("EN-2", "EN-10"),
-                      section_number = 11)
-
-pdf(file = paste0(myfolder, "colocalization/Capillary_section_11.pdf"), width = 15.75, height = 4.5)
-plots
-dev.off()
-```
-
-
-##### section24
-
-```{r}
-plots <- CellColoc(ST,
-                      features = c("EN-2", "EN-10"),
-                      section_number = 24)
-
-pdf(file = paste0(myfolder, "colocalization/Capillary_section_24.pdf"), width = 15.75, height = 4.5)
-plots
-dev.off()
-```
-
-
 #### "CM-8-2", "FB-11", "FB-19"
 
 ```{r}
@@ -2261,7 +2049,7 @@ dev.off()
 ```
 
 
-#### "CM-9", "CM-14", "EN-18"
+#### "CM-9", "CM-14", "EN-18" (Fig. 5C)
 
 ```{r}
 plots <- CellColoc3(ST,
@@ -2274,7 +2062,7 @@ dev.off()
 ```
 
 
-#### "IN"
+#### "IN" (Supp Fig. 4E)
 
 ```{r}
 pairs <- list(c("IN-1", "IN-13"),
@@ -2289,7 +2077,7 @@ pairs <- list(c("IN-1", "IN-13"),
               c("HL-29", "IN-8"),
               c("HL-29", "IN-19"),
               
-              c("IN-8", "IN-19"))
+              c("IN-8", "IN-19")) # (Supp Fig. 5D)
 
 for (pair in pairs) {
   print(pair)
@@ -2379,7 +2167,7 @@ dev.off()
 ```
 
 
-#### IN-1, IN-13, CM-19-2 
+#### IN-1, IN-13, CM-19-2 (Fig. 4D)
 
 ```{r}
 plots <- CellColoc3(ST,
@@ -2471,7 +2259,7 @@ dev.off()
 ```
 
 
-####  "IN-13", "CM-14", "IN-1"  in sc. 22
+####  "IN-13", "CM-14", "IN-1"  in sc. 22 (Supp Fig. 4D)
 
 ```{r}
 plots <- CellColoc3(ST,
@@ -2484,7 +2272,7 @@ dev.off()
 ```
 
 
-#### "IN-13",  "FB-1",  "IN-1"   in sc. 32 and 34
+#### "IN-13",  "FB-1",  "IN-1"   in sc. 32 and 34 (Supp Fig. 4D)
 
 ```{r}
 plots <- CellColoc3(ST,
@@ -2507,7 +2295,7 @@ dev.off()
 ```
 
 
-#### "CM-8-2", "CM-18", "CM-19-1"   in sc. 3
+#### "CM-8-2", "CM-18", "CM-19-1", in sc. 3 (Supp Fig. 3E)
 
 ```{r}
 plots <- CellColoc3(ST,
@@ -2571,7 +2359,7 @@ dev.off()
 
 ### group needed plot
 
-#### "FB-1", "FB-6" sc. 9, 16
+#### "FB-1", "FB-6" sc. 9, 16 (Fig. 6B)
 
 ```{r}
 plots <- CellColoc(ST,
@@ -2594,7 +2382,7 @@ dev.off()
 ```
 
 
-#### "FB-1", "HL-8", "EN-19", sc.9, 12, 20
+#### "FB-1", "HL-8", "EN-19", sc.9, 12, 20 (Supp Fig. 7C)
 
 ```{r}
 plots <- CellColoc3(ST,
@@ -2660,7 +2448,7 @@ dev.off()
 ```
 
 
-#### "FB-15", "HL-22", sc. 9, 10, 33
+#### "FB-15", "HL-22", sc. 9, 10, 33 (Fig. 6B) (Supp Fig. 7F)
 
 ```{r}
 plots <- CellColoc(ST,
@@ -2705,7 +2493,8 @@ plots
 dev.off()
 ```
 
-#### "HL-20", "FB-7", "FB-3" sc.11
+
+#### "HL-20", "FB-7", "FB-3" sc.11 (Fig. 6C)
 
 ```{r}
 plots <- CellColoc3(ST,
@@ -2718,7 +2507,7 @@ dev.off()
 ```
 
 
-#### "FB-4", "FB-11", "FB-13", sc. 2, 20, 22, 33
+#### "FB-4", "FB-11", "FB-13", sc. 2, 20, 22, 33 (Fig. 6D)
 
 ```{r}
 plots <- CellColoc3(ST,
@@ -2730,6 +2519,9 @@ plots
 dev.off()
 ```
 
+
+##### (Supp Fig. 6F)
+
 ```{r}
 plots <- CellColoc3(ST,
                       features = c("FB-4", "FB-11", "FB-13"),
@@ -2739,6 +2531,9 @@ pdf(file = paste0(myfolder, "colocalization/FB-4_FB-11_FB-13_section_20.pdf"), w
 plots
 dev.off()
 ```
+
+
+##### Fig. 6E
 
 ```{r}
 plots <- CellColoc3(ST,
@@ -2794,7 +2589,7 @@ dev.off()
 ```
 
 
-#### "FB-7", "FB-8", "FB-14", sc. 23
+#### "FB-7", "FB-8", "FB-14", sc. 23 (Fig. 6C)
 
 ```{r}
 plots <- CellColoc3(ST,
@@ -2807,7 +2602,7 @@ dev.off()
 ```
 
 
-#### "EN-7", "EN-17", "FB-4", sc. 2, 20
+#### "EN-7", "EN-17", "FB-4", sc. 2, 20 (Fig. 7C)
 
 ```{r}
 plots <- CellColoc3(ST,
@@ -2830,7 +2625,7 @@ dev.off()
 ```
 
 
-#### "CM-19-2", "CM-19-1", "FB-17", sc. 19, 25
+#### "CM-19-2", "CM-19-1", "FB-17", sc. 19, 25 (Fig. 7B)
 
 ```{r}
 plots <- CellColoc3(ST,
@@ -2853,7 +2648,7 @@ dev.off()
 ```
 
 
-#### "FB-5", "FB-9", "FB-19", sc. 5, 2, 11, 24
+#### "FB-5", "FB-9", "FB-19", sc. 5, 2, 11, 24 (Fig. 6D)
 
 ```{r}
 plots <- CellColoc3(ST,
@@ -2908,46 +2703,301 @@ plots
 dev.off()
 ```
 
-### For ST-seminar
 
-#### "EN-20", "HL-15"
+#### "CM-4-2", "EN-1", "EN-12" - 4 different sections
 
 ```{r}
 # time point 1
-plots1 <- CellColoc(ST,
-                      features = c("EN-20", "HL-15"),
+plots1 <- CellColoc3(ST,
+                      features = c("CM-4-2", "EN-1", "EN-12"),
                       section_number = 5)
 
 # time point 2
-plots2 <- CellColoc(ST,
-                      features = c("EN-20", "HL-15"),
+plots2 <- CellColoc3(ST,
+                      features = c("CM-4-2", "EN-1", "EN-12"),
                       section_number = 2)
 
 # time point 3
-plots3 <- CellColoc(ST,
-                      features = c("EN-20", "HL-15"),
+plots3 <- CellColoc3(ST,
+                      features = c("CM-4-2", "EN-1", "EN-12"),
                       section_number = 11)
 
 # time point 4
-plots4 <- CellColoc(ST,
-                      features = c("EN-20", "HL-15"),
+plots4 <- CellColoc3(ST,
+                      features = c("CM-4-2", "EN-1", "EN-12"),
                       section_number = 24)
 
-p <- plots1[[3]] + plots2[[3]] + plots3[[3]] + plots4[[3]]  +
+p <- plots1[[4]] + plots2[[4]] + plots3[[4]] + plots4[[4]]  +
     patchwork::plot_layout(ncol = 4)
 
-pdf(file = paste0(myfolder, "colocalization/EN-20_HL-15.pdf"), width = 15.75, height = 4.5)
+pdf(file = paste0(myfolder, "colocalization/CM-4-2_EN-1_EN-12.pdf"), width = 15.75, height = 4.5)
 p
 dev.off()
 ```
 
 
+##### section5
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("CM-4-2", "EN-1", "EN-12"),
+                      section_number = 5)
+
+pdf(file = paste0(myfolder, "colocalization/CM-4-2_EN-1_EN-12_section_5.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+
+##### section2
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("CM-4-2", "EN-1", "EN-12"),
+                      section_number = 2)
+
+pdf(file = paste0(myfolder, "colocalization/CM-4-2_EN-1_EN-12_section_2.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+
+##### section11
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("CM-4-2", "EN-1", "EN-12"),
+                      section_number = 11)
+
+pdf(file = paste0(myfolder, "colocalization/CM-4-2_EN-1_EN-12_section_11.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+
+##### section24
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("CM-4-2", "EN-1", "EN-12"),
+                      section_number = 24)
+
+pdf(file = paste0(myfolder, "colocalization/CM-4-2_EN-1_EN-12_section_24.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+
+
+#### "EN-2", "EN-10" - 4 different sections
+
+```{r}
+# time point 1
+plots1 <- CellColoc(ST,
+                      features = c("EN-2", "EN-10"),
+                      section_number = 5)
+
+# time point 2
+plots2 <- CellColoc(ST,
+                      features = c("EN-2", "EN-10"),
+                      section_number = 2)
+
+# time point 3
+plots3 <- CellColoc(ST,
+                      features = c("EN-2", "EN-10"),
+                      section_number = 11)
+
+# time point 4
+plots4 <- CellColoc(ST,
+                      features = c("EN-2", "EN-10"),
+                      section_number = 24)
+
+p <- plots1[[3]] + plots2[[3]] + plots3[[3]] + plots4[[3]]  +
+    patchwork::plot_layout(ncol = 4)
+
+pdf(file = paste0(myfolder, "colocalization/EN-2_EN-10.pdf"), width = 15.75, height = 4.5)
+p
+dev.off()
+```
+
+
+##### section5
+
 ```{r}
 plots <- CellColoc(ST,
-                      features = c("EN-20", "HL-15"),
-                      section_number = 28)
+                      features = c("EN-2", "EN-10"),
+                      section_number = 5)
 
-pdf(file = paste0(myfolder, "colocalization/EN-20_HL-15_section_28.pdf"), width = 15.75, height = 4.5)
+pdf(file = paste0(myfolder, "colocalization/EN-2_EN-10_section_5.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+
+##### section2
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("EN-2", "EN-10"),
+                      section_number = 2)
+
+pdf(file = paste0(myfolder, "colocalization/EN-2_EN-10_section_2.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+
+##### section11
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("EN-2", "EN-10"),
+                      section_number = 11)
+
+pdf(file = paste0(myfolder, "colocalization/EN-2_EN-10_section_11.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+
+##### section24
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("EN-2", "EN-10"),
+                      section_number = 24)
+
+pdf(file = paste0(myfolder, "colocalization/EN-2_EN-10_section_24.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+
+#### "FB-1", "HL-8", "EN-19", sc. 11
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("FB-1", "HL-8", "EN-19"),
+                      section_number = 11)
+
+pdf(file = paste0(myfolder, "colocalization/FB-1_HL-8_EN-19_section_11.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+
+#### "FB-1", "HL-8", "EN-19", sc. 13
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("FB-1", "HL-8", "EN-19"),
+                      section_number = 13)
+
+pdf(file = paste0(myfolder, "colocalization/FB-1_HL-8_EN-19_section_13.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+
+#### "FB-6", "HL-10", "EN-15", sc. 11
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("FB-6", "HL-10", "EN-15"),
+                      section_number = 11)
+
+pdf(file = paste0(myfolder, "colocalization/FB-6_HL-10_EN-15_section_11.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+
+#### "FB-6", "HL-10", "EN-15", sc. 13
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("FB-6", "HL-10", "EN-15"),
+                      section_number = 13)
+
+pdf(file = paste0(myfolder, "colocalization/FB-6_HL-10_EN-15_section_13.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+
+#### "EN-19", "EN-15", "EN-13", sc. 11
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("EN-19", "EN-15", "EN-13"),
+                      section_number = 11)
+
+pdf(file = paste0(myfolder, "colocalization/EN-19_EN-15_EN-13_section_11.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+
+#### "CM-4-2", "EN-1", "EN-12", sc. 19
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("CM-4-2", "EN-1", "EN-12"),
+                      section_number = 19)
+
+pdf(file = paste0(myfolder, "colocalization/CM-4-2_EN-1_EN-12_section_19.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+
+#### "FB-6", "HL-10", "EN-15", sc. 20 (Supp Fig. 7C)
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("FB-6", "HL-10", "EN-15"),
+                      section_number = 20)
+
+pdf(file = paste0(myfolder, "colocalization/FB-6_HL-10_EN-15_section_20.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+
+#### "FB-1", "HL-15", "EN-20", sc. 20 (Supp Fig. 7C)
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("FB-1", "HL-15", "EN-20"),
+                      section_number = 20)
+
+pdf(file = paste0(myfolder, "colocalization/FB-1_HL-15_EN-20_section_20.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+
+#### "FB-11", "FB-13", "CM-8-2", sc. 20 (Fig. 7C)
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("FB-11", "FB-13", "CM-8-2"),
+                      section_number = 20)
+
+pdf(file = paste0(myfolder, "colocalization/FB-11_FB-13_CM-8-2_section_20.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+
+#### "EN-16", "EN-18", "CM-19-1", in sc. 19 (Fig. 7B)
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("EN-16", "EN-18", "CM-19-1"),
+                      section_number = 19)
+
+pdf(file = paste0(myfolder, "colocalization/EN-16_EN-18_CM-19-1_section_19.pdf"), width = 20, height = 6)
 plots
 dev.off()
 ```

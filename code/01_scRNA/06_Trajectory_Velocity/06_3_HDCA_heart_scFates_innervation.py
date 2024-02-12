@@ -1,16 +1,17 @@
 """
-title: "10_5_HDCA_heart_scVelo_IN"
+title: "06_3_HDCA_heart_scFates_innervation"
 author: "Raphaël Mauron"
 """
 
 """
-In this script, RNA velocity is performed on Innervation clusters
+In this script, RNA velocity is performed on innvervation cells.
 """
 
 # Import libraries
 import numpy as np
 import cellrank as cr
 import scanpy as sc
+import scFates as scf
 import scvelo as scv
 import anndata as ad
 import os, sys
@@ -28,7 +29,7 @@ sc.settings.verbosity = 3
 sc.settings.logfile = sys.stdout
 warnings.simplefilter("ignore", category=UserWarning)
 wd = os.getcwd()
-save_path = wd + "/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/trajectory/scVelo/"
+save_path = wd + "/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/trajectory/scFates/"
 
 
 #############################################
@@ -68,47 +69,49 @@ adata_IN_sub.obsm["X_umap"]=UMAP_IN_sub
 
 # Create copy of adata to use for INNERVATION Deep Level analysis
 adata_IN = adata_IN_sub.copy()
+adata_IN_sub = adata_IN.copy()
 
 
 #############################################
 # Preprocessing
 #############################################
 
-adata_IN_sub = adata_IN.copy()
-
-scv.pp.filter_genes(adata_IN_sub, min_cells=3)
-scv.pp.normalize_per_cell(adata_IN_sub)
-scv.pp.filter_genes_dispersion(adata_IN_sub, n_top_genes=5000)
-scv.pp.log1p(adata_IN_sub)
+sc.pp.filter_genes(adata_IN_sub, min_cells=3)
+sc.pp.normalize_total(adata_IN_sub)
+sc.pp.log1p(adata_IN_sub, base=10)
+sc.pp.highly_variable_genes(adata_IN_sub, n_top_genes=5000, flavor='cell_ranger')
 adata_IN_sub.raw = adata_IN_sub
+adata_IN_sub=adata_IN_sub[:,adata_IN_sub.var.highly_variable]
 sc.pp.scale(adata_IN_sub)
 sc.pp.pca(adata_IN_sub)
 sc.pp.neighbors(adata_IN_sub, n_neighbors=25)
 sc.tl.umap(adata_IN_sub)
 sc.pp.pca(adata_IN_sub)
 
-sc.pp.neighbors(adata_IN_sub, random_state=0)
-adata_IN_sub.obsm['X_umap'][:, 1] = -adata_IN_sub.obsm['X_umap'][:, 1] # flip the y-coordinates to visualized the umap correctly
+
+#############################################
+# Learn curve using ElPiGraph algorithm
+#############################################
+
+scf.tl.curve(adata_IN_sub, Nodes=30, use_rep="X_pca", ndims_rep=2,)
+adata_IN_sub.obsm['X_R']
 
 
 #############################################
-# Estimate RNA velocity
+# Selecting a root and computing pseudotime
 #############################################
 
-scv.tl.velocity(adata_IN_sub)
-scv.tl.velocity_graph(adata_IN_sub)
+scf.tl.root(adata_IN_sub,"PENK")
+scf.tl.pseudotime(adata_IN_sub,n_jobs=20,n_map=100,seed=42)
 
-scv.pl.velocity_embedding_stream(adata_IN_sub, basis='pca',  color=["clusters_subset"], size=300, alpha=0.5, add_margin = 0.05, dpi=300, show=False, save=save_path+"IN_velocity_graph_pca.svg")
-scv.pl.velocity_embedding_stream(adata_IN_sub, basis='umap', color=["clusters_subset"], size=300, alpha=0.5, add_margin = 0.05, dpi=300, show=False, save=save_path+"IN_velocity_graph_umap.svg")
+# Plot pseudotime
+sc.pl.pca(adata_IN_sub,color="t")
 
+# Plot clusters
+sc.pl.pca(adata_IN_sub, color="clusters_subset")
 
-#############################################
-# Pseudotime
-#############################################
-
-scv.tl.velocity_pseudotime(adata_IN_sub)
-scv.pl.scatter(adata_IN_sub, color='velocity_pseudotime', cmap='gnuplot', size=80, add_margin = 0.1, dpi=300, show=False, save=save_path+"IN_velocity_pseudotime_umap.pdf")
-scv.pl.scatter(adata_IN_sub, basis='pca', color='velocity_pseudotime', cmap='gnuplot', size=80, add_margin = 0.1, dpi=300, show=True, save=save_path+"IN_velocity_pseudotime_pca.pdf")
-
-scv.pl.velocity_embedding_stream(adata_IN_sub, basis='pca',  color=["velocity_pseudotime"], size=300, alpha=0.5, add_margin = 0.05, dpi=300, show=True, save=save_path+"IN_velocity_graph_velocity_pseudotime_pca.pdf")
-scv.pl.velocity_embedding_stream(adata_IN_sub, basis='umap', color=["velocity_pseudotime"], size=300, alpha=0.5, add_margin = 0.05, dpi=300, show=False, save=save_path+"IN_velocity_graph_velocity_pseudotime_umap.pdf")
+# Plot features on embedding (Fig. 4C, 4G, Supp Fig. 4C)
+sc.pl.pca(adata_IN_sub,color=["SOX10", "FOXD3", "MBP", "MPZ", "PRPH", "PHOX2B", "PHOX2A", "ASCL1"],cmap="RdBu_r")
+sc.pl.pca(adata_IN_sub,color=["CHGB", "CHGA", "PENK", "MBP", "PMP22", "HTR3A", "TH", "PNMT"],cmap="RdBu_r")
+sc.pl.pca(adata_IN_sub,color=["VIP", "SST", "EPAS1", "COX4I2", "CHAT", "DBH", "PMEL", "DCT"],cmap="RdBu_r")
+sc.pl.pca(adata_IN_sub,color=["VIP", "SST", "EPAS1", "COX4I2", "NDUFS2", "HIGD1C", "PMEL", "DCT"],cmap="RdBu_r")

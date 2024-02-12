@@ -81,12 +81,12 @@ DEG_ST_heart_23cl<- read.xlsx("/home/rstudio/project/data/ST/230904_DE_all_heart
 ### ST clusters to keep
 
 ```{r}
-# Get the gene set from single cluster
+# Get the gene set from single cluster (keep only: 4, 7, 19, 10, 5, 18, 13, 6, 8, 15, 9, 21)
 cluster_list <- c("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22")
 ```
 
 
-#### All ST clusters analyzed separately across all HL sc clusters
+#### All ST clusters analyzed separately across all HL sc clusters (Supp Fig. 2B)
 
 ```{r}
 # Check how many genes you have per group
@@ -105,9 +105,6 @@ data <- AddModuleScore(data, features = GeneSets, name = "Enrichment_Score")
 new_column_names <- paste("Enrichment_Score_ST_cluster_", cluster_list, sep = "")
 
 # Use a loop to rename the columns based on the list of indices and names
-# for (i in 30:52) {
-#   colnames(data@meta.data)[i] <- new_column_names[i - 29]
-# }
 i_start <- as.numeric(dim(data@meta.data)[2]-length(GeneSets)+1)
 i_end <- as.numeric(dim(data@meta.data)[2])
 i_column <- as.numeric(dim(data@meta.data)[2]-length(GeneSets))
@@ -119,8 +116,8 @@ for (i in i_start:i_end) {
 
 # Plot violin plots
 # If you have 10 clusters, the scores should now be named Enrichment_Score1, Enrichment_Scoree2, ..., Enrichment_Score10
-data_sub <- data[, data$high_level_clusters_removed %in% c("4_35", "17", "9", "5", "11", "7", "18_2", "18_1", "33", "28", "12", "24", "32", "3", "21", "13", "30", "2", "23", "1", "14", "16", "31", "8", "10", "22", "20", "25", "26", "15", "29")]
 selected_clusters <- c("4_35", "17", "9", "5", "11", "7", "18_2", "18_1", "33", "28", "12", "24", "32", "3", "21", "13", "30", "2", "23", "1", "14", "16", "31", "8", "10", "22", "20", "25", "26", "15", "29")
+data_sub <- data[, data$high_level_clusters_removed %in% selected_clusters]
 data_sub$high_level_clusters_removed <- factor(data_sub$high_level_clusters_removed, levels = selected_clusters)
 
 
@@ -131,7 +128,7 @@ dev.off()
 ```
 
 
-## Enrichment in Deep Level CM
+## Enrichment in Deep Level CM (Supp Fig. 3B)
 
 ### ST clusters to keep
 
@@ -146,7 +143,7 @@ cluster_list <- c("0", "1", "2", "3", "4", "5", "7", "9", "12", "15", "17")
 ```{r}
 # Check how many genes you have per group
 # Wouldn't make much sense to use only 1 gene, but maybe you'll have
-# 10-100 or something. 
+# 10-100 or something.
 table(DEG_ST_heart_23cl$cluster)
 
 # Create list of DEGs
@@ -182,13 +179,13 @@ CM_sub$clusters_subset_split <- factor(CM_sub$clusters_subset_split, levels = se
 
 # Plot
 pdf(file = paste0(myfolder, "ST_enrichment/Violin_enrichment_ST_subset_CM.pdf"), width = 40, height = 20)
-VlnPlot(CM_sub, features = new_column_names, group.by = "clusters_subset_split", pt.size = 0) + 
+VlnPlot(CM_sub, features = new_column_names, group.by = "clusters_subset_split", pt.size = 0) +
   plot_layout(ncol = 2)
 dev.off()
 ```
 
 
-## Enrichment in Deep Level EN
+## Enrichment in Deep Level EN (Supp Fig. 5C)
 
 ### ST clusters to keep
 
@@ -245,7 +242,7 @@ dev.off()
 ```
 
 
-## Enrichment in Deep Level FB
+## Enrichment in Deep Level FB (Supp Fig. 6F)
 
 ### ST clusters to keep
 

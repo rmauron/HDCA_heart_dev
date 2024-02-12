@@ -1,10 +1,18 @@
 ---
-title: "ST QC plots - complementary figures"
+title: "ST_HDCA_heart_ST_QC_plots"
+author: "Raphaël Mauron"
 output: html_document
 editor_options: 
   chunk_output_type: console
 ---
 
+# HDCA heart ST Quality plots
+
+This script presents the quality plots performed for this analysis.
+
+NOTE: The path to load the data and the path to save the figures should be changed at your convenience.
+
+Environment: **Conda: r-semla**
 
 ## Set up and loading material
 
@@ -204,7 +212,7 @@ dev.off()
 ```
 
 
-##### section 5, 2, 11, 24
+##### section 5, 2, 11, 24 (Extended Fig. 1D)
 
 ```{r fig.asp=0.7}
 plots <- MapFeatures(ST,
@@ -301,7 +309,7 @@ dev.off()
 ```
 
 
-##### section 5, 2, 11, 24
+##### section 5, 2, 11, 24 (Extended Fig. 1D)
 
 ```{r fig.asp=0.7}
 plots <- MapFeatures(ST,
@@ -427,7 +435,7 @@ dev.off()
 ```
 
 
-#### KDM5D
+#### KDM5D (Extended Fig. 1B)
 
 ```{r fig.asp=0.7}
 jpeg(filename = paste0(myfolder, "/KDM5D.jpg"), width = 4000, height = 4000, res = 150)
@@ -576,7 +584,7 @@ rm(p, p2, p5, p11, p24, pg)
 ```
 
 
-## Violin plots
+## Violin plots (Extended Fig. 1C)
 
 ### nCount
 
@@ -647,16 +655,15 @@ dev.off()
 ```
 
 
-
-
-
-
-
 ================================================================================
 ================================================================================
 ================================================================================
 ================================================================================
 ================================================================================
+
+
+
+
 
 
 
