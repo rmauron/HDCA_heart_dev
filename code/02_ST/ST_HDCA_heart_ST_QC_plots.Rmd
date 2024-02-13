@@ -45,6 +45,7 @@ myfolder <- "~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/complementary/
 
 ```{r}
 ST <- readRDS("~/hdca_DevHeart/data/ST/220114_STdata_harmony_semla.rds")
+ST_clustering <- readRDS("~/hdca_DevHeart/data/ST/HDCA_heart_clustering.rds")
 ```
 
 
@@ -655,14 +656,101 @@ dev.off()
 ```
 
 
-================================================================================
-================================================================================
-================================================================================
-================================================================================
-================================================================================
+## Spatial Clustering
+
+### All 17 kept sections
+
+```{r}
+pdf(file = paste0(myfolder, "ST_umap_allspots.pdf"), width = 15, height = 15, bg = "transparent")
+DimPlot(ST_clustering, reduction = "umap")
+dev.off()
+```
 
 
+### Temporal UMAP
 
+```{r}
+table(ST_clustering$age)
+```
+
+```{r}
+ST_clustering_1 <- ST_clustering[, ST_clustering$age %in% c("w6", "w7")]
+ST_clustering_2 <- ST_clustering[, ST_clustering$age %in% c("w8", "w9")]
+ST_clustering_3 <- ST_clustering[, ST_clustering$age %in% c("w10", "w10.5", "w12")]
+```
+
+```{r}
+table(ST_clustering_1$age)
+table(ST_clustering_2$age)
+table(ST_clustering_3$age)
+```
+
+
+#### Check cell group (age) with the fewest cells
+
+```{r}
+a1 <- sum(table(ST_clustering_1$age))
+a2 <- sum(table(ST_clustering_2$age))
+a3 <- sum(table(ST_clustering_3$age))
+
+min_cell <- min(a1, a2, a3)
+min_cell
+rm(a1, a2, a3)
+```
+
+
+### Select random subsets of the same size
+
+To 2649 spots (same size as the smallest age group, i.e., age1).
+
+```{r}
+set.seed(1) ; age1 <- ST_clustering_1[, sample(colnames(ST_clustering_1), size = min_cell)]
+set.seed(1) ; age2 <- ST_clustering_2[, sample(colnames(ST_clustering_2), size = min_cell)]
+set.seed(1) ; age3 <- ST_clustering_3[, sample(colnames(ST_clustering_3), size = min_cell)]
+
+
+a1 <- sum(table(age1$age))
+a2 <- sum(table(age2$age))
+a3 <- sum(table(age3$age))
+
+a1
+a2
+a3
+
+gc()
+```
+
+```{r}
+p1 <- DimPlot(age1, reduction = "umap")
+p2 <- DimPlot(age2, reduction = "umap")
+p3 <- DimPlot(age3, reduction = "umap")
+```
+
+```{r}
+p <- p1|p2|p3
+p
+```
+
+```{r}
+pdf(file = paste0(myfolder, "ST_temporal_umap_age_1.pdf"), width = 15, height = 15, bg = "transparent")
+p1
+dev.off()
+
+pdf(file = paste0(myfolder, "ST_temporal_umap_age_2.pdf"), width = 15, height = 15, bg = "transparent")
+p2
+dev.off()
+
+pdf(file = paste0(myfolder, "ST_temporal_umap_age_3.pdf"), width = 15, height = 15, bg = "transparent")
+p3
+dev.off()
+```
+
+
+================================================================================
+================================================================================
+================================================================================
+================================================================================
+================================================================================
 
 
 
