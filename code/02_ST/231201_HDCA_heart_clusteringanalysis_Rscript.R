@@ -145,5 +145,6 @@ FeaturePlot(se_harmony, features = c("BRINP3", "PLXNA4"))
 ST.FeaturePlot(se_harmony, features = c("BRINP3", "PLXNA4"), dark.theme = F, split.labels = T, indices = 1, show.sb = FALSE, ncol = 4)
 
 
-
+### Save clustering object
+saveRDS(se_harmony, "~data/ST/HDCA_heart_clustering.rds")
 
