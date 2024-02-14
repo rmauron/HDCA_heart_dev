@@ -9,7 +9,8 @@ On the diagram, find the workflow used for the analysis with each major step pre
 - All the scripts are found in the [code folder](./code).
 - All the environments are found in the [environments folder](./environments).
 
-![HDCA_heart_pipeline drawio](https://github.com/rmauron/HDCA_heart_dev/assets/92672952/bd0b7056-2289-4d96-9063-1b9c61948a64)
+![HDCA_heart_pipeline drawio](https://github.com/rmauron/HDCA_heart_dev/assets/92672952/ed6a7361-ee9c-4c09-8dfc-fb71b57342ed)
+
 
 ## Data
 - The preprocessed data, the intermediate .Rds object and metadata required to reproduce the analysis are found on Mendeley Data at [this DOI](doi: 10.17632/fhtb99mdzd.1).
