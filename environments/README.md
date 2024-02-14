@@ -7,6 +7,7 @@ The environments used in this project can be restored throught the YAML files fo
 2. [Conda Environments](#conda-environments)
 
 <br>
+![HDCA_heart_pipeline drawio](https://github.com/rmauron/HDCA_heart_dev/assets/92672952/880e54b7-d3ec-496f-8302-6d9b6f224df4)
 
 ---
 
