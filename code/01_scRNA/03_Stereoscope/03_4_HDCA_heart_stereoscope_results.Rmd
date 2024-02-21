@@ -103,7 +103,7 @@ rownames(ST)
 ```
 
 
-#### Plot all sections (1 patchwork per cluster) (Fig. 2D, 4E, Supp Fig. 2B)
+#### Plot all sections (1 patchwork per cluster)
 Here we project the gene expression of cluster individually on every section
 
 ```{r}
@@ -130,34 +130,7 @@ rm(celltype, p)
 ```
 
 
-#### Plot all sections (1 patchwork per cluster) - no_cutoff
-Here we project the gene expression of cluster individually on every section
-
-```{r}
-# Create path if not existing
-if (!dir.exists(paste0(myfolder, "visualization/high_level_no_cutoff"))){
-  dir.create(paste0(myfolder, "visualization/high_level_no_cutoff"), recursive = TRUE)}
-
-for (celltype in rownames(ST)) {
-  p <- MapFeatures(ST,
-                   features = celltype,
-                   override_plot_dims = TRUE,
-                   colors = c("lightgrey","mistyrose", "red", "darkred", "black"),
-                   #max_cutoff = 0.99, #flattened the expression above 0.99 percentile
-                   pt_size = 1.5) +
-    patchwork::plot_layout(guides = "collect") &
-    theme(plot.subtitle = element_blank()) &
-    ThemeLegendRight()
-  
-  jpeg(filename = paste0(myfolder, "visualization/high_level_no_cutoff/cell_type_", celltype, "_no_cutoff.jpg"), width = 4000, height = 4000, res = 150)
-  print(p)
-  dev.off()
-}
-rm(celltype, p)
-```
-
-
-#### Plot on subset of sections
+#### Plot on subset of sections (Fig. 2D, Supp Fig. 2B)
 
 ```{r}
 # Create path if not existing
@@ -188,40 +161,7 @@ rm(p, p2, p5, p11, p24, pg)
 ```
 
 
-#### Plot on subset of sections - no_cutoff
-
-```{r}
-# Create path if not existing
-if (!dir.exists(paste0(myfolder, "visualization/high_level_figures_no_cutoff"))){
-  dir.create(paste0(myfolder, "visualization/high_level_figures_no_cutoff"), recursive = TRUE)}
-
-for (celltype in rownames(ST)) {
-  p <- MapFeatures(ST,
-                   features = celltype,
-                   override_plot_dims = TRUE,
-                   colors = c("lightgrey","mistyrose", "red", "darkred", "black"),
-                   #max_cutoff = 0.99, #flattened the expression above 0.99 percentile
-                   pt_size = 1.5)
-  
-  p5 <- p[[5]] & theme(plot.subtitle = element_blank(), legend.position = "none")
-  p2 <- p[[2]] & theme(plot.subtitle = element_blank(), legend.position = "none")
-  p11 <- p[[11]] & theme(plot.subtitle = element_blank(), legend.position = "none")
-  p24 <- p[[24]] & theme(plot.subtitle = element_blank(), legend.position = "right", legend.text = element_text(angle = 0))
-
-  pg <- p5 + p2 + p11 + p24  +
-    patchwork::plot_layout(ncol = 4)
-  
-  pdf(file = paste0(myfolder, "visualization/high_level_figures_no_cutoff/cell_type_", celltype, "_no_cutoff.pdf"), width = 15.75, height = 4.5)
-  print(pg)
-  dev.off()
-}
-rm(p, p2, p5, p11, p24, pg)
-```
-
-
 ## Deep Level Clustering Analysis
-
-### Cardiomyocytes, Endothelial cells, Fibroblasts (together)
 
 #### Load stereoscope results for sampled cells
 
@@ -284,32 +224,6 @@ for (celltype in rownames(ST)) {
 ```
 
 
-#### Plot all sections (1 patchwork per cluster) - no_cutoff
-Here we project the gene expression of cluster individually on every section
-
-```{r}
-#Create path if not existing
-if (!dir.exists(paste0(myfolder, "/visualization/deep_level_no_cutoff/"))){
-  dir.create(paste0(myfolder, "/visualization/deep_level_no_cutoff/"))}
-
-for (celltype in rownames(ST)) {
-  p <- MapFeatures(ST,
-                   features = celltype,
-                   override_plot_dims = TRUE,
-                   colors = c("lightgrey","mistyrose", "red", "darkred", "black"),
-                   #max_cutoff = 0.99, #flattened the expression above 0.99 percentile
-                   pt_size = 1.5) +
-    patchwork::plot_layout(guides = "collect") &
-    theme(plot.subtitle = element_blank()) &
-    ThemeLegendRight()
-
-  jpeg(filename = paste0(myfolder, "/visualization/deep_level_no_cutoff/", celltype, "_no_cutoff.jpg"), width = 4000, height = 4000, res = 150)
-  print(p)
-  dev.off()
-}
-```
-
-
 #### Plot on subset of sections
 
 ```{r}
@@ -334,37 +248,6 @@ for (celltype in rownames(ST)) {
     patchwork::plot_layout(ncol = 4)
   
   pdf(file = paste0(myfolder, "visualization/deep_level_figures/", celltype, ".pdf"), width = 15.75, height = 4.5)
-  print(pg)
-  dev.off()
-}
-rm(p, p2, p5, p11, p24, pg)
-```
-
-
-#### Plot on subset of sections - no_cutoff
-
-```{r}
-# Create path if not existing
-if (!dir.exists(paste0(myfolder, "visualization/deep_level_figures_no_cutoff/"))){
-  dir.create(paste0(myfolder, "visualization/deep_level_figures_no_cutoff/"), recursive = TRUE)}
-
-for (celltype in rownames(ST)) {
-  p <- MapFeatures(ST,
-                   features = celltype,
-                   override_plot_dims = TRUE,
-                   colors = c("lightgrey","mistyrose", "red", "darkred", "black"),
-                   #max_cutoff = 0.99, #flattened the expression above 0.99 percentile
-                   pt_size = 1.5)
-  
-  p5 <- p[[5]] & theme(plot.subtitle = element_blank(), legend.position = "none")
-  p2 <- p[[2]] & theme(plot.subtitle = element_blank(), legend.position = "none")
-  p11 <- p[[11]] & theme(plot.subtitle = element_blank(), legend.position = "none")
-  p24 <- p[[24]] & theme(plot.subtitle = element_blank(), legend.position = "right", legend.text = element_text(angle = 0))
-
-  pg <- p5 + p2 + p11 + p24  +
-    patchwork::plot_layout(ncol = 4)
-  
-  pdf(file = paste0(myfolder, "visualization/deep_level_figures_no_cutoff/", celltype, "_no_cutoff.pdf"), width = 15.75, height = 4.5)
   print(pg)
   dev.off()
 }

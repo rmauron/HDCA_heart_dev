@@ -365,150 +365,6 @@ rm(detable, DGE_DATA, top5, DGE_cells, sample_size)
 ```
 
 
-### DEG EN-1, EN-3, EN-6, EN-12 - top10 ordered
-
-```{r}
-values_to_keep <- c("1", "3", "6", "12")
-
-data_EN <- EN[, EN$clusters_subset %in% values_to_keep]
-
-# Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
-sample_size <- table(data_EN$clusters_subset)
-sample_size[sample_size > 150] <- 150
-sample_size
-
-# Randomly sample the cells that will be included when calculating DGE (same number of cells as selected above).
-# Samples without replacement, so each cell only can be included once.
-DGE_cells <- lapply(names(sample_size), function(x){ 
-  set.seed(1)
-  sample(colnames(data_EN)[data_EN$clusters_subset == x], size = sample_size[x])
-  })
-DGE_cells <- unlist(DGE_cells)
-
-# Select all data that relates to the sampled DGE cells.
-DGE_DATA <- data_EN[, DGE_cells]
-
-# reorder the cell types desired
-DGE_DATA$cell.types <- factor(DGE_DATA$cell.types, 
-                                              levels = c("Endoc_EC_1", "Endoc_EC_3", "Endoc_EC_4", "Endoc_EC_2"))
-
-#Find differential expressed genes based on groups defined by "clusters_subset_split".
-DGE_DATA <- SetIdent(DGE_DATA, value = "cell.types")
-
-# The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).
-detable <- FindAllMarkers(DGE_DATA,
-                          only.pos = TRUE,
-                          max.cells.per.ident = 300,
-                          logfc.threshold = .1,
-                          assay = "RNA",
-                          min.pct = 0.05)
-
-# Only keep DEG that have a p-value below 0.05.
-detable <- detable[detable$p_val < 0.05, ]
-
-# Adding two extra columns giving the difference (and log difference) between pct1 and pct2.
-# pct1 is the percentage of cells in the specific cluster that express this gene.
-# pct2 is the percentage of cells in all other clusters that express this gene.
-detable$pct.diff <- detable$pct.1 - detable$pct.2
-detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
-
-# Pick the 40 genes with the lowest p value for each cluster, then 20 highest based on pct.diff, then 5 highest based on avg_log2FC.
-detable %>%
-  group_by(cluster) %>%
-  top_n(-40, p_val) %>%
-  top_n(20, pct.diff) %>%
-  top_n(10, avg_log2FC) ->
-  top10
-
-pdf(paste0(myfolder, "endothelial/DEG_top10_EN1_3_6_12.pdf"), width = 5, height = 10)
-par(mfrow=c(1,1), mar=c(3,6,2,5))
-DotPlot(DGE_DATA, features = top10 %>% pull(gene) %>% unique()) +
-  coord_flip() +
-  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
-  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
-  scale_x_discrete(limits = rev) +
-  scale_y_discrete() +
-  labs(x = "", y = "") +
-  theme(axis.text.x = element_text(angle = 30, hjust = 1))
-dev.off()
-
-gc()
-rm(detable, DGE_DATA, top5, DGE_cells, sample_size)
-```
-
-
-### DEG EN-2, EN-10 - top10 ordered
-
-```{r}
-values_to_keep <- c("2", "10")
-
-data_EN <- EN[, EN$clusters_subset %in% values_to_keep]
-
-# Select a new samples size for each cluster, to get groups that are equally (or almost equally) large.
-sample_size <- table(data_EN$clusters_subset)
-sample_size[sample_size > 150] <- 150
-sample_size
-
-# Randomly sample the cells that will be included when calculating DGE (same number of cells as selected above).
-# Samples without replacement, so each cell only can be included once.
-DGE_cells <- lapply(names(sample_size), function(x){ 
-  set.seed(1)
-  sample(colnames(data_EN)[data_EN$clusters_subset == x], size = sample_size[x])
-  })
-DGE_cells <- unlist(DGE_cells)
-
-# Select all data that relates to the sampled DGE cells.
-DGE_DATA <- data_EN[, DGE_cells]
-
-# reorder the cell types desired
-DGE_DATA$cell.types <- factor(DGE_DATA$cell.types, 
-                                              levels = c("Cap_EC_2", "Cap_EC_1"))
-
-#Find differential expressed genes based on groups defined by "clusters_subset_split".
-DGE_DATA <- SetIdent(DGE_DATA, value = "cell.types")
-
-# The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).
-detable <- FindAllMarkers(DGE_DATA,
-                          only.pos = TRUE,
-                          max.cells.per.ident = 300,
-                          logfc.threshold = .1,
-                          assay = "RNA",
-                          min.pct = 0.05)
-
-# Only keep DEG that have a p-value below 0.05.
-detable <- detable[detable$p_val < 0.05, ]
-
-# Adding two extra columns giving the difference (and log difference) between pct1 and pct2.
-# pct1 is the percentage of cells in the specific cluster that express this gene.
-# pct2 is the percentage of cells in all other clusters that express this gene.
-detable$pct.diff <- detable$pct.1 - detable$pct.2
-detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
-
-# Pick the 40 genes with the lowest p value for each cluster, then 20 highest based on pct.diff, then 5 highest based on avg_log2FC.
-detable %>%
-  group_by(cluster) %>%
-  top_n(-40, p_val) %>%
-  top_n(20, pct.diff) %>%
-  top_n(10, avg_log2FC) ->
-  top10
-
-pdf(paste0(myfolder, "endothelial/DEG_top10_EN2_10.pdf"), width = 5, height = 5)
-par(mfrow=c(1,1), mar=c(3,6,2,5))
-DotPlot(DGE_DATA, features = top10 %>% pull(gene) %>% unique()) +
-  coord_flip() +
-  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
-  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
-  scale_x_discrete(limits = rev) +
-  scale_y_discrete() +
-  labs(x = "", y = "") +
-  theme(axis.text.x = element_text(angle = 30, hjust = 1))
-dev.off()
-
-gc()
-rm(detable, DGE_DATA, top5, DGE_cells, sample_size)
-```
-
-
 ### DEG EN selection of markers (Extended Fig. 3D)
 
 ```{r}
@@ -527,39 +383,6 @@ p <- DotPlot(EN, features = my_markers) +
   theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
 
 pdf(paste0(myfolder, "endothelial/dotplot_markers_EN.pdf"), width = 8, height = 8)
-print(p)
-dev.off()
-
-rm(p)
-gc()
-```
-
-
-### DEG EN selection of markers EN_18, EN_17 and EN_7 comparison (split & selection)
-
-```{r}
-values_to_keep <- c("18", "17", "7")
-
-data_EN <- EN[, EN$clusters_subset %in% values_to_keep]
-
-# specific list of marker to project the dotplot on
-my_markers <- c("MSX1", "ESRRG", "FOXP2", "LEF1", "MAF", "FREM1", "SOX6", "FOS", "MAFF", "JUNB", "NFATC2", "RUNX1", "ATF3", "EGR1", "CEBPD", "ZNF93", "NPAS3", "IRF1", "NFE2L3", "MEIS2", "ARID5B", "HEY2", "LMO2", "ARID5A", "SMAD6", "KLF4", "SP6", "GLIS3", "RFX2", "NFKB1", "NFATC1", "FOSB", "SEMA4A", "TBX20", "SALL3", "ZNF385D", "MECOM", "PRDM16", "FOXC2", "HAND2", "PROX1", "HMGA2", "SOX5", "TWIST1", "SETBP1")
-
-data_EN$cell.types <- factor(data_EN$cell.types, 
-                                              levels = c("AtrSept_EC", "IF_VEC", "OF_VEC"))
-
-data_EN <- SetIdent(data_EN, value = "cell.types")
-
-p <- DotPlot(data_EN, features = my_markers) +
-  coord_flip() +
-  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
-  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
-  scale_x_discrete(limits = rev) +
-  scale_y_discrete() +
-  labs(x = "", y = "") + 
-  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
-
-pdf(paste0(myfolder, "endothelial/dotplot_markers_EN_subset_selection_18_17_7.pdf"), width = 4, height = 10)
 print(p)
 dev.off()
 
@@ -605,14 +428,11 @@ EN <- readRDS(file = paste0(myfolder, "rds_objects/endothelial.rds"))
 ================================================================================
 ================================================================================
 
-#### Table HL vs DL cells ?
 
-```{r}
-cell_HL_DL <- table(EN$cell.types, EN$clusters_subset)
 
-# Save markers_table
-write.csv(cell_HL_DL, file = paste0(myfolder, "endothelial/", "cell_HL_DL", "_EN", ".tsv"))
-```
+
+
+
 
 
 

@@ -301,54 +301,6 @@ gc()
 ```
 
 
-### DEG FB subtype selection of markers
-
-```{r}
-# specific list of marker to project the dotplot on
-my_markers <- c("WT1", "TCF21", "TWIST1", "DDR2", "COL1A1", "POSTN", "MKI67", "THY1", "APCDD1", "ERBB4", "PENK", "PDGFRA", "PDGFRB", "ACTA2", "CCL2", "DCN", "CD34", "CLEC3B", "PLA2G5", "SCN7A", "SEMA5A")
-
-values_to_keep <- c("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", "11", "17", "8", "1", "6", "15", "20")
-
-data_FB <- FB[, FB$clusters_subset %in% values_to_keep]
-
-data_FB$cell.types <- factor(data_FB$cell.types, levels = c("EPDC_1", 
-                                                            "EPDC_2", 
-                                                            "Infl_FB", 
-                                                            "FAP", 
-                                                            "Int_FB_1", 
-                                                            "Int_FB_2", 
-                                                            "Int_FB_3", 
-                                                            "Prol_FB_2", 
-                                                            "Prol_FB_1", 
-                                                            "VIC", 
-                                                            "Valve_MC_1", 
-                                                            "Valve_MC_2", 
-                                                            "CALN1high_FB", 
-                                                            "AnnFibr_FB^fg", 
-                                                            "Adv_FB_1", 
-                                                            "Adv_FB_2", 
-                                                            "Peric_MC^fg", 
-                                                            "PDE4Chigh_FB^fg"))
-
-data_FB <- SetIdent(data_FB, value = "cell.types")
-
-p <- DotPlot(data_FB, features = my_markers) +
-  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
-  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
-  scale_x_discrete() +
-  scale_y_discrete(limits = rev) +
-  labs(x = "", y = "") + 
-  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
-
-pdf(paste0(myfolder, "fibroblast/dotplot_markers_FB_selection.pdf"), width = 10, height = 6)
-print(p)
-dev.off()
-
-rm(p)
-gc()
-```
-
-
 ### DEG FB - top10 ordered - FB_4, FB_11, FB_13 (Supp Fig. 6E)
 
 ```{r}
@@ -490,14 +442,6 @@ FB <- readRDS(paste0(myfolder, "rds_objects/fibroblasts.rds"))
 ================================================================================
 ================================================================================
 
-#### Table HL vs DL cells
-
-```{r}
-cell_HL_DL <- table(FB$cell.types, FB$clusters_subset)
-
-# Save markers_table
-write.csv(cell_HL_DL, file = paste0(myfolder, "fibroblast/", "cell_HL_DL", "_FB", ".tsv"))
-```
 
 
 

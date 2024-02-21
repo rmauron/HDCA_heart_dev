@@ -299,60 +299,6 @@ dev.off()
 ```
 
 
-## Enrichment in Deep Level FB - spe markers 1
-
-```{r}
-# Create a list
-GeneSets <- list()
-
-# Create a vector
-GeneSel <- c("SOX10", "TFAP2A", "TFAP2B", "ETS1", "ERBB3", "EDNRB", "S100B")
-
-# Add the vector to the list
-GeneSets <- c(GeneSets, list(GeneSel))
-
-# Compute module score on single-cell data
-FB <- AddModuleScore(FB, features = GeneSets, name = "Enrichment_Score")
-
-# Plot violin plots
-# If you have 10 clusters, the scores should now be named Enrichment_Score1, Enrichment_Scoree2, ..., Enrichment_Score10
-FB_sub <- FB[, FB$clusters_subset %in% c("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", "11", "17", "8", "1", "6", "15", "20")]
-FB_sub$clusters_subset <- factor(FB_sub$clusters_subset, levels = c("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", "11", "17", "8", "1", "6", "15", "20"))
-
-# Plot
-pdf(file = paste0(myfolder, "complementary/Violin_enrichment_list1_subset_FB.pdf"), width = 40, height = 6)
-VlnPlot(FB_sub, features = "Enrichment_Score1", group.by = "clusters_subset", pt.size = 0)
-dev.off()
-```
-
-
-## Enrichment in Deep Level FB - spe markers 2
-
-```{r}
-# Create a list
-GeneSets <- list()
-
-# Create a vector
-GeneSel <- c("SOX10", "TFAP2A", "TFAP2B", "ETS1", "ERBB3", "EDNRB", "S100B", "B3GAT1", "SOX8", "ITGA1")
-
-# Add the vector to the list
-GeneSets <- c(GeneSets, list(GeneSel))
-
-# Compute module score on single-cell data
-FB <- AddModuleScore(FB, features = GeneSets, name = "Enrichment_Score")
-
-# Plot violin plots
-# If you have 10 clusters, the scores should now be named Enrichment_Score1, Enrichment_Scoree2, ..., Enrichment_Score10
-FB_sub <- FB[, FB$clusters_subset %in% c("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", "11", "17", "8", "1", "6", "15", "20")]
-FB_sub$clusters_subset <- factor(FB_sub$clusters_subset, levels = c("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", "11", "17", "8", "1", "6", "15", "20"))
-
-# Plot
-pdf(file = paste0(myfolder, "complementary/Violin_enrichment_list2_subset_FB.pdf"), width = 40, height = 6)
-VlnPlot(FB_sub, features = "Enrichment_Score1", group.by = "clusters_subset", pt.size = 0)
-dev.off()
-```
-
-
 ================================================================================
 ================================================================================
 ================================================================================

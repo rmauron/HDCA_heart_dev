@@ -93,38 +93,6 @@ ST$sample_id <- factor(ST$sample_id, levels = unique(ST_meta_data$sample_id))
 ```
 
 
-## Table QC metrics
-
-```{r}
-# Extract metadata 
-ST_meta <- ST@meta.data
-
-# Create dataframe for avg nCount and nFeature
-QC_metrics <- data.frame(matrix(ncol = 3, nrow = 0))
-
-for (section in unique(ST_meta$sample_id)) {
-  sec <- ST_meta[ST_meta$sample_id == section, ]
-  nCount <- as.character(ave(sec$nCount_Spatial)[1])
-  nFeature <- as.character(ave(sec$nFeature_Spatial)[1])
-  name <- as.character(sec$sample_id[1])
-  
-  l <- c(name, nCount, nFeature)
-  QC_metrics <- rbind(QC_metrics, l)
-}
-
-# Set column names
-col_names <- c("SectionID", "avg_nCount", "avg_nFeature")
-colnames(QC_metrics) <- col_names
-
-# Export 
-openxlsx::write.xlsx(QC_metrics, file = paste0(myfolder, "QC_metrics.xlsx"))
-
-rm(sec, col_names, l, name, nCount, nFeature, section)
-gc()
-```
-
-
-
 ## Plot section with H&E image - QC ST
 
 ### Set default assay to `Spatial´
@@ -144,74 +112,6 @@ head(rownames(ST), 10)
 ### Plot MapFeatures nCount - nFeature for 4 sections of interest
 
 #### nCount
-
-##### section 5
-
-```{r fig.asp=0.7}
-pdf(file = paste0(myfolder, "nCount_section_5.pdf"), width = 5, height = 5)
-MapFeatures(ST,
-            features = "nCount_Spatial",
-            section_number = 5,
-            #override_plot_dims = T,
-            colors = c("white", "red", "black"),
-            pt_size = 1.6) +
-    patchwork::plot_layout(guides = "collect") &
-    theme(plot.subtitle = element_blank()) &
-    ThemeLegendRight()
-dev.off()
-```
-
-
-##### section 2
-
-```{r fig.asp=0.7}
-pdf(file = paste0(myfolder, "nCount_section_2.pdf"), width = 5, height = 5)
-MapFeatures(ST,
-            features = "nCount_Spatial",
-            section_number = 2,
-            #override_plot_dims = T,
-            colors = c("white", "red", "black"),
-            pt_size = 1.6) +
-    patchwork::plot_layout(guides = "collect") &
-    theme(plot.subtitle = element_blank()) &
-    ThemeLegendRight()
-dev.off()
-```
-
-
-##### section 11
-
-```{r fig.asp=0.7}
-pdf(file = paste0(myfolder, "nCount_section_11.pdf"), width = 5, height = 5)
-MapFeatures(ST,
-            features = "nCount_Spatial",
-            section_number = 11,
-            #override_plot_dims = T,
-            colors = c("white", "red", "black"),
-            pt_size = 1.6) +
-    patchwork::plot_layout(guides = "collect") &
-    theme(plot.subtitle = element_blank()) &
-    ThemeLegendRight()
-dev.off()
-```
-
-
-##### section 24
-
-```{r fig.asp=0.7}
-pdf(file = paste0(myfolder, "nCount_section_24.pdf"), width = 5, height = 5)
-MapFeatures(ST,
-            features = "nCount_Spatial",
-            section_number = 24,
-            #override_plot_dims = T,
-            colors = c("white", "red", "black"),
-            pt_size = 1.6) +
-    patchwork::plot_layout(guides = "collect") &
-    theme(plot.subtitle = element_blank()) &
-    ThemeLegendRight()
-dev.off()
-```
-
 
 ##### section 5, 2, 11, 24 (Extended Fig. 1D)
 
@@ -242,74 +142,6 @@ dev.off()
 
 #### nFeature
 
-##### section 5
-
-```{r fig.asp=0.7}
-pdf(file = paste0(myfolder, "nFeature_section_5.pdf"), width = 5, height = 5)
-MapFeatures(ST,
-            features = "nFeature_Spatial",
-            section_number = 5,
-            #override_plot_dims = T,
-            colors = c("white", "red", "black"),
-            pt_size = 1.6) +
-    patchwork::plot_layout(guides = "collect") &
-    theme(plot.subtitle = element_blank()) &
-    ThemeLegendRight()
-dev.off()
-```
-
-
-##### section 2
-
-```{r fig.asp=0.7}
-pdf(file = paste0(myfolder, "nFeature_section_2.pdf"), width = 5, height = 5)
-MapFeatures(ST,
-            features = "nFeature_Spatial",
-            section_number = 2,
-            #override_plot_dims = T,
-            colors = c("white", "red", "black"),
-            pt_size = 1.6) +
-    patchwork::plot_layout(guides = "collect") &
-    theme(plot.subtitle = element_blank()) &
-    ThemeLegendRight()
-dev.off()
-```
-
-
-##### section 11
-
-```{r fig.asp=0.7}
-pdf(file = paste0(myfolder, "nFeature_section_11.pdf"), width = 5, height = 5)
-MapFeatures(ST,
-            features = "nFeature_Spatial",
-            section_number = 11,
-            #override_plot_dims = T,
-            colors = c("white", "red", "black"),
-            pt_size = 1.6) +
-    patchwork::plot_layout(guides = "collect") &
-    theme(plot.subtitle = element_blank()) &
-    ThemeLegendRight()
-dev.off()
-```
-
-
-##### section 24
-
-```{r fig.asp=0.7}
-pdf(file = paste0(myfolder, "nFeature_section_24.pdf"), width = 5, height = 5)
-MapFeatures(ST,
-            features = "nFeature_Spatial",
-            section_number = 24,
-            #override_plot_dims = T,
-            colors = c("white", "red", "black"),
-            pt_size = 1.6) +
-    patchwork::plot_layout(guides = "collect") &
-    theme(plot.subtitle = element_blank()) &
-    ThemeLegendRight()
-dev.off()
-```
-
-
 ##### section 5, 2, 11, 24 (Extended Fig. 1D)
 
 ```{r fig.asp=0.7}
@@ -337,104 +169,7 @@ dev.off()
 ```
 
 
-#### MapFeaturesSummary + violin (every section)
-
-```{r}
-jpeg(filename = paste0(myfolder, "/QC_nFeatures_ST.jpg"), width = 4000, height = 4000, res = 150)
-MapFeaturesSummary(ST, 
-                   features = "nFeature_Spatial", 
-                   subplot_type = "violin")
-dev.off()
-```
-
-
-#### Subset of section - nCount_Spatial
-
-```{r}
-p <- MapFeatures(ST,
-                 features = "nCount_Spatial",
-                 override_plot_dims = TRUE,
-                 colors = c("white", "red", "black"),
-                 max_cutoff = 0.99, #flattened the expression above 0.99 percentile
-                 pt_size = 1.6)
-
-p5 <- p[[5]] & theme(plot.subtitle = element_blank(), legend.position = "none")
-p2 <- p[[2]] & theme(plot.subtitle = element_blank(), legend.position = "none")
-p11 <- p[[11]] & theme(plot.subtitle = element_blank(), legend.position = "none")
-p24 <- p[[24]] & theme(plot.subtitle = element_blank(), legend.position = "right", legend.text = element_text(angle = 0))
-
-
-pg <- p5 + p2 + p11 + p24  +
-  patchwork::plot_layout(ncol = 4)
-
-
-pdf(file = paste0(myfolder, "nCount_section_5_2_11_24_cutoff_099.pdf"), width = 15.75, height = 4.5)
-print(pg)
-dev.off()
-rm(p, p2, p5, p11, p24, pg)
-```
-
-
-#### Subset of section - nFeature_Spatial
-
-```{r}
-p <- MapFeatures(ST,
-                 features = "nFeature_Spatial",
-                 override_plot_dims = TRUE,
-                 colors = c("white", "red", "black"),
-                 max_cutoff = 0.99, #flattened the expression above 0.99 percentile
-                 pt_size = 1.6)
-
-p5 <- p[[5]] & theme(plot.subtitle = element_blank(), legend.position = "none")
-p2 <- p[[2]] & theme(plot.subtitle = element_blank(), legend.position = "none")
-p11 <- p[[11]] & theme(plot.subtitle = element_blank(), legend.position = "none")
-p24 <- p[[24]] & theme(plot.subtitle = element_blank(), legend.position = "right", legend.text = element_text(angle = 0))
-
-
-pg <- p5 + p2 + p11 + p24  +
-  patchwork::plot_layout(ncol = 4)
-
-
-pdf(file = paste0(myfolder, "nFeature_section_5_2_11_24_cutoff_099.pdf"), width = 15.75, height = 4.5)
-print(pg)
-dev.off()
-rm(p, p2, p5, p11, p24, pg)
-```
-
-
 ### Plot gender marker accross every sections
-
-#### UTY
-
-```{r fig.asp=0.7}
-jpeg(filename = paste0(myfolder, "/UTY.jpg"), width = 4000, height = 4000, res = 150)
-MapFeatures(ST,
-            features = "UTY",
-            override_plot_dims = T,
-            colors = c("lightgrey","mistyrose", "red", "darkred", "black"),
-            pt_size = 1.6) +
-    patchwork::plot_layout(guides = "collect") &
-    theme(plot.subtitle = element_blank()) &
-    ThemeLegendRight()
-dev.off()
-```
-
-
-#### ZFY
-
-```{r fig.asp=0.7}
-jpeg(filename = paste0(myfolder, "/ZFY.jpg"), width = 4000, height = 4000, res = 150)
-MapFeatures(ST,
-            features = "ZFY",
-            override_plot_dims = T,
-            colors = c("lightgrey","mistyrose", "red", "darkred", "black"),
-            pt_size = 1.6) +
-    patchwork::plot_layout(guides = "collect") &
-    theme(plot.subtitle = element_blank()) &
-    ThemeLegendRight()
-dev.off()
-```
-
 
 #### KDM5D (Extended Fig. 1B)
 
@@ -449,139 +184,6 @@ MapFeatures(ST,
     theme(plot.subtitle = element_blank()) &
     ThemeLegendRight()
 dev.off()
-```
-
-
-#### USP9Y
-
-```{r fig.asp=0.7}
-jpeg(filename = paste0(myfolder, "/USP9Y_Spatial.jpg"), width = 4000, height = 4000, res = 150)
-MapFeatures(ST,
-            features = "USP9Y",
-            override_plot_dims = T,
-            colors = c("lightgrey","mistyrose", "red", "darkred", "black"),
-            pt_size = 1.6) +
-    patchwork::plot_layout(guides = "collect") &
-    theme(plot.subtitle = element_blank()) &
-    ThemeLegendRight()
-dev.off()
-```
-
-
-## Extra MapFeatures - temporal
-FeaturePlot on section 5, 2, 11, 24 for the following genes: MYH7, MYH6, ELN and TNFRSF19
-
-### Set default assay to `SCT´
-
-```{r}
-DefaultAssay(ST) <- "SCT"
-```
-
-### MYH7
-
-```{r}
-p <- MapFeatures(ST,
-                 features = "MYH7",
-                 override_plot_dims = TRUE,
-                 colors = c("white", "red", "black"),
-                 max_cutoff = 0.99, #flattened the expression above 0.99 percentile
-                 pt_size = 1.5)
-
-p5 <- p[[5]] & theme(plot.subtitle = element_blank(), legend.position = "none")
-p2 <- p[[2]] & theme(plot.subtitle = element_blank(), legend.position = "none")
-p11 <- p[[11]] & theme(plot.subtitle = element_blank(), legend.position = "none")
-p24 <- p[[24]] & theme(plot.subtitle = element_blank(), legend.position = "right", legend.text = element_text(angle = 0))
-
-
-pg <- p5 + p2 + p11 + p24  +
-  patchwork::plot_layout(ncol = 4) 
-
-
-pdf(file = paste0(myfolder, "MYH7_subset_section.pdf"), width = 15.75, height = 4.5)
-print(pg)
-dev.off()
-rm(p, p2, p5, p11, p24, pg)
-```
-
-
-### MYH6
-
-```{r}
-p <- MapFeatures(ST,
-                 features = "MYH6",
-                 override_plot_dims = TRUE,
-                 colors = c("white", "red", "black"),
-                 max_cutoff = 0.99, #flattened the expression above 0.99 percentile
-                 pt_size = 1.5)
-
-p5 <- p[[5]] & theme(plot.subtitle = element_blank(), legend.position = "none")
-p2 <- p[[2]] & theme(plot.subtitle = element_blank(), legend.position = "none")
-p11 <- p[[11]] & theme(plot.subtitle = element_blank(), legend.position = "none")
-p24 <- p[[24]] & theme(plot.subtitle = element_blank(), legend.position = "right", legend.text = element_text(angle = 0))
-
-
-pg <- p5 + p2 + p11 + p24  +
-  patchwork::plot_layout(ncol = 4) 
-
-
-pdf(file = paste0(myfolder, "MYH6_subset_section.pdf"), width = 15.75, height = 4.5)
-print(pg)
-dev.off()
-rm(p, p2, p5, p11, p24, pg)
-```
-
-
-### ELN
-
-```{r}
-p <- MapFeatures(ST,
-                 features = "ELN",
-                 override_plot_dims = TRUE,
-                 colors = c("white", "red", "black"),
-                 max_cutoff = 0.99, #flattened the expression above 0.99 percentile
-                 pt_size = 1.5)
-
-p5 <- p[[5]] & theme(plot.subtitle = element_blank(), legend.position = "none")
-p2 <- p[[2]] & theme(plot.subtitle = element_blank(), legend.position = "none")
-p11 <- p[[11]] & theme(plot.subtitle = element_blank(), legend.position = "none")
-p24 <- p[[24]] & theme(plot.subtitle = element_blank(), legend.position = "right", legend.text = element_text(angle = 0))
-
-
-pg <- p5 + p2 + p11 + p24  +
-  patchwork::plot_layout(ncol = 4) 
-
-
-pdf(file = paste0(myfolder, "ELN_subset_section.pdf"), width = 15.75, height = 4.5)
-print(pg)
-dev.off()
-rm(p, p2, p5, p11, p24, pg)
-```
-
-
-### TNFRSF19
-
-```{r}
-p <- MapFeatures(ST,
-                 features = "TNFRSF19",
-                 override_plot_dims = TRUE,
-                 colors = c("white", "red", "black"),
-                 max_cutoff = 0.99, #flattened the expression above 0.99 percentile
-                 pt_size = 1.5)
-
-p5 <- p[[5]] & theme(plot.subtitle = element_blank(), legend.position = "none")
-p2 <- p[[2]] & theme(plot.subtitle = element_blank(), legend.position = "none")
-p11 <- p[[11]] & theme(plot.subtitle = element_blank(), legend.position = "none")
-p24 <- p[[24]] & theme(plot.subtitle = element_blank(), legend.position = "right", legend.text = element_text(angle = 0))
-
-
-pg <- p5 + p2 + p11 + p24  +
-  patchwork::plot_layout(ncol = 4) 
-
-
-pdf(file = paste0(myfolder, "TNFRSF19_subset_section.pdf"), width = 15.75, height = 4.5)
-print(pg)
-dev.off()
-rm(p, p2, p5, p11, p24, pg)
 ```
 
 
@@ -616,47 +218,7 @@ dev.off()
 ```
 
 
-### KDM5D
-
-```{r}
-pdf(paste0(myfolder, "/QC_Violin_KDM5D_ST_no_point.pdf"), width = 16, height = 5)
-VlnPlot(ST, features = "KDM5D", group.by = "sample_id", pt.size = 0) + NoLegend() + theme(axis.text.x = element_text(size = 20),
-                                                                                                     axis.text.y = element_text(size = 20))
-dev.off()
-```
-
-
-### USP9Y
-
-```{r}
-pdf(paste0(myfolder, "/QC_Violin_USP9Y_ST_no_point.pdf"), width = 16, height = 5)
-VlnPlot(ST, features = "USP9Y", group.by = "sample_id", pt.size = 0) + NoLegend() + theme(axis.text.x = element_text(size = 20),
-                                                                                                     axis.text.y = element_text(size = 20))
-dev.off()
-```
-
-
-### UTY
-
-```{r}
-pdf(paste0(myfolder, "/QC_Violin_UTY_ST_no_point.pdf"), width = 16, height = 5)
-VlnPlot(ST, features = "UTY", group.by = "sample_id", pt.size = 0) + NoLegend() + theme(axis.text.x = element_text(size = 20),
-                                                                                                     axis.text.y = element_text(size = 20))
-dev.off()
-```
-
-
-### ZFY
-
-```{r}
-pdf(paste0(myfolder, "/QC_Violin_ZFY_ST_no_point.pdf"), width = 16, height = 5)
-VlnPlot(ST, features = "ZFY", group.by = "sample_id", pt.size = 0) + NoLegend() + theme(axis.text.x = element_text(size = 20),
-                                                                                                     axis.text.y = element_text(size = 20))
-dev.off()
-```
-
-
-## Spatial Clustering
+## Spatial Clustering 
 
 ### All 17 kept sections
 
@@ -667,7 +229,7 @@ dev.off()
 ```
 
 
-### Temporal UMAP
+### Temporal UMAP (Supp Fig. 1C)
 
 ```{r}
 table(ST_clustering$age)

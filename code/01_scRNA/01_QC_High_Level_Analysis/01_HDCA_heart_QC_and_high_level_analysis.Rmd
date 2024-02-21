@@ -715,6 +715,7 @@ rm(df)
 gc()
 ```
 
+# [1] 58144 76991
 
 ## Export Seurat object with final high level clusters before annotation
 
@@ -821,6 +822,7 @@ write.csv2(detable, paste0(myfolder, "supplementary_tables/supplementary_table_2
 
 rm(detable, DGE_DATA, DGE_cells, sample_size)
 ```
+
 
 ## Age groups
 
@@ -1058,30 +1060,6 @@ gc()
 ```
 
 
-### Enrichment of ST cluster markers in HL single-cell clusters
-
-```{r}
-# specific list of marker to project the dotplot on
-my_markers <- c("MT3", "HEY2", "NREP", "CKM", "FHL2", "MB", "LGALS3", "IRX3", "MASP1", "PPP1R12B", "ANGPT1", "BMP10", "DKK3", "PITX2", "ADAMTS8", "COL2A1", "ACTA1", "NPPB", "PGK1")
-
-
-p <- DotPlot(data_HL, features = my_markers) +
-  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
-  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
-  scale_x_discrete() +
-  scale_y_discrete(limits = rev) +
-  labs(x = "", y = "") + 
-  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
-
-pdf(paste0(myfolder, "HL_dotplot_DEG_fig2.pdf"), width = 13, height = 11)
-print(p)
-dev.off()
-
-rm(p)
-gc()
-```
-
-
 #### CM from High Level dotplot from selected markers (Supp Fig. 2A)
 
 ```{r}
@@ -1141,132 +1119,10 @@ At this point, the analysis continues on subsets of the data on other scripts.
 ================================================================================
 
 
-### Test heatmap level of expression
-
-#### Open gene list: Familial non syndromic congenital heart disease (Version 1.80) - only green marked genes
-https://panelapp.genomicsengland.co.uk/panels/212/
-
-```{r}
-markers_df <- read.csv2("/home/rstudio/project/data/metadata/familial_non_syndromic_congenital_heart_disease.csv", header = 1, sep = ";")
-my_markers <- c(markers_df$gene_name)
-gc()
-```
 
 
-```{r}
-# remove undesired cells
-cells_to_remove <- data$cell.types == "HL_excl_1" | 
-                   data$cell.types == "HL_excl_2" | 
-                   data$cell.types == "HL_excl_3" | 
-                   data$cell.types == "HL_excl_4"
 
-data_HL <- data[,!cells_to_remove]
-rm(cells_to_remove, data)
 
-# reorder the cell types desired
-data_HL$high_level_clusters_removed <- factor(data_HL$cell.types, 
-                                              levels = c("Mat_vCM",
-                                                         "Mat_aCM",
-                                                         "MetAct_vCM_1",
-                                                         "MetAct_vCM_2",
-                                                         "MetAct_aCM",
-                                                         "Prol_CM",
-                                                         "Immat_CM",
-                                                         "TMSB10high_C_1",
-                                                         "TMSB10high_C_2",
-                                                         "MacroVasc_EC",
-                                                         "MicroVasc_EC",
-                                                         "PDE4Chigh_EC",
-                                                         "LEC",
-                                                         "Endoc_EC",
-                                                         "EndocCush_EC",
-                                                         "Valve_MC",
-                                                         "PDE4Chigh_FB",
-                                                         "Int_FB",
-                                                         "Peric_MC",
-                                                         "OFT_FB",
-                                                         "EPDC",
-                                                         "AnnFibr_FB",
-                                                         "Prol_FB",
-                                                         "OFT_SMC",
-                                                         "CA_SMC",
-                                                         "PC",
-                                                         "EpC",
-                                                         "NB-N",
-                                                         "SCP-GC",
-                                                         "MyC",
-                                                         "LyC"))
-
-data_HL <- SetIdent(data_HL, value = "high_level_clusters_removed")
-
-#get matrix average expression from marker genes
-mat <- AverageExpression(object = data_HL, features = my_markers, group.by = 'high_level_clusters_removed')$RNA
-
-#Warning: The following 5 features were not found in the RNA assay: GDF1, NKX2, NKX3, NKX4, NKX5
-
-#remove missing genes:
-mat <- subset(mat, !(rownames(mat) %in% c("GDF1", "NKX2", "NKX3", "NKX4", "NKX5")))
-
-# plot heatmap
-pal <- colorRampPalette(RColorBrewer::brewer.pal(n = 8, name = "Blues"))(25)
-```
-
-```{r}
-library(tibble)
-library(tidyr)
-# normalise average expression gene by gene (z-score)
-gg_mat <- mat |>
-  as.data.frame() |>
-  tibble::rownames_to_column(var = "gene") |>
-  pivot_longer(-gene) |>
-  group_by(gene) |>
-  mutate(value = scale(value, center = F, scale = T)) |>
-  ungroup()
-
-gg_mat$name <- factor(gg_mat$name, levels = c("Mat_vCM",
-                                                         "Mat_aCM",
-                                                         "MetAct_vCM_1",
-                                                         "MetAct_vCM_2",
-                                                         "MetAct_aCM",
-                                                         "Prol_CM",
-                                                         "Immat_CM",
-                                                         "TMSB10high_C_1",
-                                                         "TMSB10high_C_2",
-                                                         "MacroVasc_EC",
-                                                         "MicroVasc_EC",
-                                                         "PDE4Chigh_EC",
-                                                         "LEC",
-                                                         "Endoc_EC",
-                                                         "EndocCush_EC",
-                                                         "Valve_MC",
-                                                         "PDE4Chigh_FB",
-                                                         "Int_FB",
-                                                         "Peric_MC",
-                                                         "OFT_FB",
-                                                         "EPDC",
-                                                         "AnnFibr_FB",
-                                                         "Prol_FB",
-                                                         "OFT_SMC",
-                                                         "CA_SMC",
-                                                         "PC",
-                                                         "EpC",
-                                                         "NB-N",
-                                                         "SCP-GC",
-                                                         "MyC",
-                                                         "LyC"))
-
-#plot
-p <- ggplot(gg_mat, aes(name, gene, fill = value)) + 
-  geom_tile() +
-  scale_fill_gradientn(colours = pal) +
-  theme(panel.grid = element_blank(),
-        axis.text.x = element_text(angle = 90)) +
-  labs(fill = "z-score")
-
-pdf(paste0(myfolder, "patho_enrich/familial_non_syndromic_congenital_heart_disease_HL_gg_zscore.pdf"), width = 11, height = 12)
-p
-dev.off()
-```
 
 
 
