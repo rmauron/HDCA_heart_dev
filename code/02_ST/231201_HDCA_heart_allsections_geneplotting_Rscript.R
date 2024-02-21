@@ -108,6 +108,74 @@ se_harmony@tools$Staffli <- staffli_heart
 FeaturePlot(se_harmony, features = c("BMP10"))
 ST.FeaturePlot(se_harmony, features ="BMP10", ncol = 5)
 
+## Fig. 1E - sc. 11
+feature_list <- c("MT3", "NREP", "CKM", "FHL2", "LGALS3", "MASP1", "RELN", "PITX2", "ANGPT1", "PAM", "COL2A1", "BMP10", "NPPA", "ADAMTS8", "DKK3")
+for (feature in feature_list){
+  p <-   ST.FeaturePlot(se_harmony, features = feature, indices = 16, pt.size = 2.5, cols = c("white", "turquoise", "blue", "black"))
+  pdf(paste0(export_path, "feature_plots/", feature, ".pdf"), width = 10, height = 10)
+  print(p)
+  dev.off()
+}
 
+## Fig. 1F - sc. 2 and 20
+feature_list <- c("ACTA1", "NPPB", "ENO1")
+for (feature in feature_list){
+  p <-   ST.FeaturePlot(se_harmony, features = feature, indices = 2, pt.size = 2.5, cols = c("white", "turquoise", "blue", "black"))
+  pdf(paste0(export_path, "feature_plots/", feature, ".pdf"), width = 10, height = 10)
+  print(p)
+  dev.off()
+}
+for (feature in feature_list){
+  p <-   ST.FeaturePlot(se_harmony, features = feature, indices = 20, pt.size = 2.5, cols = c("white", "turquoise", "blue", "black"))
+  pdf(paste0(export_path, "feature_plots/", feature, ".pdf"), width = 10, height = 10)
+  print(p)
+  dev.off()
+}
 
+##Fig. 4E - sc. 16
+feature_list <- c("CHGB", "PRPH", "TH", "SLC18A3", "SST", "ADRB1", "CHRM2")
+for (feature in feature_list){
+  p <-   ST.FeaturePlot(se_harmony, features = feature, indices = 16, pt.size = 2.5, cols = c("white", "turquoise", "blue", "black"))
+  pdf(paste0(export_path, "feature_plots/", feature, ".pdf"), width = 10, height = 10)
+  print(p)
+  dev.off()
+}
 
+##Suppl. Fig. 1E - sc. 11
+feature_list <- c("MYH7", "MYH6", "HEY2", "MB", "IRX2", "ELN", "COL3A1", "ITLN1", "LYVE1", "ACTA1", "JAG1", "A2M", "IGFBP3", "CDH11", "APCDD1")
+for (feature in feature_list){
+  p <-   ST.FeaturePlot(se_harmony, features = feature, indices = 11, pt.size = 2.5, cols = c("white", "turquoise", "blue", "black"))
+  pdf(paste0(export_path, "feature_plots/", feature, ".pdf"), width = 10, height = 10)
+  print(p)
+  dev.off()
+}
+
+##Suppl. Fig. 3D - sc. 3
+feature_list <- c("HS3ST3A1", "RCAN1", "IRX1", "IRX2")
+for (feature in feature_list){
+  p <-   ST.FeaturePlot(se_harmony, features = feature, indices = 3, pt.size = 2.5, cols = c("white", "turquoise", "blue", "black"))
+  pdf(paste0(export_path, "feature_plots/", feature, ".pdf"), width = 10, height = 10)
+  print(p)
+  dev.off()
+}
+
+##Suppl. Fig. 5G - sc. 2, 20, 27
+feature_list <- c("APCDD1", "MSX1", "DKK22", "BMP4")
+for (feature in feature_list){
+  p <-   ST.FeaturePlot(se_harmony, features = feature, indices = 2, pt.size = 2.5, cols = c("white", "turquoise", "blue", "black"))
+  pdf(paste0(export_path, "feature_plots/", feature, ".pdf"), width = 10, height = 10)
+  print(p)
+  dev.off()
+}
+for (feature in feature_list){
+  p <-   ST.FeaturePlot(se_harmony, features = feature, indices = 20, pt.size = 2.5, cols = c("white", "turquoise", "blue", "black"))
+  pdf(paste0(export_path, "feature_plots/", feature, ".pdf"), width = 10, height = 10)
+  print(p)
+  dev.off()
+}
+for (feature in feature_list){
+  p <-   ST.FeaturePlot(se_harmony, features = feature, indices = 27, pt.size = 2.5, cols = c("white", "turquoise", "blue", "black"))
+  pdf(paste0(export_path, "feature_plots/", feature, ".pdf"), width = 10, height = 10)
+  print(p)
+  dev.off()
+}
