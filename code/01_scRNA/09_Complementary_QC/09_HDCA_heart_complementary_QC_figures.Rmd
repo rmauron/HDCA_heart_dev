@@ -246,8 +246,7 @@ DGE_DATA$cell.types <- factor(DGE_DATA$cell.types,
                                                          "MyC",
                                                          "LyC"))
 
-#Find differentially expressed genes based on groups defined by "high_level_clusters".
-DGE_DATA <- SetIdent(DGE_DATA, value = "cell.types") #high_level_clusters
+DGE_DATA <- SetIdent(DGE_DATA, value = "cell.types")
 
 # The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).
 detable <- FindAllMarkers(DGE_DATA,
@@ -269,18 +268,13 @@ detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
 # Save the detable as a csv file.
 #write.csv2(detable, paste0(myfolder, "detable_rough_clusters.csv"))
 
-# Pick the 60 genes with the lowest p value for each group, then 40 highest based on pct.diff, then 20 highest based on log.pct.diff.
-# This gives a total of 140 genes (20 per group). They seem to be unevenly spread over the cell clusters though.
-# Why do we want to do it like this?
+# Pick the 40 genes with the lowest p value for each group, then 20 highest based on pct.diff, then 5 highest based on avg log2fc.
 detable %>%
   group_by(cluster) %>%
   top_n(-40, p_val) %>%
   top_n(20, pct.diff) %>%
   top_n(5, avg_log2FC) ->
   top5
-
-# Unclear what this does since there is no documentation for getcluster(). But my guess is that the genes get matched to one specific cluster somehow, and the factor is leveled based on cluster number.
-#ord <- factor(sapply(unique(as.character(top5$gene)), function(x){niceRplots::getcluster(DGE_DATA, x, "high_level_clusters_removed")})) #high_level_clusters
 
 pdf(paste0(myfolder, "complementary/DEG_top5_removed.pdf"), width = 12, height = 30)
 par(mfrow=c(1,1), mar=c(3,6,2,5))

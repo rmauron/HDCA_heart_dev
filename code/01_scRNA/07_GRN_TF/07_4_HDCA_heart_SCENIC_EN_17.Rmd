@@ -6,7 +6,7 @@ editor_options:
   chunk_output_type: console
 ---
 
-# HDCA heart SCENIC EN7
+# HDCA heart SCENIC EN17
 
 Calculate Gene Regulatory Network and infer Transcription Factors activity (Regulons) with SCENIC.
 
@@ -143,9 +143,6 @@ genie_list <- loadInt(scenicOptions, "genie3ll")
 table(genie_list$TF)
 list_unique_TF <- c(sort(unique(genie_list$TF)))
 list_unique_TF <- factor(list_unique_TF, levels = list_unique_TF)
-
-# Save unique list_unique_TF
-write.csv(list_unique_TF, file = paste0(myfolder, "scenic/markers_table/", "list_unique_TF","_EN_", cluster, "_supp.tsv"))
 ```
 
 
@@ -173,4 +170,17 @@ markers_table$pct.diff <- markers_table$pct.1 - markers_table$pct.2
 # Save markers_table
 write.csv(markers_table, paste0(myfolder, "supplementary_tables/extended_table_6_TF_DEG_EN_17.csv"))
 ```
+
+
+================================================================================
+================================================================================
+================================================================================
+================================================================================
+================================================================================
+
+
+
+
+
+
 

@@ -64,7 +64,6 @@ set.seed(1)
 ### Sub-sample to specific cluster of interest
 
 ```{r}
-# CHANGE HERE
 data_cell <- CM
 cluster <- "19-2"
 data_sub <- data_cell[,data_cell$clusters_subset_split %in% cluster]
@@ -137,9 +136,6 @@ genie_list <- loadInt(scenicOptions, "genie3ll")
 table(genie_list$TF)
 list_unique_TF <- c(sort(unique(genie_list$TF)))
 list_unique_TF <- factor(list_unique_TF, levels = list_unique_TF)
-
-# Save unique list_unique_TF
-# write.csv(list_unique_TF, file = paste0(myfolder, "scenic/markers_table/", "list_unique_TF","_CM_", cluster, ".tsv"))
 ```
 
 

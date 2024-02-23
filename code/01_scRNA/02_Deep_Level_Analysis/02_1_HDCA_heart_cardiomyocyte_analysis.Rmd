@@ -162,17 +162,6 @@ openxlsx::write.xlsx(de_markers %>% filter(p_val_adj < 0.01),
 ```
 
 
-## Export cardiomyocyte object prior subclustering
-
-```{r}
-saveRDS(CM, file = paste0(myfolder, "rds_objects/cardiomyocytes01.rds"))
-```
-
-```{r}
-CM <- readRDS(file = paste0(myfolder, "rds_objects/cardiomyocytes01.rds"))
-```
-
-
 ### Subcluster (cluster 4)
 
 ```{r}
@@ -358,7 +347,7 @@ dev.off()
 The annotation was imported from an external .csv file. The annotation is added as a new metadata row `cell.types` by matching the cluster numbers.
 
 ```{r}
-annotation <- read.csv2("/home/rstudio/project/data/metadata/HDCA_heart_SC annotations_CM_240115.csv", header = 1, sep = ";")
+annotation <- read.csv2("/home/rstudio/project/data/metadata/HDCA_heart_SC_annotations_CM_240115.csv", header = 1, sep = ";")
 cells_clusters <- setNames(annotation$cell_type, nm = annotation$cluster)
 CM$cell.types <- cells_clusters[as.character(CM$clusters_subset_split)]
 rm(annotation, cells_clusters)

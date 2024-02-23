@@ -89,9 +89,7 @@ cluster_list <- c("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", 
 #### All ST clusters analyzed separately across all HL sc clusters (Supp Fig. 2B)
 
 ```{r}
-# Check how many genes you have per group
-# Wouldn't make much sense to use only 1 gene, but maybe you'll have
-# 10-100 or something. 
+# Check how many genes per group
 table(DEG_ST_heart_23cl$cluster)
 
 # Create list of DEGs
@@ -141,9 +139,7 @@ cluster_list <- c("0", "1", "2", "3", "4", "5", "7", "9", "12", "15", "17")
 #### All ST clusters analyzed separately across all HL sc clusters
 
 ```{r}
-# Check how many genes you have per group
-# Wouldn't make much sense to use only 1 gene, but maybe you'll have
-# 10-100 or something.
+# Check how many genes per group
 table(DEG_ST_heart_23cl$cluster)
 
 # Create list of DEGs
@@ -198,9 +194,7 @@ cluster_list <- c("5", "9", "10", "18", "19")
 #### All ST clusters analyzed separately across all HL sc clusters
 
 ```{r}
-# Check how many genes you have per group
-# Wouldn't make much sense to use only 1 gene, but maybe you'll have
-# 10-100 or something. 
+# Check how many genes per group
 table(DEG_ST_heart_23cl$cluster)
 
 # Create list of DEGs
@@ -255,9 +249,7 @@ cluster_list <- c("0", "1", "2", "3", "4", "5", "7", "8", "9", "10", "13", "14",
 #### All ST clusters analyzed separately across all HL sc clusters
 
 ```{r}
-# Check how many genes you have per group
-# Wouldn't make much sense to use only 1 gene, but maybe you'll have
-# 10-100 or something. 
+# Check how many genes per group
 table(DEG_ST_heart_23cl$cluster)
 
 # Create list of DEGs

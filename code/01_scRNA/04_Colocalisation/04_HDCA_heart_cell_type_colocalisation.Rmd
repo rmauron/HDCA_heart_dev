@@ -1256,7 +1256,7 @@ plots <- CellColoc(ST,
                       features = c("CM-19-1", "CM-19-2"),
                       section_number = 16)
 
-pdf(file = paste0(myfolder, "colocalization/SAN_AVN_section_16.pdf"), width = 15.75, height = 4.5)
+pdf(file = paste0(myfolder, "colocalization/CM-19-1_CM-19-2_section_16.pdf"), width = 15.75, height = 4.5)
 plots
 dev.off()
 ```
@@ -1288,7 +1288,7 @@ plots4 <- CellColoc(ST,
 p <- plots1[[3]] + plots2[[3]] + plots3[[3]] + plots4[[3]]  +
     patchwork::plot_layout(ncol = 4)
 
-pdf(file = paste0(myfolder, "colocalization/purkinje_pre_purkinje.pdf"), width = 15.75, height = 4.5)
+pdf(file = paste0(myfolder, "colocalization/CM-4-2_CM-4-1.pdf"), width = 15.75, height = 4.5)
 p
 dev.off()
 ```
@@ -1301,7 +1301,7 @@ plots <- CellColoc(ST,
                       features = c("CM-4-2", "CM-18"),
                       section_number = 16)
 
-pdf(file = paste0(myfolder, "colocalization/Ventricular_conduction_system_section_16.pdf"), width = 15.75, height = 4.5)
+pdf(file = paste0(myfolder, "colocalization/CM-4-2_CM-18_section_16.pdf"), width = 15.75, height = 4.5)
 plots
 dev.off()
 ```
@@ -1393,7 +1393,7 @@ plots <- CellColoc(ST,
                       features = c("EN-7", "EN-17"),
                       section_number = 2)
 
-pdf(file = paste0(myfolder, "colocalization/Valve_related_EN_section_2.pdf"), width = 15.75, height = 4.5)
+pdf(file = paste0(myfolder, "colocalization/EN-7_EN-17_section_2.pdf"), width = 15.75, height = 4.5)
 plots
 dev.off()
 ```
@@ -1403,7 +1403,7 @@ plots <- CellColoc(ST,
                       features = c("EN-7", "EN-17"),
                       section_number = 20)
 
-pdf(file = paste0(myfolder, "colocalization/Valve_related_EN_section_20.pdf"), width = 15.75, height = 4.5)
+pdf(file = paste0(myfolder, "colocalization/EN-7_EN-17_section_20.pdf"), width = 15.75, height = 4.5)
 plots
 dev.off()
 ```
@@ -1429,7 +1429,7 @@ plots <- CellColoc(ST,
                       features = c("EN-7", "EN-17"),
                       section_number = 6)
 
-pdf(file = paste0(myfolder, "colocalization/Valve_related_EN_section_6.pdf"), width = 15.75, height = 4.5)
+pdf(file = paste0(myfolder, "colocalization/EN-7_EN-17_section_6.pdf"), width = 15.75, height = 4.5)
 plots
 dev.off()
 ```

@@ -199,8 +199,6 @@ gc()
 
 ### Scale Data
 
-Fits a linear regression for every gene against confounding variables to compute the residuals (corrected values), which are then centered (mean = 0) and scaled (STD = 1). The resulting matrix will be FULL and not sparse. This takes a lot of memory and can be deleted after computing PCA.
-
 ```{r}
 plan(sequential)
 data <- ScaleData(data)
@@ -209,8 +207,6 @@ gc()
 
 
 ### PCA
-
-This is a stochastic (rather than deterministic) algorithm for calculating PCA. This function uses the irlba package, which makes it stochastic. For stochastic you can predifine how many PCs you want to compute, but for the deterministic approach (package prcomp) the minimal number of PCs will be the number of rows or columns of the original matrix (depending on which one is smaller), e.g. 3000 variable genes.
 
 ```{r}
 plan(sequential)
@@ -256,8 +252,6 @@ gc()
 
 
 ## Export Seurat object unfiltered
-
-Export the Seurat object containing the initial clusters, reduced dimensions, ... before filtering steps. 
 
 ```{r}
 saveRDS(data, paste0(myfolder, "rds_objects/HDCA_heart_sc_unfiltered.rds"))
@@ -324,6 +318,8 @@ saveRDS(data_list, paste0(myfolder, "rds_objects/HDCA_heart_sc_doubletfound.rds"
 data_list <- readRDS(paste0(myfolder, "rds_objects/HDCA_heart_sc_doubletfound.rds"))
 ```
 
+# [1]  59480 101104
+
 
 ## Merge data_list into data
 
@@ -365,18 +361,6 @@ data$DF.classifications <- factor(data$DF.classifications, levels = c("Singlet",
 gc()
 ```
 
-
-## Export Seurat object (data) with doublet scores added to the object
-
-```{r}
-saveRDS(data, paste0(myfolder, "rds_objects/HDCA_heart_sc_doubletfound02.rds"))
-```
-
-```{r}
-data <- readRDS(paste0(myfolder, "rds_objects/HDCA_heart_sc_doubletfound02.rds"))
-```
-
-# [1]  59480 101104
 
 ## Samples Quality: nCount & nFeature *after filtering and doublet found*
 
@@ -426,21 +410,7 @@ gc()
 ```
 
 
-## Export Seurat object after the 2 filtering steps
-
-```{r, eval=FALSE}
-saveRDS(object = data, 
-        file = paste0(myfolder, "rds_objects/HDCA_heart_sc_scaledata_prefiltered_adjusted0.rds"))
-```
-
-```{r, include=FALSE}
-data <- readRDS(paste0(myfolder, "rds_objects/HDCA_heart_sc_scaledata_prefiltered_adjusted0.rds"))
-```
-
-
 ### Scale Data
-
-Fits a linear regression for every gene against confounding variables to compute the residuals (corrected values), which are then centered (mean = 0) and scaled (STD = 1). The resulting matrix will be FULL and not sparse. This takes a lot of memory and can be deleted after computing PCA.
 
 ```{r}
 set.seed(1)
@@ -466,8 +436,6 @@ data <- readRDS(paste0(myfolder, "rds_objects/HDCA_heart_sc_scaledata_prefiltere
 # [1] 59480 76991
 
 ### PCA
-
-This is a stochastic (rather than deterministic) algorithm for calculating PCA. This function uses the irlba package, which makes it stochastic. For stochastic you can predefine how many PCs you want to compute, but for the deterministic approach (package prcomp) the minimal number of PCs will be the number of rows or columns of the original matrix (depending on which one is smaller), e.g. 3000 variable genes.
 
 ```{r}
 data <- RunPCA(data, npcs = 50, seed.use = 42)
@@ -653,8 +621,7 @@ cl18 <- SetIdent(cl18, value = "clusters_subset_cl18")
 de_markers_cl18 <- FindAllMarkers(cl18, only.pos = TRUE, logfc.threshold = 0.5) %>% 
   filter(p_val_adj < 0.01)
 
-openxlsx::write.xlsx(de_markers_cl18 %>% filter(p_val_adj < 0.01),
-                     file = paste0(myfolder, "detable_cardiomyocytes_cl18.xlsx"))
+write.csv2(de_markers_cl18, paste0(myfolder, "detable_cardiomyocytes_cl18.csv"))
 
 p <- DotPlot(cl18, features = de_markers_cl18 %>% group_by(cluster) %>% 
           slice_head(n = 10) %>% pull(gene) %>% unique()) +
@@ -733,7 +700,7 @@ data <- readRDS(paste0(myfolder, "rds_objects/HDCA_heart_sc_full_before_annotati
 The annotation was imported from an external .csv file. The annotation is added as a new metadata row `cell.types` by matching the cluster numbers.
 
 ```{r}
-annotation <- read.csv2("/home/rstudio/project/data/metadata/HDCA_heart_SC annotations_HL_240115.csv", header = 1, sep = ";")
+annotation <- read.csv2("/home/rstudio/project/data/metadata/HDCA_heart_SC_annotations_HL_240115.csv", header = 1, sep = ";")
 cells_clusters <- setNames(annotation$cell_type, nm = annotation$cluster)
 data$cell.types <- cells_clusters[as.character(data$high_level_clusters)]
 rm(annotation, cells_clusters)
@@ -797,7 +764,6 @@ DGE_DATA <- data[, DGE_cells]
 # reorder the cell types desired
 DGE_DATA$high_level_clusters_removed <- factor(DGE_DATA$cell.types, levels = c("OFT_FB", "Int_FB", "Endoc_EC", "Mat_vCM", "MetAct_vCM_2", "Prol_CM", "OFT_SMC", "MetAct_vCM_1", "CA_SMC", "MetAct_aCM", "MicroVasc_EC", "Valve_MC", "EPDC", "MyC", "AnnFibr_FB", "Mat_aCM", "TMSB10high_C_1", "Immat_CM", "EpC", "EndocCush_EC", "PC", "Peric_MC", "PDE4Chigh_EC", "NB-N", "SCP-GC", "MacroVasc_EC", "LyC", "PDE4Chigh_FB", "Prol_FB", "LEC", "TMSB10high_C_2"))
 
-#Find differentially expressed genes based on groups defined by "high_level_clusters_removed".
 DGE_DATA <- SetIdent(DGE_DATA, value = "cell.types")
 
 # The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).

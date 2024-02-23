@@ -143,7 +143,7 @@ gc()
 The annotation was imported from an external .csv file. The annotation is added as a new metadata row `cell.types` by matching the cluster numbers.
 
 ```{r}
-annotation <- read.csv2("/home/rstudio/project/data/metadata/HDCA_heart_SC annotations_IN_240115.csv", header = 1, sep = ";")
+annotation <- read.csv2("/home/rstudio/project/data/metadata/HDCA_heart_SC_annotations_IN_240115.csv", header = 1, sep = ";")
 cells_clusters <- setNames(annotation$cell_type, nm = annotation$cluster)
 IN$cell.types <- cells_clusters[as.character(IN$clusters_subset)]
 rm(annotation, cells_clusters)
@@ -283,7 +283,6 @@ DGE_DATA$cell.types <- factor(DGE_DATA$cell.types,
                                                          "Aut_Neu_2", 
                                                          "Chrom_C"))
 
-#Find differential expressed genes based on groups defined by "clusters_subset_split".
 DGE_DATA <- SetIdent(DGE_DATA, value = "cell.types")
 
 # The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).

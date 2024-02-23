@@ -148,7 +148,7 @@ gc()
 The annotation was imported from an external .csv file. The annotation is added as a new metadata row `cell.types` by matching the cluster numbers.
 
 ```{r}
-annotation <- read.csv2("/home/rstudio/project/data/metadata/HDCA_heart_SC annotations_EN_240115.csv", header = 1, sep = ";")
+annotation <- read.csv2("/home/rstudio/project/data/metadata/HDCA_heart_SC_annotations_EN_240115.csv", header = 1, sep = ";")
 cells_clusters <- setNames(annotation$cell_type, nm = annotation$cluster)
 EN$cell.types <- cells_clusters[as.character(EN$clusters_subset)]
 rm(annotation, cells_clusters)
@@ -164,7 +164,6 @@ detable <- FindAllMarkers(EN, logfc.threshold = 0.25,
                           only.pos = TRUE, 
                           min.pct = 0.05)
 
-# Only keep DEGs that have a p-value below 0.05.
 detable <- detable[detable$p_val_adj < 0.01, ]
 
 # Adding two extra columns giving the difference (and log difference) between pct1 and pct2.
@@ -175,17 +174,6 @@ detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
 
 # Save the detable as a csv file.
 write.csv2(detable, paste0(myfolder, "supplementary_tables/supplementary_table_5_DEG_EN.csv"))
-```
-
-
-## Export Endothelial object
-
-```{r}
-saveRDS(EN, file = paste0(myfolder, "rds_objects/endothelial01.rds"))
-```
-
-```{r}
-EN <- readRDS(file = paste0(myfolder, "rds_objects/endothelial01.rds"))
 ```
 
 
@@ -246,7 +234,6 @@ DGE_DATA$cell.types <- factor(DGE_DATA$cell.types,
                                                          "TMSB10high_C_2^fg", 
                                                          "PDE4Chigh_EC^fg"))
 
-#Find differential expressed genes based on groups defined by "clusters_subset_split".
 DGE_DATA <- SetIdent(DGE_DATA, value = "cell.types")
 
 # The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).
@@ -257,7 +244,6 @@ detable <- FindAllMarkers(DGE_DATA,
                           assay = "RNA",
                           min.pct = 0.05)
 
-# Only keep DEG that have a p-value below 0.05.
 detable <- detable[detable$p_val < 0.05, ]
 
 # Adding two extra columns giving the difference (and log difference) between pct1 and pct2.
@@ -320,7 +306,6 @@ DGE_DATA$cell.types <- factor(DGE_DATA$cell.types,
                                                          "IF_VEC", 
                                                          "OF_VEC"))
 
-#Find differential expressed genes based on groups defined by "clusters_subset_split".
 DGE_DATA <- SetIdent(DGE_DATA, value = "cell.types")
 
 # The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).

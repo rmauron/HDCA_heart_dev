@@ -168,9 +168,6 @@ genie_list <- loadInt(scenicOptions, "genie3ll")
 table(genie_list$TF)
 list_unique_TF <- c(sort(unique(genie_list$TF)))
 list_unique_TF <- factor(list_unique_TF, levels = list_unique_TF)
-
-# Save unique list_unique_TF
-# write.csv(list_unique_TF, file = paste0(myfolder, "scenic/markers_table/", "list_unique_TF","_EN_", cluster, ".tsv"))
 ```
 
 
@@ -513,7 +510,7 @@ p <- ggraph(tg, layout = layout) +
   theme(legend.position = "none")
 
 #Save plot
-pdf(paste0(myfolder, "scenic/figures/", "FB", "_", cluster, ".pdf"), width = 7, height = 7) #FB14 saved in 11x11
+pdf(paste0(myfolder, "scenic/figures/", "FB", "_", cluster, ".pdf"), width = 7, height = 7)
 p
 dev.off()
 ```
