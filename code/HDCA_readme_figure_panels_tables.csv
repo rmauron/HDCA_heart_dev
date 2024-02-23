@@ -1,0 +1,216 @@
+﻿Figure;Panel;script;script section name
+Figure 1;;;
+;panel A;sketch;
+;panel B;231201_HDCA_heart_clusteringanalysis_Rscript;Clustering
+;panel C;231201_HDCA_heart_clusteringanalysis_Rscript;Clustering
+;panel D;231201_HDCA_heart_clusteringanalysis_Rscript;DE analysis selected markers
+;panel E;231201_HDCA_heart_clusteringanalysis_Rscript;Gene plots
+;panel F;231201_HDCA_heart_clusteringanalysis_Rscript;Gene plots
+Figure 2;;;
+;panel A;sketch;
+;panel B;01_HDCA_heart_QC_and_high_level_analysis;Plot UMAP with annotations (Fig. 2B, E)
+;panel C;01_HDCA_heart_QC_and_high_level_analysis;High Level dotplot from selected markers (Fig. 2C)
+;panel D;03_4_HDCA_heart_stereoscope_results;Plot all sections (1 patchwork per cluster) (Fig. 2D, 4E, Supp Fig. 2B)
+;panel E;01_HDCA_heart_QC_and_high_level_analysis;Plot UMAP with annotations (Fig. 2B, E)
+;panel F;01_HDCA_heart_QC_and_high_level_analysis;Cell type proportion by age group in entire data (Fig. 2F)/ plotted in excel
+Figure 3;;;
+;panel A;02_1_HDCA_heart_cardiomyocyte_analysis;UMAP with annotation (Fig. 3A)
+;panel B;09_HDCA_heart_complementary_QC_figures;FeaturePlot (Fig. 3B)
+;panel C;04_HDCA_heart_cell_type_colocalisation;"CM-19-1, ""CM-19-2"" (Fig. 3C)"
+;panel C;04_HDCA_heart_cell_type_colocalisation;"CM-4-2, ""CM-18"" (Fig. 3C)"
+;panel D;02_1_HDCA_heart_cardiomyocyte_analysis;DEG CM selection of ACS markers (Fig. 3D)
+;panel D;ISS;
+;panel E;02_1_HDCA_heart_cardiomyocyte_analysis;DEG CM selection of VCS markers (Fig. 3E)
+;panel E;ISS;
+;panel F;09_HDCA_heart_complementary_QC_figures;ACS-Ion channel - 1 (Fig. 3F)
+;panel F;ISS;
+;panel G;07_1_HDCA_heart_SCENIC_CM_19_2;Plot Gene Regulatory Networks (Fig. 3G)
+Figure 4;;;
+;panel A;02_4_HDCA_heart_innervation_analysis;UMAP with annotation (Fig. 4A)
+;panel B;06_4_HDCA_heart_scVelo_innervation;Estimate RNA velocity (Fig. 4B)
+;panel C;06_3_HDCA_heart_scFates_innervation;Plot features on embedding (Fig. 4C, 4G, Supp Fig. 4C)
+;panel D;04_HDCA_heart_cell_type_colocalisation;IN-1, IN-13, CM-19-2 (Fig. 4D)
+;panel E;231201_HDCA_heart_clusteringanalysis_Rscript;Gene plots
+;panel F;02_1_HDCA_heart_cardiomyocyte_analysis;DEG CM ADRB1, CHRM2 (Fig. 4F)
+;panel G;06_3_HDCA_heart_scFates_innervation;Plot features on embedding (Fig. 4C, 4G, Supp Fig. 4C)
+;panel H;sketch;
+Figure 5;;;
+;panel A;02_2_HDCA_heart_endothelial_analysis;UMAP with annotation (Fig. 5A)
+;panel B;04_HDCA_heart_cell_type_colocalisation;"CM-9, ""CM-14"", ""EN-18"" sc. 27 (Fig. 5C)"
+;panel B;04_HDCA_heart_cell_type_colocalisation;"EN-7, ""EN-17"" sc. 20 (Fig. 5C)"
+;panel B;04_HDCA_heart_cell_type_colocalisation;"EN-7, ""EN-17"" sc. 2 (Fig. 5C)"
+;panel C;ISS;
+;panel D;07_2_HDCA_heart_SCENIC_EN_18_and_regulon_enrichment;Plot Gene Regulatory Networks (Fig. 5E)
+;panel E;07_2_HDCA_heart_SCENIC_EN_18_and_regulon_enrichment;Enrichment of multiple TF (Fig. 5F)
+Figure 6;;;
+;panel A;02_3_HDCA_heart_fibroblast_analysis;UMAP with annotation (Fig. 6A)
+;panel B;04_HDCA_heart_cell_type_colocalisation;"FB-1, ""FB-6"" sc. 9, 16 (Fig. 6B) sc 9"
+;panel B;04_HDCA_heart_cell_type_colocalisation;"FB-15, ""HL-22"", sc. 9, 10, 33 (Fig. 6B) sc9"
+;panel C;04_HDCA_heart_cell_type_colocalisation;"HL-20, ""FB-7"", ""FB-3"" sc.11 (Fig. 6C)"
+;panel C;04_HDCA_heart_cell_type_colocalisation;"FB-7, ""FB-8"", ""FB-14"", sc. 23 (Fig. 6C)"
+;panel D;04_HDCA_heart_cell_type_colocalisation;"FB-5, ""FB-9"", ""FB-19"", sc. 5, 2, 11, 24 (Fig. 6D)"
+;panel E;04_HDCA_heart_cell_type_colocalisation;"""FB-4"", ""FB-11"", ""FB-13"", sc.22 (Fig. 6E)"
+;panel F;ISS;
+;panel G;sketch;
+Figure 7;;;
+;panel A;09_HDCA_heart_complementary_QC_figures;Plot HL umap fine-graine embedded (Fig. 7A)
+;panel A;04_HDCA_heart_cell_type_colocalisation;Correlation heatmap with ggplot2 - no label (Fig. 7A)
+;panel A;04_HDCA_heart_cell_type_colocalisation;ST deep level all ages (Fig. 7A)
+;panel B;04_HDCA_heart_cell_type_colocalisation;Heatmap of niches (Fig. 7B, 7C, Supp Fig. 7C)
+;panel B;04_HDCA_heart_cell_type_colocalisation;"""CM-19-2"", ""CM-19-1"", ""FB-17"", sc. 19 (Fig. 7B)"
+;panel B;04_HDCA_heart_cell_type_colocalisation;"""EN-16"", ""EN-18"", in sc. 19 (Fig. 7B)"
+;panel C;04_HDCA_heart_cell_type_colocalisation;Heatmap of niches (Fig. 7B, 7C, Supp Fig. 7C)
+;panel C;04_HDCA_heart_cell_type_colocalisation;"""EN-7"", ""EN-17"", ""FB-4"", sc. 20 (Fig. 7C)"
+;panel C;04_HDCA_heart_cell_type_colocalisation;"FB-11, ""FB-13"", ""CM-8-2"", sc. 20 (Fig. 7C)"
+;panel D;09_HDCA_heart_complementary_QC_figures;"WNT, BMP, TGFb, axes expression ""EN_17"", ""EN_7"", ""FB_4"", ""FB_13"", ""FB_11"" (Fig. 7D)"
+;panel E;09_HDCA_heart_complementary_QC_figures;"Valve pathological gene expression ""EN_17"", ""EN_7"", ""FB_4"", ""FB_13"", ""FB_11"" (Fig. 7E)"
+Supp Fig 1;;;
+;panel A;231201_HDCA_heart_clusteringanalysis_Rscript;DE Analysis
+;panel B;231201_HDCA_heart_clusteringanalysis_Rscript;Clustering
+;panel C;ST_HDCA_heart_ST_QC_plots;Temporal UMAP (Supp Fig. 1C)
+;panel D;231201_HDCA_heart_clusteringanalysis_Rscript;Clustering
+;panel E;231201_HDCA_heart_clusteringanalysis_Rscript;Gene plots
+Supp Fig 2;;;
+;panel A;01_HDCA_heart_QC_and_high_level_analysis;CM from High Level dotplot from selected markers (Supp Fig. 2A)
+;panel B;03_4_HDCA_heart_stereoscope_results;Plot all sections (1 patchwork per cluster) (Fig. 2D, 4E, Supp Fig. 2B)
+;panel C;IF;
+;panel D;01_HDCA_heart_QC_and_high_level_analysis;Temporal evolution of High Level UMAP (Supp Fig. 2D)
+Supp Fig 3;;;
+;panel A;02_1_HDCA_heart_cardiomyocyte_analysis;DEG CM - top5 ordered (Supp Fig. 3A)
+;panel B;08_HDCA_heart_ST_enrichment_in_SC;Enrichment in Deep Level CM (Supp Fig. 3B)
+;panel C;04_HDCA_heart_cell_type_colocalisation;"CM-4-2, ""CM-4-1"" - 4 different sections (Supp Fig. 3C)"
+;panel D;231201_HDCA_heart_clusteringanalysis_Rscript;Gene plots
+;panel E;04_HDCA_heart_cell_type_colocalisation;"CM-8-2, ""CM-18"", ""CM-19-1"", in sc. 3 (Supp Fig. 3E)"
+;panel F;09_HDCA_heart_complementary_QC_figures;VCS-Ion channel - 1 (Supp Fig. 3F)
+Supp Fig. 4;;;
+;panel A;02_4_HDCA_heart_innervation_analysis;DEG subset of clusters - top5 ordered (Supp Fig. 4A)
+;panel B;02_4_HDCA_heart_innervation_analysis;DEG IN selection of markers (Supp Fig. 4B)
+;panel C;06_3_HDCA_heart_scFates_innervation;Plot features on embedding (Fig. 4C, 4G, Supp Fig. 4C)
+;panel D;04_HDCA_heart_cell_type_colocalisation;"IN-13, ""CM-14"", ""IN-1""  in sc. 22 (Supp Fig. 4D)"
+;panel D;04_HDCA_heart_cell_type_colocalisation;"IN-13,  ""FB-1"",  ""IN-1""   in sc. 32 and 34 (Supp Fig. 4D)"
+;panel E;04_HDCA_heart_cell_type_colocalisation;IN (Supp Fig. 4E)
+Supp Fig. 5;;;
+;panel A;02_2_HDCA_heart_endothelial_analysis;DEG EN - top5 ordered (Supp Fig. 5A)
+;panel B;02_2_HDCA_heart_endothelial_analysis;FeaturePlot (Supp Fig. 5B)
+;panel C;08_HDCA_heart_ST_enrichment_in_SC;Enrichment in Deep Level EN (Supp Fig. 5C)
+;panel D;04_HDCA_heart_cell_type_colocalisation;EN-7, EN-17 sc.6  (Supp Fig. 5D)
+;panel E;04_HDCA_heart_cell_type_colocalisation;"EN-6, ""EN-18"", ""EN-16"", sc.18 (Supp Fig. 5E)"
+;panel F;02_2_HDCA_heart_endothelial_analysis;DEG EN-7, EN-17, EN-18 - top10 ordered (Supp Fig. 5F)
+;panel G;231201_HDCA_heart_clusteringanalysis_Rscript;Gene plots
+Supp Fig. 6;;;
+;panel A;02_3_HDCA_heart_fibroblast_analysis;DEG FB - top5 ordered (Supp Fig. 6A)
+;panel B;02_3_HDCA_heart_fibroblast_analysis;FeaturePlot (Supp Fig. 6B)
+;panel C;01_HDCA_heart_QC_and_high_level_analysis;Cell type proportion by age group in entire FB object (Supp Fig. 6C)/ plotted on excel
+;panel D;07_3_HDCA_heart_SCENIC_FB_14;Plot Gene Regulatory Networks (Supp Fig. 6D)
+;panel E;02_3_HDCA_heart_fibroblast_analysis;DEG FB - top10 ordered - FB_4, FB_11, FB_13 (Supp Fig. 6E)
+;panel F;04_HDCA_heart_cell_type_colocalisation;"""FB-4"", ""FB-11"", ""FB-13"", sc.20 (Supp Fig. 6F)"
+;panel F;08_HDCA_heart_ST_enrichment_in_SC;Enrichment in Deep Level FB (Supp Fig. 6F)
+Supp Fig. 7;;;
+;panel A;04_HDCA_heart_cell_type_colocalisation;ST deep level all ages (Supp Fig. 7A)
+;panel B;04_HDCA_heart_cell_type_colocalisation;"Niche 1 ""CM-18"",""CM-4-2"", ""CM-4-1"", ""EN-1"", ""EN-12"" (Supp Fig. 7B)"
+;panel B;05_HDCA_heart_niches_CCC_liana;CM_18, CM_4-2, CM_4-1, EN_1, EN_12
+;panel C;04_HDCA_heart_cell_type_colocalisation;Heatmap of niches (Fig. 7B, 7C, Supp Fig. 7C)
+;panel C;04_HDCA_heart_cell_type_colocalisation;"FB-1, ""HL-15"", ""EN-20"", sc. 20 (Supp Fig. 7C)"
+;panel C;04_HDCA_heart_cell_type_colocalisation;"""FB-1"", ""HL-8"", ""EN-19"", sc.20 (Supp Fig. 7C)"
+;panel C;04_HDCA_heart_cell_type_colocalisation;"FB-6, ""HL-10"", ""EN-15"", sc. 20 (Supp Fig. 7C)"
+;panel D;04_HDCA_heart_cell_type_colocalisation;"Niche 2 ""EN-19"", ""EN-15"", ""EN-13"", ""EN-10"", ""EN-2"""
+Figure - Mendeley;;script;script section name
+Extended Fig. 1;;;
+;panel A;H&E;
+;panel B;ST_HDCA_heart_ST_QC_plots;KDM5D (Extended Fig. 1B)
+;panel C;ST_HDCA_heart_ST_QC_plots;Violin plots (Extended Fig. 1C)
+;panel D;ST_HDCA_heart_ST_QC_plots;section 5, 2, 11, 24 (Extended Fig. 1D)
+;panel E;ISS;
+Extended Fig. 2;;;
+;panel A;09_HDCA_heart_complementary_QC_figures;XIST expression (Extended Fig. 2A)
+;panel B;09_HDCA_heart_complementary_QC_figures;Feature barplots (Extended Fig. 2B)
+;panel C;09_HDCA_heart_complementary_QC_figures;HL clusters (Extended Fig. 2C)
+;panel D;09_HDCA_heart_complementary_QC_figures;Sample ID (Extended Fig. 2D)
+;panel E;09_HDCA_heart_complementary_QC_figures;UMAP all clusters embedded (Extended Fig. 2E)
+;panel F;09_HDCA_heart_complementary_QC_figures;Data - all clusters (clusters_louvain_oi) (Extended Fig. 2F)
+;panel F;09_HDCA_heart_complementary_QC_figures;HBA1 across all HL clusters (without exclusions, unordered) (Extended Fig. 2F)
+Extended Fig. 3;;;
+;panel A;02_1_HDCA_heart_cardiomyocyte_analysis;Add cl4, cl8 and cl19 subclusters (Extended Fig. 3A)
+;panel A;02_2_HDCA_heart_endothelial_analysis;Subset, process, clustering (Extended Fig. 3A)
+;panel A;02_3_HDCA_heart_fibroblast_analysis;Subset, process, clustering (Extended Fig. 3A)
+;panel B;09_HDCA_heart_complementary_QC_figures;CM (Extended Fig. 3B)
+;panel B;09_HDCA_heart_complementary_QC_figures;EN (Extended Fig. 3B)
+;panel B;09_HDCA_heart_complementary_QC_figures;FB (Extended Fig. 3B)
+;panel C;09_HDCA_heart_complementary_QC_figures;HBA1 across all CM clusters (without exclusions, unordered) (Extended Fig. 3C)
+;panel C;09_HDCA_heart_complementary_QC_figures;HBA1 across all EN clusters (without exclusions, unordered) (Extended Fig. 3C)
+;panel C;09_HDCA_heart_complementary_QC_figures;HBA1 across all FB clusters (again without exclusions, unordered) (Extended Fig. 3C)
+;panel D;02_1_HDCA_heart_cardiomyocyte_analysis;DEG CM selection of markers (not split & all) (Extended Fig. 3D)
+;panel D;02_2_HDCA_heart_endothelial_analysis;DEG EN selection of markers (Extended Fig. 3D)  (Supp Fig. 11D)
+;panel D;02_3_HDCA_heart_fibroblast_analysis;DEG FB selection of markers (Extended Fig. 3D)
+;panel E;02_4_HDCA_heart_innervation_analysis;Subset, process, clustering (Extended Fig. 4E)
+;panel E;02_4_HDCA_heart_innervation_analysis;DEG IN selection of markers (Extended Fig. 4D)
+;;;
+Table;;script;script section name
+Supp Tab. 1;;;
+;;231201_HDCA_heart_clusteringanalysis_Rscript.R;Save the detable as a csv file. (Supp Tab. 1)
+Supp Tab. 2;;;
+;;01_HDCA_heart_QC_and_high_level_analysis;Differentially expressed genes (DEG) after annotation (Supp Tab. 2)
+Supp Tab. 3;;;
+;;02_1_HDCA_heart_cardiomyocyte_analysis;Differentially expressed genes (DEG) for all clusters (Supp Tab. 3)
+Supp Tab. 4;;;
+;;02_4_HDCA_heart_innervation_analysis;Differentially expressed genes (DEG) for all clusters (Supp Tab. 4)
+Supp Tab. 5;;;
+;;02_2_HDCA_heart_endothelial_analysis;Differentially expressed genes (DEG) for all clusters (Supp Tab. 5)
+Supp Tab. 6;;;
+;;02_3_HDCA_heart_fibroblast_analysis;Differentially expressed genes (DEG) for all clusters (Supp Tab. 6)
+Supp Tab. 7;;;
+;;04_HDCA_heart_cell_type_colocalisation;Correlation matrix with names (Supp Tab. 7)
+Table - Mendeley;;script;script section name
+Extended Tab. 1;;;
+;;ISS;List of Gene Targets Spatially Validated in situ
+Extended Tab. 2;;;
+;;07_1_HDCA_heart_SCENIC_CM_19_2;Regulons (Extended Tab. 2)
+Extended Tab. 3;;;
+;;07_1_HDCA_heart_SCENIC_CM_19_2;Enrichment of unique TF in remaining clusters (Extended Tab. 3)
+Extended Tab. 4;;;
+;;07_2_HDCA_heart_SCENIC_EN_18_and_regulon_enrichment;Regulons (Extended Tab. 4)
+Extended Tab. 5;;;
+;;07_2_HDCA_heart_SCENIC_EN_18_and_regulon_enrichment;Enrichment of unique TF in remaining clusters (Extended Tab. 5)
+Extended Tab. 6;;;
+;;07_4_HDCA_heart_SCENIC_EN_17;Enrichment of unique TF in remaining clusters (Extended Tab. 6)
+Extended Tab. 7;;;
+;;07_5_HDCA_heart_SCENIC_EN_7;Enrichment of unique TF in remaining clusters (Extended Tab. 7)
+Extended Tab. 8;;;
+;;07_3_HDCA_heart_SCENIC_FB_14;Regulons (Extended Tab. 8)
+Extended Tab. 9;;;
+;;07_3_HDCA_heart_SCENIC_FB_14;Enrichment of unique TF in remaining clusters (Extended Tab. 9)
+Extended Tab. 10;;;
+;;09_HDCA_heart_complementary_QC_figures;Number of cells per HL cluster (Extended Tab. 10)
+Extended Tab. 11;;;
+;;09_HDCA_heart_complementary_QC_figures;Number of cells per DL cluster (Extended Tab. 11)
+;;;
+;;;
+;;;
+;;;
+;;;
+;;;
+;;;
+;;;
+;;;
+;;;
+;;;
+;;;
+;;;
+;;;
+;;;
+;;;
+;;;
+;;;
+;;;
+;;;
+;;;
+;;;
+;;;
+;;;
+;;;
+;;;
+;;;
+;;;
+;;;
+;;;
+;;;
