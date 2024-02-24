@@ -1,6 +1,6 @@
 # Spatial Dynamics of the Developing Human Heart
 
-<table>
+<table border="0">
   <tr>
     <td width="70%">
       This repository contains the scripts used for the analysis of the single-cell RNA seq data of the embryonic heart developmental atlas (HDCA). 
