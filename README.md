@@ -1,11 +1,12 @@
 # Spatial Dynamics of the Developing Human Heart
 
 <div style="float: right; margin-left: 20px;">
-  <img src="https://github.com/rmauron/HDCA_heart_dev/assets/92672952/df069bc3-a4ff-46ce-b2e1-b18313a97b8a" alt="HDCA">
+  <img src="https://github.com/rmauron/HDCA_heart_dev/assets/92672952/df069bc3-a4ff-46ce-b2e1-b18313a97b8a" alt="HDCA" width="200">
 </div>
 
 This repository contains the scripts used for the analysis of the single-cell RNA seq data of the embryonic heart developmental atlas (HDCA). 
 Since several environments have been used along the project, below you will find a workflow chart presenting the pipeline used with the corresponding scripts.
+
 
 
 
