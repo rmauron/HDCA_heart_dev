@@ -6,7 +6,9 @@ Since several environments have been used along the project, below you will find
 <br>
 
 <div align="right">
+  <a href="[YOUR_LINK_URL](https://hdca-sweden.scilifelab.se/)">
   <img src="https://github.com/rmauron/HDCA_heart_dev/assets/92672952/5baae706-3452-49ad-a616-5cf34d768ad5" alt="HDCA" width="250">
+  </a>
 </div>
 
 
