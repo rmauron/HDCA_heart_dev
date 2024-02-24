@@ -3,6 +3,9 @@
 This repository contains the scripts used for the analysis of the single-cell RNA seq data of the embryonic heart developmental atlas (HDCA). 
 Since several environments have been used along the project, below you will find a workflow chart presenting the pipeline used with the corresponding scripts.
 
+<img width="281" alt="image" src="https://github.com/rmauron/HDCA_heart_dev/assets/92672952/aeeafe72-0075-456c-91a3-aae4876f1428">
+
+
 ## Workflow chart
 On the diagram, find the workflow used for the analysis with each major step presented as the title of the box, the path were the corresponding script are located and the color representing the corresponding environment.
 
