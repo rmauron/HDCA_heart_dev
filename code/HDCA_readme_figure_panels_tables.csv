@@ -19,11 +19,11 @@ Figure 3;;;
 ;panel C;04_HDCA_heart_cell_type_colocalisation;"CM-19-1, ""CM-19-2"" (Fig. 3C)"
 ;panel C;04_HDCA_heart_cell_type_colocalisation;"CM-4-2, ""CM-18"" (Fig. 3C)"
 ;panel D;02_1_HDCA_heart_cardiomyocyte_analysis;DEG CM selection of ACS markers (Fig. 3D)
-;panel D;ISS;
+;panel D;ISS;"sc_3; SHOX2, TBX18, PRRX1, ZNF385B, TENM4, TENM3, TENM2, GDF10, SLIT2"
 ;panel E;02_1_HDCA_heart_cardiomyocyte_analysis;DEG CM selection of VCS markers (Fig. 3E)
-;panel E;ISS;
+;panel E;ISS;"sc_5; RCAN, IRX1, IRX2, IRX5, IRX3, BRINP3, SEMA3A, PLXNA4"
 ;panel F;09_HDCA_heart_complementary_QC_figures;ACS-Ion channel - 1 (Fig. 3F)
-;panel F;ISS;
+;panel F;ISS;"sc_3, sc_5; HCN1, HCN4, CACNA1D, CACNA1G"
 ;panel G;07_1_HDCA_heart_SCENIC_CM_19_2;Plot Gene Regulatory Networks (Fig. 3G)
 Figure 4;;;
 ;panel A;02_4_HDCA_heart_innervation_analysis;UMAP with annotation (Fig. 4A)
@@ -39,7 +39,7 @@ Figure 5;;;
 ;panel B;04_HDCA_heart_cell_type_colocalisation;"CM-9, ""CM-14"", ""EN-18"" sc. 27 (Fig. 5C)"
 ;panel B;04_HDCA_heart_cell_type_colocalisation;"EN-7, ""EN-17"" sc. 20 (Fig. 5C)"
 ;panel B;04_HDCA_heart_cell_type_colocalisation;"EN-7, ""EN-17"" sc. 2 (Fig. 5C)"
-;panel C;ISS;
+;panel C;ISS;"sc_5; PTHLH, DKK2, WNT4, CNR1, LGR5, BMP4"
 ;panel D;07_2_HDCA_heart_SCENIC_EN_18_and_regulon_enrichment;Plot Gene Regulatory Networks (Fig. 5E)
 ;panel E;07_2_HDCA_heart_SCENIC_EN_18_and_regulon_enrichment;Enrichment of multiple TF (Fig. 5F)
 Figure 6;;;
@@ -50,7 +50,7 @@ Figure 6;;;
 ;panel C;04_HDCA_heart_cell_type_colocalisation;"FB-7, ""FB-8"", ""FB-14"", sc. 23 (Fig. 6C)"
 ;panel D;04_HDCA_heart_cell_type_colocalisation;"FB-5, ""FB-9"", ""FB-19"", sc. 5, 2, 11, 24 (Fig. 6D)"
 ;panel E;04_HDCA_heart_cell_type_colocalisation;"""FB-4"", ""FB-11"", ""FB-13"", sc.22 (Fig. 6E)"
-;panel F;ISS;
+;panel F;ISS;"sc_3, sc_5; PENK, LEF1"
 ;panel G;sketch;
 Figure 7;;;
 ;panel A;09_HDCA_heart_complementary_QC_figures;Plot HL umap fine-graine embedded (Fig. 7A)
@@ -120,7 +120,7 @@ Extended Fig. 1;;;
 ;panel B;ST_HDCA_heart_ST_QC_plots;KDM5D (Extended Fig. 1B)
 ;panel C;ST_HDCA_heart_ST_QC_plots;Violin plots (Extended Fig. 1C)
 ;panel D;ST_HDCA_heart_ST_QC_plots;section 5, 2, 11, 24 (Extended Fig. 1D)
-;panel E;ISS;
+;panel E;ISS;"sc_3, sc_4, sc_5, sc_8; MYL2, MYH6, FBLN5, TBX18"
 Extended Fig. 2;;;
 ;panel A;09_HDCA_heart_complementary_QC_figures;XIST expression (Extended Fig. 2A)
 ;panel B;09_HDCA_heart_complementary_QC_figures;Feature barplots (Extended Fig. 2B)
