@@ -1,0 +1,410 @@
+---
+title: "03_4_HDCA_heart_load_bnaksy regions"
+author: "Raphaël Mauron"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# HDCA - Heart
+
+## Set up
+
+### Knit setup
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+### Load library
+
+```{r}
+package.list <- c("semla", "Seurat", "viridis", "dplyr", "ggplot2", "gtools", "patchwork",
+                  "RColorBrewer", "tidyverse")
+
+invisible(lapply(package.list, function(element) {
+  library(element, character.only = TRUE)
+}))
+rm(package.list)
+```
+
+
+### Set seed for project
+
+```{r}
+set.seed(1)
+```
+
+
+### Set working directory
+
+```{r}
+savepath <- "~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/export_data/"
+```
+
+
+### Load `Seurat` object with ST data
+
+```{r}
+ST <- readRDS("~/hdca_DevHeart/data/ST/220114_STdata_harmony_semla.rds")
+ST_clustering <- readRDS("~/hdca_DevHeart/data/ST/HDCA_heart_clustering.rds")
+```
+
+
+### Rename clusters in ST_clustering
+
+```{r}
+annotation <- read.csv2("~/hdca_DevHeart/data/metadata/HDCA_heart_ST_annotations.csv", header = 1, sep = ";")
+cells_clusters <- setNames(annotation$cluster_name, nm = annotation$cluster)
+ST_clustering$seurat_clusters_annot <- cells_clusters[as.character(ST_clustering$seurat_clusters)]
+```
+
+
+### Update image paths
+
+```{r}
+image_files <- list.files(path = "~/hdca_DevHeart/data/ST", 
+                          pattern = "tissue_hires_image.png", 
+                          full.names = TRUE, 
+                          recursive = TRUE)
+ST@tools$Staffli@imgs <- image_files
+```
+
+
+### Load H&E images
+
+```{r}
+ST <- LoadImages(ST, image_height = 1.5e3)
+```
+
+
+### Add section ID's to the ST object
+
+```{r}
+ST$sample_id <- paste0("section_", GetCoordinates(ST)$sampleID)
+```
+
+
+## Metadata table
+
+```{r}
+ST_meta_data <- openxlsx::read.xlsx("~/hdca_DevHeart/data/ST/HDCA_heart_ST_sections_overview_chambers_present.xlsx")
+ST_meta_data$age <- as.numeric(gsub("[^0-9.]", "", ST_meta_data$Age))
+
+ST_meta_data <- select(ST_meta_data, Section, age)
+ST_meta_data$sample_id <- paste0("section_", ST_meta_data$Section)
+ST_meta_data
+```
+
+```{r}
+ST_meta_data$age_groups <- cut(
+  ST_meta_data$age,
+  breaks = c(-Inf, 8, 10, Inf),
+  labels = c("w6-w7", "w8-w9", "w10-w12"),
+  right = FALSE
+)
+
+write.csv(ST_meta_data, file = paste0("~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/export_data/", "metadata_age", ".csv"))
+```
+
+
+### Re-order sample by setting factors
+
+```{r}
+ST$sample_id <- factor(ST$sample_id, levels = unique(ST_meta_data$sample_id))
+```
+
+
+### Set default assay to `Spatial´
+
+```{r}
+DefaultAssay(ST) <- "Spatial"
+```
+
+
+### Check clusters name - example
+
+```{r}
+head(rownames(ST), 10)
+```
+
+
+## Load BANKSY regions
+
+```{r}
+banksy_regions <- read.csv2("~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/banksy/metadata.csv", header = 1, sep = ",") %>%
+  mutate(X = sub("_section", "", X)) %>%
+  select(c("X", "clust_Harmony_BANKSY_k50_res0.8", "clust_Harmony_BANKSY_k50_res0.9"))
+
+banksy_regions$sample <- sub(".*_(\\d+)$", "\\1", banksy_regions$X)
+split_data <- split(banksy_regions$X, banksy_regions$sample)
+list_of_lists <- lapply(split_data, function(barcodes) {
+  sub("_[0-9]+$", "", barcodes)
+})
+list_of_lists <- list_of_lists[order(as.numeric(names(list_of_lists)))]
+```
+
+
+
+### Annotate section with corresponding sampleID
+
+```{r}
+#resolution 0.9
+regions <- setNames(banksy_regions$clust_Harmony_BANKSY_k50_res0.9, nm = banksy_regions$X)
+ST$banksy_09 <- regions[as.character(colnames(ST))]
+```
+
+```{r}
+# sanity check
+table(ST$sample_id, ST$banksy_09)
+```
+
+```{r}
+# annotation banksy regions
+banksy_num <- c(7, 6, 1, 2, 4, 5, 11, 13, 9, 10, 3, 14, 8, 15, 12)
+banksy_annot <- c("LA", "RA", "LV_C", "RV_C_1", "LV_T", "RV_T", "EP", "CV-LYV", "AVP-PM", "V", "OFT-GV", "ICGP", "B", "RV_C_2", "NA")
+
+banksy_09_annot <- setNames(banksy_annot, nm = banksy_num)
+ST$banksy_09_annot <- banksy_09_annot[as.character(ST$banksy_09)]
+```
+
+
+### DEG banksy 09
+
+```{r}
+DefaultAssay(ST) <- "SCT"
+
+# Select all data that relates to the sampled DGE cells.
+DGE_DATA <- SubsetSTData(ST, spots = banksy_regions$X)
+
+# reorder the cell types desired
+#DGE_DATA$banksy_09 <- factor(DGE_DATA$banksy_09, levels = sort(unique(DGE_DATA$banksy_09)))
+DGE_DATA$banksy_09 <- factor(DGE_DATA$banksy_09, levels = c(11,7, 6, 1, 2, 15, 4, 5, 8, 9, 13, 10, 3, 14, 12))
+
+DGE_DATA <- SetIdent(DGE_DATA, value = "banksy_09")
+
+DGE_DATA <- FindVariableFeatures(DGE_DATA, nfeatures = 4000)
+
+pdf(paste0("~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/banksy/", "Map_banksy_res_09.pdf"), width = 15, height = 15)
+MapLabels(DGE_DATA, column_name = "banksy_09") +
+    patchwork::plot_layout(guides = "collect") &
+    theme(plot.subtitle = element_blank()) &
+    ThemeLegendRight()
+dev.off()
+
+
+# The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).
+detable <- FindAllMarkers(DGE_DATA,
+                          only.pos = TRUE,
+                          max.cells.per.ident = 300,
+                          logfc.threshold = .1,
+                          assay = "Spatial",
+                          min.pct = 0.05)
+
+# Only keep DEGs that have a p-value below 0.05.
+detable <- detable[detable$p_val < 0.05, ]
+
+# Adding two extra columns giving the difference (and log difference) between pct1 and pct2.
+# pct1 is the percentage of cells in the specific cluster that express this gene.
+# pct2 is the percentage of cells in all other clusters that express this gene.
+detable$pct.diff <- detable$pct.1 - detable$pct.2
+detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
+
+# Save the detable as a csv file.
+write.csv2(detable, "~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/banksy/detable_res_09.csv")
+
+
+# Pick the 40 genes with the lowest p value for each group, then 20 highest based on pct.diff, then 5 highest based on avg log2fc.
+detable %>%
+  group_by(cluster) %>%
+  top_n(-40, p_val) %>%
+  top_n(20, pct.diff) %>%
+  top_n(5, avg_log2FC) ->
+  top5
+
+pdf(paste0("~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/banksy/", "DEG_top5_res_09.pdf"), width = 8, height = 15)
+par(mfrow=c(1,1), mar=c(3,6,2,5))
+DotPlot(DGE_DATA, features = top5 %>% pull(gene) %>% unique()) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+dev.off()
+
+rm(detable)
+```
+
+
+### Export sc. 2, 5, 11 and 24
+
+```{r}
+# time point 1 *section 5*
+plots1 <- MapLabels(DGE_DATA, column_name = "banksy_09", section_number = 5) +
+    theme(plot.subtitle = element_blank(), legend.position = "right") +
+    ggtitle("section 5")
+
+# time point 2 *section 2*
+plots2 <- MapLabels(DGE_DATA, column_name = "banksy_09", section_number = 2) +
+    theme(plot.subtitle = element_blank(), legend.position = "right") +
+    ggtitle("section 2")
+
+# time point 3 *section 11*
+plots3 <- MapLabels(DGE_DATA, column_name = "banksy_09", section_number = 10) +
+    theme(plot.subtitle = element_blank(), legend.position = "right") +
+    ggtitle("section 11")
+
+# time point 4 *section 24*
+plots4 <- MapLabels(DGE_DATA, column_name = "banksy_09", section_number = 11) +
+    theme(plot.subtitle = element_blank(), legend.position = "right") +
+    ggtitle("section 24")
+
+p <- plots1 + plots2 + plots3 + plots4  +
+    patchwork::plot_layout(ncol = 4)
+p
+
+pdf(paste0("~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/banksy/", "Map_banksy_res_09_4sections.pdf"),  width = 15.75, height = 4.5)
+p
+dev.off()
+
+table_banksy_section <- table(DGE_DATA$banksy_09, DGE_DATA$sample_id)
+# save table
+write.csv(table_banksy_section, "~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/banksy/table_banksy_section.csv")
+```
+
+
+### Dot plot selected markers on Banksy regions
+
+```{r}
+my_markers <- c("ITLN1", "MYH6", "MYH7", "HEY2", "MB", "IRX2", "EMCN", "SLC25A37", "TBX3", "CNN1", "XPO4", "ACTA1", "MYL2", "ENO1", "IGFBP3", "DCN", "APCDD1", "PENK", "MFAP4", "CDH11", "ELN", "JAG1", "C1QC")
+
+DefaultAssay(DGE_DATA) <- "SCT"
+
+DGE_DATA$banksy_09 <- factor(DGE_DATA$banksy_09, levels = c(11,7, 6, 1, 2, 15, 4, 5, 8, 9, 13, 10, 3, 14, 12))
+
+DGE_DATA <- SetIdent(DGE_DATA, value = "banksy_09")
+
+DGE_DATA <- FindVariableFeatures(DGE_DATA, nfeatures = 4000)
+
+pdf(paste0("~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/banksy/", "DEG_selected_markers_res_09.pdf"), width = 7, height = 5)
+par(mfrow=c(1,1), mar=c(3,6,2,5))
+DotPlot(DGE_DATA, features = my_markers) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+dev.off()
+```
+
+
+### Seurat cluster vs Banksy regions
+
+```{r}
+ST$banksy_09
+ST$banksy_09_annot
+table(ST$banksy_09, ST$banksy_09_annot)
+tail(ST_clustering$seurat_clusters_annot)
+```
+
+```{r}
+# Function to remove "-1_" from each barcode
+remove_suffix <- function(barcode) {
+  gsub("-1_", "-", barcode)
+}
+
+# Extract column names from ST_clustering
+barcodes <- colnames(ST_clustering)
+
+# Apply the function to remove "-1_" from each barcode
+barcodes_without_suffix <- sapply(barcodes, remove_suffix)
+
+# Assign the new column to ST_clustering
+ST_clustering$barcodes <- barcodes_without_suffix
+
+# Print the new metadata column
+print(ST_clustering$barcodes)
+```
+
+
+```{r}
+#check
+identical(as.character(ST_clustering$barcodes), colnames(DGE_DATA))
+
+tail(as.character(ST_clustering$barcodes))
+tail(colnames(DGE_DATA))
+head(as.character(ST_clustering$barcodes))
+head(colnames(DGE_DATA))
+
+dim(ST_clustering)
+dim(DGE_DATA)
+
+length(intersect(as.character(ST_clustering$barcodes), colnames(DGE_DATA)))
+
+
+#table(DGE_DATA$banksy_09, ST_clustering$seurat_clusters)
+```
+
+```{r}
+# append clusters to object containing the banksy regions
+cells_clusters <- setNames(ST_clustering$seurat_clusters_annot, nm = ST_clustering$barcodes)
+DGE_DATA$clusters <- cells_clusters[as.character(ST_clustering$barcodes)]
+
+# print table of similarity between seurat clusters and banksy regions
+table_banksy_seurat <- table(DGE_DATA$clusters, DGE_DATA$banksy_09)
+table_banksy_seurat_an <- table(DGE_DATA$clusters, DGE_DATA$banksy_09_annot)
+
+
+# save table
+write.csv(table_banksy_seurat, "~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/banksy/table_banksy_seurat.csv")
+```
+
+
+```{r}
+# plot table
+library(ggplot2)
+library(tidyr)
+
+table_banksy_seurat_an <- as.data.frame(table_banksy_seurat_an)
+
+# Set factor levels
+table_banksy_seurat_an <- table_banksy_seurat_an |> 
+  mutate(Var1 = factor(Var1, levels = c("A_EP", "LA", "RA", "B_A", "MY", "LV_C", "RV_C", "LV_T", "EN", "RV_T", "PM", "VCS", "B_V", "AVP_V", "AVP_A", "V_EP", "LCV", "SCV", "VE", "VM", "TM", "TA", "OFT")),
+         Var2 = factor(Var2, levels = c("EP", "LA", "RA", "LV_C", "RV_C_1", "RV_C_2", "LV_T", "RV_T", "B", "AVP-PM", "CV-LYV", "V", "OFT-GV", "ICGP")))
+
+# Heatmap 
+p <- ggplot(table_banksy_seurat_an, aes(Var1, Var2, fill= Freq)) + 
+  geom_tile() +
+  scale_fill_gradient(low="white", high="red") +
+  labs(x = "Spatial clusters", y = "Banksy regions", title = "Spatial clusters vs Banksy regions") +
+  theme_minimal() +
+  geom_text(aes(label = Freq), color = "black", size = 2) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+pdf(paste0("~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/banksy/", "table_banksy_seurat.pdf"), width = 10, height = 7)
+p
+dev.off()
+```
+
+
+### Add banksy region to ST_clustering object and embed umap
+
+```{r}
+# append banksy regions to ST_clustering object
+banksy_clusters <- setNames(DGE_DATA$banksy_09_annot, nm = colnames(DGE_DATA))
+ST_clustering$banksy_09_annot <- banksy_clusters[as.character(ST_clustering$barcodes)]
+
+pdf(file = paste0("~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/banksy/", "ST_umap_allspots_banksy_regions.pdf"), width = 15, height = 15, bg = "transparent")
+DimPlot(ST_clustering, reduction = "umap", group.by = "banksy_09_annot")
+dev.off()
+```
+
+
+
+
+

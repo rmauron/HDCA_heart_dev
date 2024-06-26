@@ -1,0 +1,666 @@
+---
+title: "ST_HDCA_alignment_metrics"
+author: "Raphaël Mauron"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# HDCA heart ST alignement metrics
+
+This script presents the process for computing non-negative matrix factorisation.
+
+NOTE: The path to load the data and the path to save the figures should be changed at your convenience.
+
+Environment: **Conda: r-semla**
+
+## Set up and loading material
+
+### Knit setup
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+### Load library
+
+```{r}
+library(semla)
+library(tidyr)
+library(RcppML)
+library(ggplot2)
+library(openxlsx)
+library(RcppML)
+library(singlet)
+library(tidyverse)
+```
+
+
+### Set working directory
+
+```{r}
+myfolder <- "~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/ST_alignment_metrics/"
+```
+
+
+### Load `Seurat` object with ST data
+
+```{r}
+ST <- readRDS("~/hdca_DevHeart/data/ST/220114_STdata_harmony_semla.rds")
+ST_clustering <- readRDS("~/hdca_DevHeart/data/ST/HDCA_heart_clustering.rds")
+```
+
+
+### Update image paths
+
+```{r}
+image_files <- list.files(path = "~/hdca_DevHeart/data/ST", 
+                          pattern = "tissue_hires_image.png", 
+                          full.names = TRUE, 
+                          recursive = TRUE)
+ST@tools$Staffli@imgs <- image_files
+```
+
+
+### Load H&E images
+
+```{r}
+ST <- LoadImages(ST, image_height = 1.5e3)
+```
+
+
+### Add section ID's to the ST object
+
+```{r}
+ST$sample_id <- paste0("section_", GetCoordinates(ST)$sampleID)
+```
+
+
+## Age specific cell type co-localization
+
+```{r}
+ST_meta_data <- openxlsx::read.xlsx("~/hdca_DevHeart/data/ST/HDCA_heart_ST_sections_overview_chambers_present.xlsx")
+ST_meta_data$age <- as.numeric(gsub("[^0-9.]", "", ST_meta_data$Age))
+
+ST_meta_data <- select(ST_meta_data, Section, age)
+ST_meta_data$sample_id <- paste0("section_", ST_meta_data$Section)
+
+ST_meta_data$age_groups <- cut(
+  ST_meta_data$age,
+  breaks = c(-Inf, 8, 10, Inf),
+  labels = c("w6-w7", "w8-w9", "w10-w12"),
+  right = FALSE
+)
+
+ST_meta_data
+```
+
+
+### Re-order sample by setting factors
+
+```{r}
+ST$sample_id <- factor(ST$sample_id, levels = unique(ST_meta_data$sample_id))
+```
+
+
+### Age group 
+
+```{r}
+#append age groups to ST_clustering
+age_groups <- setNames(ST_meta_data$age_groups, nm = ST_meta_data$sample_id)
+ST_clustering$age_groups <- age_groups[as.character(ST_clustering$sample_id)]
+
+table(ST_clustering$sample_id, ST_clustering$age_groups)
+
+# Create groups based on both clusters and ages and save to the object as a factor.
+groups <- paste0(ST_clustering$seurat_clusters_annot, '_', ST_clustering$age_groups)
+ST_clustering$subgroups <- factor(groups, levels = mixedsort(unique(groups)))
+
+table(ST_clustering$sample_id, ST_clustering$subgroups)
+table(ST_clustering$subgroups)
+
+write.csv2(table(ST_clustering$subgroups), "~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/Temporal_ST_clusters.csv")
+```
+
+
+### Temporal DEG on ST clusters
+
+```{r}
+DefaultAssay(ST_clustering) <- "SCT"
+
+# reorder the cell types desired
+ST_clustering$subgroups <- factor(ST_clustering$subgroups, levels = sort(unique(ST_clustering$subgroups)))
+
+ST_clustering <- SetIdent(ST_clustering, value = "subgroups")
+
+#ST_clustering <- FindVariableFeatures(ST_clustering, nfeatures = 4000)
+table(ST_clustering$subgroups)
+
+# The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).
+ST_clustering <- PrepSCTFindMarkers(ST_clustering)
+
+detable <- FindAllMarkers(ST_clustering,
+                          only.pos = TRUE,
+                          max.cells.per.ident = 300,
+                          logfc.threshold = .1,
+                          assay = "SCT",
+                          min.pct = 0.05)
+
+# Only keep DEGs that have a p-value below 0.05.
+detable <- detable[detable$p_val < 0.05, ]
+
+# Adding two extra columns giving the difference (and log difference) between pct1 and pct2.
+# pct1 is the percentage of cells in the specific cluster that express this gene.
+# pct2 is the percentage of cells in all other clusters that express this gene.
+detable$pct.diff <- detable$pct.1 - detable$pct.2
+detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
+
+# Save the detable as a csv file.
+#write.csv2(detable, "~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/banksy/detable_res_09.csv")
+
+
+# Pick the 40 genes with the lowest p value for each group, then 20 highest based on pct.diff, then 5 highest based on avg log2fc.
+detable %>%
+  group_by(cluster) %>%
+  top_n(-40, p_val) %>%
+  top_n(20, pct.diff) %>%
+  top_n(5, avg_log2FC) ->
+  top5
+
+pdf(paste0("~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/Temporal_DEG_top5_ST_clusters.pdf"), width = 20, height = 35)
+par(mfrow=c(1,1), mar=c(3,6,2,5))
+DotPlot(ST_clustering, features = top5 %>% pull(gene) %>% unique()) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+dev.off()
+
+rm(detable)
+```
+
+
+## Group technica replicates
+
+```{r}
+replicates_num <- list(c("5", "6"), 
+                   c("7", "8"),
+                   c("13", "14", "15"),
+                   c("35", "36"),
+                   c("37", "38"),
+                   c("9", "10", "11", "12"),
+                   c("16", "18", "19"),
+                   c("17", "20", "21"),
+                   c("22", "23"),
+                   c("24"),
+                   c("33", "34"),
+                   c("1", "2"),
+                   c("3", "4"),
+                   c("25", "26", "30"),
+                   c("27", "28", "29"),
+                   c("31", "32"))
+replicates_num
+```
+
+
+### Load deconvolution results
+
+```{r}
+# HL results
+stereoscope <- read.table("~/hdca_DevHeart/data/ST/stereoscope/W.2023-09-25133054.715121_hl.tsv", check.names = FALSE)
+annotation_HL <- read.csv2("~/hdca_DevHeart/data/metadata/HDCA_heart_SC_annotations_HL_240115.csv", header = 1, sep = ";")
+# Create a named vector for renaming columns
+rename_vector <- setNames(annotation_HL$cell_type, annotation_HL$cluster)
+
+# Rename the columns of the stereoscope dataframe
+stereoscope <- stereoscope %>%
+  rename_with(~ rename_vector[as.character(.)], everything())
+# Find shares genes
+all(colnames(ST) == rownames(stereoscope))
+
+stereoscope.assay <- CreateAssayObject(data = stereoscope %>% t())
+ST[["stereoscope"]] <- stereoscope.assay
+
+DefaultAssay(ST) <- "stereoscope"
+```
+
+```{r}
+#check namse of ST objects
+rownames(ST)
+```
+
+
+### Comparison between replicates
+
+#### Cell type composition per sections (38 section)
+
+```{r}
+# Extract sample identifiers from the barcodes
+split_stereoscope <- split(stereoscope, as.integer(str_extract(rownames(stereoscope), "\\d+$")))
+
+celltype_df <- t(split_stereoscope[["1"]]) #like celltype_df
+
+# Create an empty dataframe with appropriate column names
+results <- data.frame(matrix(nrow = nrow(celltype_df), ncol = length(split_stereoscope)))
+colnames(results) <- names(split_stereoscope)
+rownames(results) <- rownames(celltype_df)
+
+# Populate the dataframe with 0 values
+results[] <- 0
+
+for (section in names(split_stereoscope)) {
+  print(section)
+
+  filtered_data <- t(split_stereoscope[[section]])
+
+  # Get the average celltype composition for that subset. (divide by number of barcode to get a total score of 1)
+  results[[section]] <- rowSums(filtered_data) / dim(filtered_data)[2]
+}
+
+results <- results |>
+  rownames_to_column(var = "Cell_Type")
+
+write.csv2(results, paste0(myfolder, "celltype_comp_sections.csv"))
+```
+
+```{r}
+# Convert data from wide to long format for plotting
+data_long <- tidyr::gather(results, key = "Section", value = "Proportion", -Cell_Type)
+n <- length(results$Cell_Type)
+
+assign_group <- function(section, replicates) {
+for (i in seq_along(replicates)) {
+  if (as.character(section) %in% replicates[[i]]) {
+    return(i)
+  }
+}
+return(NA)
+}
+
+data_long$Group <- sapply(data_long$Section, assign_group, replicates = replicates_num)
+
+# Check the modified DataFrame
+print(data_long)
+
+desired_order <- c(5,6,7,8,13,14,15,35,36,37,38,1,2,27,28,29,31,32,3,4,25,26,30,9,10,11,12,33,34,16,18,19,22,23,17,20,21,24)
+data_long$Section <- factor(data_long$Section, levels = desired_order)
+
+
+# custom color
+set.seed(42)
+#color_palette <- c("#9E3D22", "#B5153A", "#27763D", "#7C4D79", "#D9452C", "#209d56", "#f3c300", "#875692", "#417aaf", "#008856", "#e68fac", "#fb6843", "#604e97", "#f6a600", "#d13770", "#a93214", "#8db600", "#e25822", "#1f77b4", "#ff8e2b", "#2ca02c", "#9467bd", "#7b7b7b", "#38cca5", "#17becf", "#00439a", "#ffbb78", "#98df8a",  "#9edae5", "#393b79", "#637939", "#7b4173", "#5254a3", "#a55194", "#b5cf6b", "#ffcc00", "#32a852", "#ff5733", "#ff8c00", "#9acd32")
+color_palette <- c("#DE7E18FF", "#875692", "#003C30FF", "#DFC27DFF", "#f6a600", "#8C510AFF", "#6AAC91FF", "#209d56", "#244800", "#01665EFF", "#B8E186FF", "#80CDC1FF", "#417aaf", "#D9452C", "#3bd9d4", "#01665EFF", "#DE77AEFF", "#1f77b4", "#35978FFF", "#A53010FF", "#C51B7DFF", "#92AA4CFF", "#e25822", "#8E0152FF", "#728653FF", "#20ae00", "#DFC27DFF", "#ffbb78", "#f3c300", "#ff8e2b", "#9E3D22", "#B5153A", "#27763D")
+
+
+#colors <- sample(viridis(n))
+colors <- sample(color_palette, size = n, replace = FALSE)
+
+# Plot with custom colors
+plts <- ggplot(data_long, aes(x = Section, y = Proportion, fill = Cell_Type)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Stacked Boxplot of Cell Types Proportions by Section",
+      x = NULL,
+      y = "Cell Type proportion",
+      fill = "Cell Type") +
+  scale_fill_manual(values = colors) +
+  theme_classic() +
+  theme(panel.background = element_rect(fill = "white",
+                                          colour = "white",
+                                          size = 0,
+                                          linetype = "solid"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          axis.text.x = element_text(size = 12, color = "black"),
+          axis.text.y = element_text(size = 11, color = "black"),
+          aspect.ratio = 1)
+
+
+pdf(paste0(myfolder, "celltype_comp_sections.pdf"), width = 20, height = 20)
+plts
+dev.off()
+```
+
+
+```{r}
+# Plot with custom colors, grouping by Group
+plts <- ggplot(data_long, aes(x = factor(Section), y = Proportion, fill = Cell_Type)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~ Group, scales = "free_x") +
+  labs(title = "Stacked Boxplot of Cell Types Proportions by Section Groups",
+       x = NULL,
+       y = "Cell Type proportion",
+       fill = "Cell Type") +
+  scale_fill_manual(values = colors) +
+  theme_classic() +
+  theme(panel.background = element_rect(fill = "white",
+                                        colour = "white",
+                                        size = 0,
+                                        linetype = "solid"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text.x = element_text(size = 12, color = "black"),
+        axis.text.y = element_text(size = 11, color = "black"),
+        aspect.ratio = 1)
+
+pdf(paste0(myfolder, "celltype_comp_grouped.pdf"), width = 20, height = 20)
+plts
+dev.off()
+```
+
+
+
+
+
+## Group technica replicates (17)
+
+```{r}
+replicates_num_clust <- list(c("5", "6"), 
+                             c("7", "8"),
+                             
+                             c("1", "2"),
+                             c("3", "4"),
+                             c("28", "29"),
+                             c("31", "32"),
+                             
+                             c("10", "11"),
+                             c("24"),
+                             c("33", "34"))
+replicates_num_clust
+```
+
+
+#### Cluster composition per sections (17 section)
+
+```{r}
+cluster_distribution <- table(ST_clustering$seurat_clusters_annot, ST_clustering$sample_id) |> as.matrix()
+cluster_sum <- colSums(cluster_distribution)
+
+# Create an empty dataframe with appropriate column names
+cluster_props <- data.frame(matrix(nrow = nrow(cluster_distribution), ncol = ncol(cluster_distribution)))
+colnames(cluster_props) <- colnames(cluster_distribution)
+rownames(cluster_props) <- rownames(cluster_distribution)
+
+# Populate the dataframe with 0 values
+cluster_props[] <- 0
+
+
+for (section in colnames(cluster_distribution)) {
+  print(section)
+  print(cluster_sum[[section]])
+  
+  section_sub <- cluster_distribution[, section]
+  section_sub_props <- section_sub/cluster_sum[[section]] * 100
+  
+  cluster_props[[section]] <- section_sub_props
+}
+
+cluster_props
+colSums(cluster_props)
+```
+
+```{r}
+cluster_props <- cluster_props |>
+  rownames_to_column(var = "Clusters")
+
+write.csv2(cluster_props, paste0(myfolder, "cluster_comp_sections.csv"))
+
+# Convert data from wide to long format for plotting
+data_long <- tidyr::gather(cluster_props, key = "Section", value = "Proportion", -Clusters)
+n <- length(unique(data_long$Clusters))
+
+assign_group <- function(section, replicates) {
+for (i in seq_along(replicates)) {
+  if (as.character(section) %in% replicates[[i]]) {
+    return(i)
+  }
+}
+return(NA)
+}
+
+data_long <- data_long %>%
+  mutate(Section = str_remove(Section, "section_"))
+
+
+data_long$Group <- sapply(data_long$Section, assign_group, replicates = replicates_num_clust)
+
+desired_order <- c(5, 6, 7, 8, 1, 2, 28, 29, 31, 32, 3, 4, 10, 11, 33, 34, 24)
+data_long$Section <- factor(data_long$Section, levels = desired_order)
+
+
+# custom color
+set.seed(42)
+#color_palette <- c("#9E3D22", "#B5153A", "#27763D", "#7C4D79", "#D9452C", "#209d56", "#f3c300", "#875692", "#417aaf", "#008856", "#e68fac", "#fb6843", "#604e97", "#f6a600", "#d13770", "#a93214", "#8db600", "#e25822", "#1f77b4", "#ff8e2b", "#2ca02c", "#9467bd", "#7b7b7b", "#38cca5", "#17becf", "#00439a", "#ffbb78", "#98df8a",  "#9edae5", "#393b79", "#637939", "#7b4173", "#5254a3", "#a55194", "#b5cf6b", "#ffcc00", "#32a852", "#ff5733", "#ff8c00", "#9acd32")
+color_palette <- c("#DE7E18FF", "#875692", "#003C30FF", "#DFC27DFF", "#f6a600", "#8C510AFF", "#6AAC91FF", "#209d56", "#244800", "#01665EFF", "#B8E186FF", "#80CDC1FF", "#417aaf", "#D9452C", "#3bd9d4", "#01665EFF", "#DE77AEFF", "#1f77b4", "#35978FFF", "#A53010FF", "#C51B7DFF", "#92AA4CFF", "#e25822", "#8E0152FF", "#728653FF", "#20ae00", "#DFC27DFF", "#ffbb78", "#f3c300", "#ff8e2b", "#9E3D22", "#B5153A", "#27763D")
+
+
+#colors <- sample(viridis(n))
+colors <- sample(color_palette, size = n, replace = FALSE)
+
+# Plot with custom colors
+plts <- ggplot(data_long, aes(x = Section, y = Proportion, fill = Clusters)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Stacked Boxplot of Clusters percentage by Section",
+      x = NULL,
+      y = "Clusters proportion",
+      fill = "Clusters") +
+  scale_fill_manual(values = colors) +
+  theme_classic() +
+  theme(panel.background = element_rect(fill = "white",
+                                          colour = "white",
+                                          size = 0,
+                                          linetype = "solid"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          axis.text.x = element_text(size = 12, color = "black"),
+          axis.text.y = element_text(size = 11, color = "black"),
+          aspect.ratio = 1)
+
+
+pdf(paste0(myfolder, "cluster_comp_sections.pdf"), width = 20, height = 20)
+plts
+dev.off()
+```
+
+```{r}
+# Plot with custom colors, grouping by Group
+plts <- ggplot(data_long, aes(x = factor(Section), y = Proportion, fill = Clusters)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~ Group, scales = "free_x") +
+  labs(title = "Stacked Boxplot of Cell Types Proportions by Section Groups",
+       x = NULL,
+       y = "Clusters proportion",
+       fill = "Clusters") +
+  scale_fill_manual(values = colors) +
+  theme_classic() +
+  theme(panel.background = element_rect(fill = "white",
+                                        colour = "white",
+                                        size = 0,
+                                        linetype = "solid"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text.x = element_text(size = 12, color = "black"),
+        axis.text.y = element_text(size = 11, color = "black"),
+        aspect.ratio = 1)
+
+pdf(paste0(myfolder, "cluster_comp_grouped.pdf"), width = 20, height = 20)
+plts
+dev.off()
+```
+
+
+#### Banksy regions composition per sections (17 section)
+
+## Load BANKSY regions
+
+```{r}
+banksy_regions <- read.csv2("~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/banksy/metadata.csv", header = 1, sep = ",") %>%
+  mutate(X = sub("_section", "", X)) %>%
+  select(c("X", "clust_Harmony_BANKSY_k50_res0.8", "clust_Harmony_BANKSY_k50_res0.9"))
+
+banksy_regions$sample <- sub(".*_(\\d+)$", "\\1", banksy_regions$X)
+split_data <- split(banksy_regions$X, banksy_regions$sample)
+list_of_lists <- lapply(split_data, function(barcodes) {
+  sub("_[0-9]+$", "", barcodes)
+})
+list_of_lists <- list_of_lists[order(as.numeric(names(list_of_lists)))]
+```
+
+
+
+### Annotate section with corresponding sampleID
+
+```{r}
+#resolution 0.9
+regions <- setNames(banksy_regions$clust_Harmony_BANKSY_k50_res0.9, nm = banksy_regions$X)
+ST$banksy_09 <- regions[as.character(colnames(ST))]
+```
+
+```{r}
+# sanity check
+table(ST$sample_id, ST$banksy_09)
+```
+
+```{r}
+# annotation banksy regions
+banksy_num <- c(7, 6, 1, 2, 4, 5, 11, 13, 9, 10, 3, 14, 8, 15, 12)
+banksy_annot <- c("LA", "RA", "LV_C", "RV_C_1", "LV_T", "RV_T", "EP", "CV-LYV", "AVP-PM", "V", "OFT-GV", "ICGP", "B", "RV_C_2", "NA")
+
+banksy_09_annot <- setNames(banksy_annot, nm = banksy_num)
+ST$banksy_09_annot <- banksy_09_annot[as.character(ST$banksy_09)]
+```
+
+
+```{r}
+region_distribution <- table(ST$banksy_09_annot, ST$sample_id) |> as.matrix()
+
+region_distribution <- region_distribution[, colnames(region_distribution) %in% c("section_5", "section_6", "section_7", "section_8", "section_1", "section_2", "section_3", "section_4", "section_28", "section_29", "section_31", "section_32", "section_10", "section_11", "section_24", "section_33", "section_34")]
+
+
+region_sum <- colSums(region_distribution)
+
+# Create an empty dataframe with appropriate column names
+region_props <- data.frame(matrix(nrow = nrow(region_distribution), ncol = ncol(region_distribution)))
+colnames(region_props) <- colnames(region_distribution)
+rownames(region_props) <- rownames(region_distribution)
+
+# Populate the dataframe with 0 values
+region_props[] <- 0
+
+
+for (section in colnames(region_distribution)) {
+  print(section)
+  print(region_sum[[section]])
+  
+  section_sub <- region_distribution[, section]
+  section_sub_props <- section_sub/region_sum[[section]] * 100
+  
+  region_props[[section]] <- section_sub_props
+}
+
+region_props
+colSums(region_props)
+```
+
+
+```{r}
+region_props <- region_props |>
+  rownames_to_column(var = "Regions")
+
+write.csv2(region_props, paste0(myfolder, "regions_banksy_sections.csv"))
+
+# Convert data from wide to long format for plotting
+data_long <- tidyr::gather(region_props, key = "Section", value = "Proportion", -Regions)
+n <- length(unique(data_long$Regions))
+
+assign_group <- function(section, replicates) {
+for (i in seq_along(replicates)) {
+  if (as.character(section) %in% replicates[[i]]) {
+    return(i)
+  }
+}
+return(NA)
+}
+
+data_long <- data_long %>%
+  mutate(Section = str_remove(Section, "section_"))
+
+
+data_long$Group <- sapply(data_long$Section, assign_group, replicates = replicates_num_clust)
+
+desired_order <- c(5, 6, 7, 8, 1, 2, 28, 29, 31, 32, 3, 4, 10, 11, 33, 34, 24)
+data_long$Section <- factor(data_long$Section, levels = desired_order)
+
+
+# custom color
+set.seed(42)
+#color_palette <- c("#9E3D22", "#B5153A", "#27763D", "#7C4D79", "#D9452C", "#209d56", "#f3c300", "#875692", "#417aaf", "#008856", "#e68fac", "#fb6843", "#604e97", "#f6a600", "#d13770", "#a93214", "#8db600", "#e25822", "#1f77b4", "#ff8e2b", "#2ca02c", "#9467bd", "#7b7b7b", "#38cca5", "#17becf", "#00439a", "#ffbb78", "#98df8a",  "#9edae5", "#393b79", "#637939", "#7b4173", "#5254a3", "#a55194", "#b5cf6b", "#ffcc00", "#32a852", "#ff5733", "#ff8c00", "#9acd32")
+color_palette <- c("#DE7E18FF", "#875692", "#003C30FF", "#DFC27DFF", "#f6a600", "#8C510AFF", "#6AAC91FF", "#209d56", "#244800", "#01665EFF", "#B8E186FF", "#80CDC1FF", "#417aaf", "#D9452C", "#3bd9d4", "#01665EFF", "#DE77AEFF", "#1f77b4", "#35978FFF", "#A53010FF", "#C51B7DFF", "#92AA4CFF", "#e25822", "#8E0152FF", "#728653FF", "#20ae00", "#DFC27DFF", "#ffbb78", "#f3c300", "#ff8e2b", "#9E3D22", "#B5153A", "#27763D")
+
+
+#colors <- sample(viridis(n))
+colors <- sample(color_palette, size = n, replace = FALSE)
+
+# Plot with custom colors
+plts <- ggplot(data_long, aes(x = Section, y = Proportion, fill = Regions)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Stacked Boxplot of Regions percentage by Section",
+      x = NULL,
+      y = "Regions proportion",
+      fill = "Regions") +
+  scale_fill_manual(values = colors) +
+  theme_classic() +
+  theme(panel.background = element_rect(fill = "white",
+                                          colour = "white",
+                                          size = 0,
+                                          linetype = "solid"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          axis.text.x = element_text(size = 12, color = "black"),
+          axis.text.y = element_text(size = 11, color = "black"),
+          aspect.ratio = 1)
+
+
+pdf(paste0(myfolder, "regions_banksy_comp_sections.pdf"), width = 20, height = 20)
+plts
+dev.off()
+```
+
+```{r}
+# Plot with custom colors, grouping by Group
+plts <- ggplot(data_long, aes(x = factor(Section), y = Proportion, fill = Regions)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~ Group, scales = "free_x") +
+  labs(title = "Stacked Boxplot of Regions Proportions by Section Groups",
+       x = NULL,
+       y = "Regions proportion",
+       fill = "Regions") +
+  scale_fill_manual(values = colors) +
+  theme_classic() +
+  theme(panel.background = element_rect(fill = "white",
+                                        colour = "white",
+                                        size = 0,
+                                        linetype = "solid"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text.x = element_text(size = 12, color = "black"),
+        axis.text.y = element_text(size = 11, color = "black"),
+        aspect.ratio = 1)
+
+pdf(paste0(myfolder, "regions_banksy_comp_grouped.pdf"), width = 20, height = 20)
+plts
+dev.off()
+```
+
+
+
+
+
+
+
+
+
+

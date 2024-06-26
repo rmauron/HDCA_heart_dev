@@ -1,0 +1,339 @@
+---
+title: "ST_HDCA_alignment_metrics"
+author: "Raphaël Mauron"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# HDCA heart ST spatial ccc
+
+This script presents the process for computing non-negative matrix factorisation.
+
+NOTE: The path to load the data and the path to save the figures should be changed at your convenience.
+
+Environment: **Conda: r-semla**
+
+## Set up and loading material
+
+### Knit setup
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+### Load library
+
+```{r}
+library(semla)
+library(tidyr)
+library(RcppML)
+library(ggplot2)
+library(openxlsx)
+library(RcppML)
+library(singlet)
+library(tidyverse)
+library(viridis)
+library(pheatmap)
+library(tibble)
+library(colorjam)
+library(patchwork)
+library(plotly)
+library(kableExtra)
+```
+
+
+### Set working directory
+
+```{r}
+myfolder <- "~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/ST_spatial_ccc/"
+```
+
+
+### Load `Seurat` object with ST data
+
+```{r}
+ST <- readRDS("~/hdca_DevHeart/data/ST/220114_STdata_harmony_semla.rds")
+ST_clustering <- readRDS("~/hdca_DevHeart/data/ST/HDCA_heart_clustering.rds")
+```
+
+
+### Update image paths
+
+```{r}
+image_files <- list.files(path = "~/hdca_DevHeart/data/ST", 
+                          pattern = "tissue_hires_image.png", 
+                          full.names = TRUE, 
+                          recursive = TRUE)
+ST@tools$Staffli@imgs <- image_files
+```
+
+
+### Load H&E images
+
+```{r}
+ST <- LoadImages(ST, image_height = 1.5e3)
+```
+
+
+### Add section ID's to the ST object
+
+```{r}
+ST$sample_id <- paste0("section_", GetCoordinates(ST)$sampleID)
+```
+
+
+## Age specific cell type co-localization
+
+```{r}
+ST_meta_data <- openxlsx::read.xlsx("~/hdca_DevHeart/data/ST/HDCA_heart_ST_sections_overview_chambers_present.xlsx")
+ST_meta_data$age <- as.numeric(gsub("[^0-9.]", "", ST_meta_data$Age))
+
+ST_meta_data <- select(ST_meta_data, Section, age)
+ST_meta_data$sample_id <- paste0("section_", ST_meta_data$Section)
+
+ST_meta_data$age_groups <- cut(
+  ST_meta_data$age,
+  breaks = c(-Inf, 8, 10, Inf),
+  labels = c("w6-w7", "w8-w9", "w10-w12"),
+  right = FALSE
+)
+
+ST_meta_data
+```
+
+
+### Re-order sample by setting factors
+
+```{r}
+ST$sample_id <- factor(ST$sample_id, levels = unique(ST_meta_data$sample_id))
+```
+
+
+## Spatial CCC
+
+```{r}
+DefaultAssay(ST) <- "SCT"
+MapFeatures(ST,
+            features = "MYH6",
+            slot = "data", #data
+            pt_size = 1) +
+    patchwork::plot_layout(guides = "collect") &
+    theme(plot.subtitle = element_blank()) &
+    ThemeLegendRight()
+```
+
+
+```{r}
+# parameters
+ligand_receptor_pairs <- list(
+  c("NPPA", "NPR1"),
+  c("NPPA", "NPR3"),
+  c("NPPB", "NPR1"),
+  c("NPPB", "NPR2"),
+  c("NPPB", "NPR3"),
+  c("NPPC", "NPR2"),
+  c("NPPC", "NPR3"),
+  c("OSTN", "NPR3"),
+  c("SEMA3C", "PLXNA2"),
+  c("SEMA3C", "PLXNA4"),
+  c("SEMA3D", "PLXNA2"),
+  c("SEMA3D", "PLXNA4"),
+  c("SEMA6A", "PLXNA2"),
+  c("SEMA6A", "PLXNA4"),
+  c("SEMA6B", "PLXNA2"),
+  c("SEMA6B", "PLXNA4"),
+  c("SEMA3A", "PLXNA4"),
+  c("SEMA3A", "NRP1"))
+section_number_list <- c(5, 2, 11, 24)
+object <- ST
+pt_size <- 1
+#features <- c()
+
+#loop through all the pairs and all the section required
+for (features in ligand_receptor_pairs) {
+  print(features)
+  for (section_number in section_number_list) {
+    print(section_number)
+    
+    # the function
+    exprVals <- FetchData(ST, vars = features, layer = "data")
+    exprVals_rescaled <- exprVals |> as.data.frame()
+    
+    # Calculate the product of cell state proportion 1 and cell state proportion 2 for each barcode
+    exprVals_rescaled$product <- apply(exprVals_rescaled[, 1:length(features)], 1, prod)
+    
+    # Calculate the geometric mean (in R= exp(mean(log(x))))
+    exprVals_rescaled$geom_mean <- exprVals_rescaled$product ** (1 / length(features))
+    
+    # Colocalisation score is the geom_mean multiplied by the number of events in the calculation
+    exprVals_rescaled$coloc_score <- exprVals_rescaled$geom_mean * length(features)
+    
+    #Also calculate the sum of the events on the spot. Get an idea of the proportion of the spot is taken by those specific events
+    exprVals_rescaled$sum <- apply(exprVals_rescaled[, 1:length(features)], 1, sum)
+    
+    # Fetch the coordinate of each read to plot in 2D, subset to coordinate corresponding to the sectionID selected
+    coor <- GetCoordinates(object)
+    coor2 <- coor[coor$sampleID == section_number, ]
+    rm(coor)
+    
+    # Subset exprVals_rescaled
+    exprVals_rescaled <- exprVals_rescaled[rownames(exprVals_rescaled) %in% coor2$barcode, ]
+    
+    # Create colors for coloc_score
+    coloc_score_normalized <- scales::rescale(exprVals_rescaled$coloc_score, to = c(0, 1))
+    
+    # Generate colors using the normalized coloc_score values
+    cols <- scales::gradient_n_pal(colours = viridis::turbo(n = 11))(coloc_score_normalized)
+    #cols <- scales::gradient_n_pal(colours = viridis::turbo(n = 11))(exprVals_rescaled$coloc_score)
+    exprVals_rescaled$cols <- cols
+    
+    
+    # Create ggplot object to plot
+    gg <- bind_cols(exprVals_rescaled, coor2)
+    
+    # Get maximum dimension from section_number to plot
+    full_width <- object@tools[["Staffli"]]@image_info[["full_width"]][section_number]
+    full_height <- object@tools[["Staffli"]]@image_info[["full_height"]][section_number]
+    
+    score <- gg$coloc_score
+    
+    # Plot coloc_score in 2D
+    plts <- ggplot(gg, aes(pxl_col_in_fullres, pxl_row_in_fullres)) +
+      geom_point(color = cols, size = pt_size, aes(fill = score), show.legend = TRUE) +
+    
+      scale_fill_gradientn(colours = viridis::turbo(n = 11), #use color
+        breaks = c(round(min(score, na.rm = TRUE), digits = 2),
+                   round((max(score, na.rm = TRUE) * 4 / 4), digits = 2),
+                   round((max(score, na.rm = TRUE) * 3 / 4), digits = 2), #add 4 ticks based on the respective cell_proportion
+                   round((max(score, na.rm = TRUE) * 2 / 4), digits = 2),
+                   round((max(score, na.rm = TRUE) * 1 / 4), digits = 2)),
+        limits = c(round(min(score, na.rm = TRUE), digits = 2),
+                   round(max(score, na.rm = TRUE), digits = 2))
+      ) +
+    
+      scale_y_reverse(limits = c(full_height, 0)) +
+      scale_x_continuous(limits = c(0, full_width)) +
+    
+      labs(x = NULL, y = NULL) +
+    
+      theme(panel.background = element_rect(fill = "white",
+                                            colour = "white",
+                                            size = 0,
+                                            linetype = "solid"),
+            panel.grid.major = element_blank(),
+            panel.grid.minor = element_blank(),
+            axis.text = NULL,
+            axis.text.x = element_blank(),
+            axis.text.y = element_blank(),
+            axis.ticks = element_blank(),
+            aspect.ratio = 1) +
+    
+      ggtitle(label = paste(features, collapse = " , "),
+              subtitle = "Colocalisation")
+    
+    #plts
+    
+    pdf(file = paste0(myfolder, features[1], "_", features[2], "_section_", section_number, ".pdf"), width = 6, height = 6)
+    print(plts)
+    dev.off()
+    
+  }
+}
+```
+
+
+## The code
+
+```{r}
+exprVals <- FetchData(ST, vars = features, layer = "data")
+exprVals_rescaled <- exprVals |> as.data.frame()
+
+# Calculate the product of cell state proportion 1 and cell state proportion 2 for each barcode
+exprVals_rescaled$product <- apply(exprVals_rescaled[, 1:length(features)], 1, prod)
+
+# Calculate the geometric mean (in R= exp(mean(log(x))))
+exprVals_rescaled$geom_mean <- exprVals_rescaled$product ** (1 / length(features))
+
+# Colocalisation score is the geom_mean multiplied by the number of events in the calculation
+exprVals_rescaled$coloc_score <- exprVals_rescaled$geom_mean * length(features)
+
+#Also calculate the sum of the events on the spot. Get an idea of the proportion of the spot is taken by those specific events
+exprVals_rescaled$sum <- apply(exprVals_rescaled[, 1:length(features)], 1, sum)
+
+# Fetch the coordinate of each read to plot in 2D, subset to coordinate corresponding to the sectionID selected
+coor <- GetCoordinates(object)
+coor2 <- coor[coor$sampleID == section_number, ]
+rm(coor)
+
+# Subset exprVals_rescaled
+exprVals_rescaled <- exprVals_rescaled[rownames(exprVals_rescaled) %in% coor2$barcode, ]
+
+# Create colors for coloc_score
+coloc_score_normalized <- scales::rescale(exprVals_rescaled$coloc_score, to = c(0, 1))
+
+# Generate colors using the normalized coloc_score values
+cols <- scales::gradient_n_pal(colours = viridis::turbo(n = 11))(coloc_score_normalized)
+#cols <- scales::gradient_n_pal(colours = viridis::turbo(n = 11))(exprVals_rescaled$coloc_score)
+exprVals_rescaled$cols <- cols
+
+
+# Create ggplot object to plot
+gg <- bind_cols(exprVals_rescaled, coor2)
+
+# Get maximum dimension from section_number to plot
+full_width <- object@tools[["Staffli"]]@image_info[["full_width"]][section_number]
+full_height <- object@tools[["Staffli"]]@image_info[["full_height"]][section_number]
+
+score <- gg$coloc_score
+
+# Plot coloc_score in 2D
+plts <- ggplot(gg, aes(pxl_col_in_fullres, pxl_row_in_fullres)) +
+  geom_point(color = cols, size = pt_size, aes(fill = score), show.legend = TRUE) +
+
+  scale_fill_gradientn(colours = viridis::turbo(n = 11), #use color
+    breaks = c(round(min(score, na.rm = TRUE), digits = 2),
+               round((max(score, na.rm = TRUE) * 4 / 4), digits = 2),
+               round((max(score, na.rm = TRUE) * 3 / 4), digits = 2), #add 4 ticks based on the respective cell_proportion
+               round((max(score, na.rm = TRUE) * 2 / 4), digits = 2),
+               round((max(score, na.rm = TRUE) * 1 / 4), digits = 2)),
+    limits = c(round(min(score, na.rm = TRUE), digits = 2),
+               round(max(score, na.rm = TRUE), digits = 2))
+  ) +
+
+  scale_y_reverse(limits = c(full_height, 0)) +
+  scale_x_continuous(limits = c(0, full_width)) +
+
+  labs(x = NULL, y = NULL) +
+
+  theme(panel.background = element_rect(fill = "white",
+                                        colour = "white",
+                                        size = 0,
+                                        linetype = "solid"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text = NULL,
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank(),
+        aspect.ratio = 1) +
+
+  ggtitle(label = paste(features, collapse = " , "),
+          subtitle = "Colocalisation")
+
+plts
+
+
+```
+
+
+
+
+
+
+
+
+
+
+

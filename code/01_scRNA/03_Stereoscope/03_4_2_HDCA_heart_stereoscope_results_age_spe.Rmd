@@ -1,0 +1,334 @@
+---
+title: "03_4_HDCA_heart_stereoscope_results_age_specific"
+author: "Raphaël Mauron"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# HDCA heart stereoscope results
+
+A specific environment as been created to run this script. The reason being we are using the package called ´semla´ (https://github.com/ludvigla/semla) which has dependencies and was not installed at the beginning of the overall analysis.
+To avoid any dependencies issues, it has been decided to run this code separately.
+
+NOTE: The path to load the data and the path to save the figures should be changed at your convenience.
+
+Environment: **Conda: r-semla**
+
+## Set up and loading material
+
+### Knit setup
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+### Load library
+
+```{r}
+library(semla)
+library(tidyr)
+library(RcppML)
+library(ggplot2)
+```
+
+
+### Set working directory
+
+```{r}
+myfolder <- "~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/stereoscope/"
+```
+
+
+### Load `Seurat` object with ST data
+
+```{r}
+ST <- readRDS("~/hdca_DevHeart/data/ST/220114_STdata_harmony_semla.rds")
+```
+
+
+### Update image paths
+
+```{r}
+image_files <- list.files(path = "~/hdca_DevHeart/data/ST", 
+                          pattern = "tissue_hires_image.png", 
+                          full.names = TRUE, 
+                          recursive = TRUE)
+ST@tools$Staffli@imgs <- image_files
+```
+
+
+### Load H&E images
+
+```{r}
+ST <- LoadImages(ST, image_height = 1.5e3)
+```
+
+
+## Split again the ST data by age groups
+
+We split the ST object by age and export the count matrix for each of these 3 subsets
+
+```{r}
+ST$sample_id <- paste0("section_", GetCoordinates(ST)$sampleID)
+```
+
+```{r}
+ST_meta <- read.csv(file = paste0("~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/export_data/", "metadata_age", ".csv"))
+```
+
+```{r}
+id <- setNames(ST_meta$age_groups, nm = ST_meta$sample_id)
+ST$age_groups <- id[as.character(ST$sample_id)]
+
+ages <- setNames(ST_meta$age, nm = ST_meta$sample_id)
+ST$age <- ages[as.character(ST$sample_id)]
+```
+
+```{r}
+table(ST$age)
+```
+
+```{r}
+# age 1
+selection <- c(colnames(ST[, ST$age %in% c("6", "7", "7.5")])) #retrieve original barcodes
+ST_age_1 <- SubsetSTData(ST, spots = selection) #subset based on barcode
+ST_age_1 <- RenameCells(ST_age_1, new.names = selection) #replace barcode by original ones
+all(colnames(ST_age_1) == colnames(ST[, ST$age %in% c("6", "7", "7.5")])) #sanitiy check
+
+# age 2
+selection <- c(colnames(ST[, ST$age %in% c("8", "9")])) #retrieve original barcodes
+ST_age_2 <- SubsetSTData(ST, spots = selection) #subset based on barcode
+ST_age_2 <- RenameCells(ST_age_2, new.names = selection) #replace barcode by original ones
+all(colnames(ST_age_2) == colnames(ST[, ST$age %in% c("8", "9")])) #sanitiy check
+
+# age 3
+selection <- c(colnames(ST[, ST$age %in% c("10", "10.5", "11", "12")])) #retrieve original barcodes
+ST_age_3 <- SubsetSTData(ST, spots = selection) #subset based on barcode
+ST_age_3 <- RenameCells(ST_age_3, new.names = selection) #replace barcode by original ones
+all(colnames(ST_age_3) == colnames(ST[, ST$age %in% c("10", "10.5", "11", "12")]))
+```
+
+```{r}
+table(ST_age_1$age)
+table(ST_age_2$age)
+table(ST_age_3$age)
+```
+
+
+## High Level Analysis - ST_age_1
+
+### Load stereoscope results for sampled cells
+
+```{r}
+# HL results
+stereoscope_age1 <- read.table("~/hdca_DevHeart/data/ST/stereoscope/W.2024-06-18174922.543951_hl_age1.tsv", check.names = FALSE)
+
+# Find shares genes
+all(colnames(ST_age_1) == rownames(stereoscope_age1))
+identical(colnames(ST_age_1), rownames(stereoscope_age1))
+```
+
+
+### Load stereoscope (deconvolution) results as a new assay
+
+```{r}
+stereoscope.assay <- CreateAssayObject(data = stereoscope_age1 %>% t())
+ST_age_1[["stereoscope"]] <- stereoscope.assay
+```
+
+
+### Plot
+
+#### Set default assay to `stereoscope´
+
+```{r}
+DefaultAssay(ST_age_1) <- "stereoscope"
+```
+
+
+#### Check clusters name
+
+```{r}
+rownames(ST_age_1)
+```
+
+
+#### Plot all sections (1 patchwork per cluster)
+Here we project the gene expression of cluster individually on every section
+
+```{r}
+# Create path if not existing
+if (!dir.exists(paste0(myfolder, "visualization/high_level_age1"))){
+  dir.create(paste0(myfolder, "visualization/high_level_age1"), recursive = TRUE)}
+
+for (celltype in rownames(ST_age_1)) {
+  print(celltype)
+  p <- MapFeatures(ST_age_1,
+                   features = celltype,
+                   override_plot_dims = TRUE,
+                   colors = c("lightgrey","mistyrose", "red", "darkred", "black"),
+                   max_cutoff = 0.99, #flattened the expression above 0.99 percentile
+                   pt_size = 1.5) +
+    patchwork::plot_layout(guides = "collect") &
+    theme(plot.subtitle = element_blank()) &
+    ThemeLegendRight()
+
+  jpeg(filename = paste0(myfolder, "visualization/high_level_age1/cell_type_", celltype, ".jpg"), width = 2000, height = 2000, res = 150)
+  print(p)
+  dev.off()
+}
+rm(celltype, p)
+```
+
+
+
+## High Level Analysis - ST_age_2
+
+### Load stereoscope results for sampled cells
+
+```{r}
+# HL results
+stereoscope_age2 <- read.table("~/hdca_DevHeart/data/ST/stereoscope/W.2024-06-18174933.221917_hl_age2.tsv", check.names = FALSE)
+
+# Find shares genes
+all(colnames(ST_age_2) == rownames(stereoscope_age2))
+identical(colnames(ST_age_2), rownames(stereoscope_age2))
+```
+
+
+### Load stereoscope (deconvolution) results as a new assay
+
+```{r}
+stereoscope.assay <- CreateAssayObject(data = stereoscope_age2 %>% t())
+ST_age_2[["stereoscope"]] <- stereoscope.assay
+```
+
+
+### Plot
+
+#### Set default assay to `stereoscope´
+
+```{r}
+DefaultAssay(ST_age_2) <- "stereoscope"
+```
+
+
+#### Check clusters name
+
+```{r}
+rownames(ST_age_2)
+```
+
+
+#### Plot all sections (1 patchwork per cluster)
+Here we project the gene expression of cluster individually on every section
+
+```{r}
+# Create path if not existing
+if (!dir.exists(paste0(myfolder, "visualization/high_level_age2"))){
+  dir.create(paste0(myfolder, "visualization/high_level_age2"), recursive = TRUE)}
+
+for (celltype in rownames(ST_age_2)) {
+  print(celltype)
+  p <- MapFeatures(ST_age_2,
+                   features = celltype,
+                   override_plot_dims = TRUE,
+                   colors = c("lightgrey","mistyrose", "red", "darkred", "black"),
+                   max_cutoff = 0.99, #flattened the expression above 0.99 percentile
+                   pt_size = 1.5) +
+    patchwork::plot_layout(guides = "collect") &
+    theme(plot.subtitle = element_blank()) &
+    ThemeLegendRight()
+
+  jpeg(filename = paste0(myfolder, "visualization/high_level_age2/cell_type_", celltype, ".jpg"), width = 2000, height = 2000, res = 150)
+  print(p)
+  dev.off()
+}
+rm(celltype, p)
+```
+
+
+## High Level Analysis - ST_age_3
+
+### Load stereoscope results for sampled cells
+
+```{r}
+# HL results
+stereoscope_age3 <- read.table("~/hdca_DevHeart/data/ST/stereoscope/W.2024-06-18174942.575147_hl_age3.tsv", check.names = FALSE)
+
+# Find shares genes
+all(colnames(ST_age_3) == rownames(stereoscope_age3))
+identical(colnames(ST_age_3), rownames(stereoscope_age3))
+```
+
+
+### Load stereoscope (deconvolution) results as a new assay
+
+```{r}
+stereoscope.assay <- CreateAssayObject(data = stereoscope_age3 %>% t())
+ST_age_3[["stereoscope"]] <- stereoscope.assay
+```
+
+
+### Plot
+
+#### Set default assay to `stereoscope´
+
+```{r}
+DefaultAssay(ST_age_3) <- "stereoscope"
+```
+
+
+#### Check clusters name
+
+```{r}
+rownames(ST_age_3)
+```
+
+
+#### Plot all sections (1 patchwork per cluster)
+Here we project the gene expression of cluster individually on every section
+
+```{r}
+# Create path if not existing
+if (!dir.exists(paste0(myfolder, "visualization/high_level_age3"))){
+  dir.create(paste0(myfolder, "visualization/high_level_age3"), recursive = TRUE)}
+
+for (celltype in rownames(ST_age_3)) {
+  print(celltype)
+  p <- MapFeatures(ST_age_3,
+                   features = celltype,
+                   override_plot_dims = TRUE,
+                   colors = c("lightgrey","mistyrose", "red", "darkred", "black"),
+                   max_cutoff = 0.99, #flattened the expression above 0.99 percentile
+                   pt_size = 1.5) +
+    patchwork::plot_layout(guides = "collect") &
+    theme(plot.subtitle = element_blank()) &
+    ThemeLegendRight()
+
+  jpeg(filename = paste0(myfolder, "visualization/high_level_age3/cell_type_", celltype, ".jpg"), width = 2000, height = 2000, res = 150)
+  print(p)
+  dev.off()
+}
+rm(celltype, p)
+```
+
+
+================================================================================
+================================================================================
+================================================================================
+================================================================================
+================================================================================
+
+
+
+
+
+
+
+
+
+
+

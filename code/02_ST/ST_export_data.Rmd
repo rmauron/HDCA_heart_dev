@@ -1,0 +1,886 @@
+---
+title: "03_4_HDCA_heart_export_ST_data"
+author: "Raphaël Mauron"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# HDCA - Heart
+
+## Set up
+
+### Knit setup
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+### Load library
+
+```{r}
+package.list <- c("semla", "Seurat", "viridis", "dplyr", "ggplot2", "gtools", "patchwork",
+                  "RColorBrewer", "tidyverse")
+
+invisible(lapply(package.list, function(element) {
+  library(element, character.only = TRUE)
+}))
+rm(package.list)
+```
+
+
+### Set seed for project
+
+```{r}
+set.seed(1)
+```
+
+
+### Set working directory
+
+```{r}
+savepath <- "~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/export_data/"
+```
+
+
+### Load `Seurat` object with ST data
+
+```{r}
+ST <- readRDS("~/hdca_DevHeart/data/ST/220114_STdata_harmony_semla.rds")
+ST_clustering <- readRDS("~/hdca_DevHeart/data/ST/HDCA_heart_clustering.rds")
+```
+
+
+### Rename clusters in ST_clustering
+
+```{r}
+annotation <- read.csv2("~/hdca_DevHeart/data/metadata/HDCA_heart_ST_annotations.csv", header = 1, sep = ";")
+cells_clusters <- setNames(annotation$cluster_name, nm = annotation$cluster)
+ST_clustering$seurat_clusters_annot <- cells_clusters[as.character(ST_clustering$seurat_clusters)]
+```
+
+
+### Update image paths
+
+```{r}
+image_files <- list.files(path = "~/hdca_DevHeart/data/ST", 
+                          pattern = "tissue_hires_image.png", 
+                          full.names = TRUE, 
+                          recursive = TRUE)
+ST@tools$Staffli@imgs <- image_files
+```
+
+
+### Load H&E images
+
+```{r}
+ST <- LoadImages(ST, image_height = 1.5e3)
+```
+
+
+### Add section ID's to the ST object
+
+```{r}
+ST$sample_id <- paste0("section_", GetCoordinates(ST)$sampleID)
+```
+
+
+## Metadata table
+
+```{r}
+ST_meta_data <- openxlsx::read.xlsx("~/hdca_DevHeart/data/ST/HDCA_heart_ST_sections_overview_chambers_present.xlsx")
+ST_meta_data$age <- as.numeric(gsub("[^0-9.]", "", ST_meta_data$Age))
+
+ST_meta_data <- select(ST_meta_data, Section, age)
+ST_meta_data$sample_id <- paste0("section_", ST_meta_data$Section)
+ST_meta_data
+```
+
+```{r}
+ST_meta_data$age_groups <- cut(
+  ST_meta_data$age,
+  breaks = c(-Inf, 8, 10, Inf),
+  labels = c("w6-w7", "w8-w9", "w10-w12"),
+  right = FALSE
+)
+
+write.csv(ST_meta_data, file = paste0("~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/export_data/", "metadata_age", ".csv"))
+```
+
+
+### Re-order sample by setting factors
+
+```{r}
+ST$sample_id <- factor(ST$sample_id, levels = unique(ST_meta_data$sample_id))
+```
+
+
+### Set default assay to `Spatial´
+
+```{r}
+DefaultAssay(ST) <- "Spatial"
+```
+
+
+### Check clusters name - example
+
+```{r}
+head(rownames(ST), 10)
+```
+
+
+### Split object into list
+
+```{r}
+ST_list <- list()
+
+for (section in unique(ST@meta.data$sample_id)) {
+  print(section)
+  section_object <- SubsetSTData(ST[, ST$sample_id == section])
+  ST_list[[as.character(section)]] <- section_object
+}
+
+length(ST_list)
+names(ST_list)
+
+rm(section)
+gc()
+```
+
+
+#### import metadata
+
+```{r}
+ST_clustering_metadata <- read.csv("~/hdca_DevHeart/data/metadata/export_data_st.csv", sep = ";")
+```
+
+
+## Export clusters (in ST_clustering)
+
+### Annotate section with corresponding sampleID
+
+```{r}
+id <- setNames(ST_clustering_metadata$sample_id, nm = ST_clustering_metadata$section_id)
+ST_clustering$sample_id <- id[as.character(ST_clustering$section.name)]
+```
+
+```{r, eval=FALSE}
+saveRDS(ST_clustering, file = "~/hdca_DevHeart/data/ST/HDCA_heart_clustering.rds")
+```
+
+
+
+### get barcodes for each of the sample_id
+
+```{r}
+meta <- ST_clustering@meta.data
+
+ST_clustering_list <- list()
+
+for (sample in unique(meta$sample_id)) {
+  print(sample)
+  
+  barcode_vector <- rownames(meta[meta$sample_id == sample, ])
+  
+  ST_clustering_list[[as.character(sample)]] <- barcode_vector
+}
+```
+
+```{r}
+  plot.dir <- paste0(c(savepath, "export_matrix", "export-matrix-spot-cluster"), collapse = "/")
+  if (dir.exists(plot.dir)) {
+  } else {
+    dir.create(plot.dir, recursive = TRUE)
+  }
+```
+
+```{r}
+ST_clustering_meta_list <- list()
+
+for (sample in names(ST_clustering_list)) {
+  print(sample)
+
+  meta_sample <- meta[rownames(meta) %in% ST_clustering_list[[sample]],] %>% select("seurat_clusters_annot", "seurat_clusters", "sample_id") %>%
+    rownames_to_column(var = "barcode")
+  
+  meta_sample <- meta_sample %>%
+    mutate(barcode = sub("_.*", "", barcode))
+  
+  coord <- GetCoordinates(ST_list[[sample]]) %>%
+    select(c(barcode, pxl_col_in_fullres, pxl_row_in_fullres))
+  # substitute spotID with coordinates
+  meta_sample_coor <- meta_sample %>%
+    inner_join(coord, by = "barcode")
+
+  ST_clustering_meta_list[[as.character(sample)]] <- meta_sample_coor
+
+  #Save tables
+  write.csv(meta_sample_coor, file = paste0(plot.dir, "/", sample, "_spot_cluster", ".csv"))
+}
+```
+
+
+## Export cluster embedding (UMAP)
+
+```{r}
+# ST_clustering
+SaveH5Seurat(ST_clustering, filename = "~/hdca_DevHeart/data/AnnData/ST_clustering.h5Seurat")
+Convert("~/hdca_DevHeart/data/AnnData/ST_clustering.h5Seurat", dest = "h5ad")
+```
+
+```{r}
+fwrite(ST_clustering@meta.data, paste0("~/hdca_DevHeart/data/AnnData/ST_clustering_metadata.tsv"), sep='\t', col.names = T, row.names = T, quote=F)
+```
+
+```{r}
+write.csv(ST_clustering@reductions$umap@cell.embeddings, file = paste("~/hdca_DevHeart/data/AnnData/ST_clustering_UMAP.csv",sep=""))
+```
+
+
+
+## Export gene expressions
+
+```{r}
+iwalk(ST_list, function(object_section, object_name) {
+  # set seed for reproducibility purposes
+  set.seed(1)
+  print(object_name)
+
+  # create plot.directory for each section
+  plot.dir <- paste0(c(savepath, "export_matrix", "export-matrix-spot-gene"), collapse = "/")
+  if (dir.exists(plot.dir)) {
+  } else {
+    dir.create(plot.dir, recursive = TRUE)
+  }
+
+  DGE_DATA <- object_section
+  
+  spot_gene <- t(as.matrix(DGE_DATA@assays[["Spatial"]]@counts)) %>%
+  #spot_gene <- t(as.matrix(LayerData(DGE_DATA, layer = "counts"))) %>%
+    as.data.frame() %>%
+    rownames_to_column(var = "barcode")
+  
+  coord <- GetCoordinates(DGE_DATA) %>%
+    select(c(barcode, pxl_col_in_fullres, pxl_row_in_fullres))
+  # substitute spotID with coordinates
+  spot_gene_coor <- spot_gene %>%
+    inner_join(coord, by = "barcode")
+
+  # re-order columns
+  spot_gene_coor <- spot_gene_coor[, c("barcode", "pxl_col_in_fullres", "pxl_row_in_fullres", colnames(spot_gene))]
+  spot_gene_coor <- spot_gene_coor[, !colnames(spot_gene_coor) %in% c("barcode.1")] # remove duplicate barcode
+
+  # Save table
+  write.csv(spot_gene_coor, file = paste0(plot.dir, "/", object_name, "_spot_gene", ".csv"))
+})
+```
+
+
+## Export gene expressions - data
+
+```{r}
+iwalk(ST_list, function(object_section, object_name) {
+  # set seed for reproducibility purposes
+  set.seed(1)
+  print(object_name)
+
+  # create plot.directory for each section
+  plot.dir <- paste0(c(savepath, "export_matrix", "export-matrix-spot-gene-data-sct"), collapse = "/")
+  if (dir.exists(plot.dir)) {
+  } else {
+    dir.create(plot.dir, recursive = TRUE)
+  }
+
+  DGE_DATA <- object_section
+  
+  spot_gene <- t(as.matrix(DGE_DATA@assays[["SCT"]]@data)) %>%
+  #spot_gene <- t(as.matrix(LayerData(DGE_DATA, layer = "counts"))) %>%
+    as.data.frame() %>%
+    rownames_to_column(var = "barcode")
+  
+  coord <- GetCoordinates(DGE_DATA) %>%
+    select(c(barcode, pxl_col_in_fullres, pxl_row_in_fullres))
+  # substitute spotID with coordinates
+  spot_gene_coor <- spot_gene %>%
+    inner_join(coord, by = "barcode")
+
+  # re-order columns
+  spot_gene_coor <- spot_gene_coor[, c("barcode", "pxl_col_in_fullres", "pxl_row_in_fullres", colnames(spot_gene))]
+  spot_gene_coor <- spot_gene_coor[, !colnames(spot_gene_coor) %in% c("barcode.1")] # remove duplicate barcode
+
+  # Save table
+  write.csv(spot_gene_coor, file = paste0(plot.dir, "/", object_name, "_spot_gene", ".csv"))
+})
+```
+
+
+## Export NMF
+
+```{r, eval = FALSE}
+object_20 <- readRDS(paste0("~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/", "rds_objects/", "ST_processed_20_nmf", ".rds"))
+```
+
+
+### Split object_20 into list
+
+```{r}
+object_20_list <- list()
+
+for (section in unique(object_20@meta.data$sample_id)) {
+  print(section)
+  section_object <- SubsetSTData(object_20[, object_20$sample_id == section])
+  object_20_list[[as.character(section)]] <- section_object
+}
+
+length(object_20_list)
+names(object_20_list)
+
+rm(section)
+gc()
+```
+
+
+```{r}
+iwalk(object_20_list, function(object_section, object_name) {
+  # set seed for reproducibility purposes
+  set.seed(1)
+  print(object_name)
+
+  # create plot.directory for each section
+  plot.dir <- paste0(c(savepath, "export_matrix", "export-matrix-nmf-2"), collapse = "/")
+  if (dir.exists(plot.dir)) {
+  } else {
+    dir.create(plot.dir, recursive = TRUE)
+  }
+
+  object <- object_section
+
+  spot_nmf <- object@reductions$nmf@cell.embeddings %>%
+    as.data.frame() %>%
+    rownames_to_column(var = "barcode")
+
+  coord <- GetCoordinates(object) %>%
+    select(c(barcode, pxl_col_in_fullres, pxl_row_in_fullres))
+  # substitute spotID with coordinates
+  spot_nmf_coor <- spot_nmf %>%
+    inner_join(coord, by = "barcode")
+
+  # re-order columns
+  spot_nmf_coor <- spot_nmf_coor[, c("barcode", "pxl_col_in_fullres", "pxl_row_in_fullres", colnames(spot_nmf))]
+  spot_nmf_coor <- spot_nmf_coor[, !colnames(spot_nmf_coor) %in% c("barcode.1")] # remove duplicate barcode
+
+  # Save table
+  write.csv(spot_nmf_coor, file = paste0(plot.dir, "/", object_name, "_spot_nmf", ".csv"))
+})
+```
+
+
+### Export feature loadings
+
+```{r}
+plot.dir <- paste0(c(savepath, "export_matrix", "export-matrix-nmf-loadings"), collapse = "/")
+if (dir.exists(plot.dir)) {
+} else {
+  dir.create(plot.dir, recursive = TRUE)
+}
+
+feature_loading_table <- as.data.frame(object_20@reductions$nmf@feature.loadings)
+
+# Save table
+write.csv(feature_loading_table, file = paste0(plot.dir, "/", "feature_loading_table", ".csv"))
+```
+
+
+## Export images (or use high resolution images)
+
+```{r}
+# create plot.directory for images
+plot.dir <- paste0(c(savepath, "export_matrix/images/"), collapse = "/")
+if (dir.exists(plot.dir)) {
+} else {
+  dir.create(plot.dir, recursive = TRUE)
+}
+```
+
+```{r}
+scale_factor_df <- c()
+
+iwalk(ST_list, function(object_section, object_name) {
+  print(object_name)
+
+  height <- as.numeric(GetImageInfo(object_section)$height)
+  width <- as.numeric(GetImageInfo(object_section)$width)
+  print(paste0(height, " X ", width))
+
+  png(file = paste0(plot.dir, object_name, ".png"), height = height, width = width, units = "px")
+  ImagePlot(object_section, return_as_gg = FALSE, mar = c(0, 0, 0, 0))
+  dev.off()
+})
+
+scale_factor_df <- map(ST_list, function(object_section) {
+  scale_f <- as.numeric(GetStaffli(object_section)@scalefactors$tissue_hires_scalef)
+  return(scale_f)
+}) |> as.matrix() |>
+      as.data.frame() |>
+      rownames_to_column(var = "section") |>
+      rename("scale_factor" = "V1") |>
+      apply(2, as.character)
+
+write.csv(scale_factor_df, file = paste0(plot.dir, "scale_factors", ".csv"))
+```
+
+
+## Export deconvolution results
+
+## High level
+
+```{r}
+proportions <- read.table("~/hdca_DevHeart/data/ST/stereoscope/W.2023-09-25133054.715121_hl.tsv", header = TRUE, check.names = FALSE)
+
+proportions <- proportions %>% select(-c("6", "34"))
+
+# Check that all spot IDs are matched
+all(colnames(ST) == rownames(proportions))
+```
+
+### Load High level annotation 
+
+```{r}
+annotation_HL <- read.csv2("~/hdca_DevHeart/data/metadata/HDCA_heart_SC_annotations_HL_240115.csv", header = 1, sep = ";")
+```
+
+
+### Renames proportions columns
+
+```{r}
+# Create a named vector for renaming columns
+rename_vector <- setNames(annotation_HL$cell_type, annotation_HL$cluster)
+
+# Rename the columns of the proportions dataframe
+proportions <- proportions %>%
+  rename_with(~ rename_vector[as.character(.)], everything())
+```
+
+```{r}
+plot.dir <- paste0(c(savepath, "export_matrix", "export-matrix-decon-HL"), collapse = "/")
+if (dir.exists(plot.dir)) {
+} else {
+  dir.create(plot.dir, recursive = TRUE)
+}
+```
+
+```{r}
+proportions_hl_list <- list()
+
+# Extract the unique numbers after the "_" sign in the sample_id
+unique_suffixes <- unique(sub(".*_(.*)", "\\1", ST$sample_id))
+
+for (suffix in unique_suffixes) {
+  print(suffix)
+  pattern <- paste0("_", suffix, "$")
+  sample <- paste0("section_", suffix)
+  
+  indices <- grep(pattern, ST$sample_id)
+  df_small <- proportions[indices, ]
+  df_small <- df_small %>%
+    rownames_to_column(var = "barcode") %>%
+    mutate(barcode = sub("_.*", "", barcode))
+  
+  coord <- GetCoordinates(ST_list[[sample]]) %>%
+    select(c(barcode, pxl_col_in_fullres, pxl_row_in_fullres))
+  # substitute spotID with coordinates
+  df_small_coor <- df_small %>%
+    inner_join(coord, by = "barcode")
+  
+  proportions_hl_list[[sample]] <- df_small_coor
+  
+  write.csv(df_small_coor, file = paste0(plot.dir, "/", sample, "_spot_decon_HL", ".csv"))
+}
+```
+
+
+## Deep Level
+
+```{r}
+proportions <- read.table("~/hdca_DevHeart/data/ST/stereoscope/W.2023-10-28105405.918149_dl.tsv", header = TRUE, check.names = FALSE)
+
+proportions <- proportions %>% select(-c("HL_6", "HL_34"))
+
+# Check that all spot IDs are matched
+all(colnames(ST) == rownames(proportions))
+```
+
+
+### Load Deep level annotation 
+
+```{r}
+annotation_DL <- read.csv2("~/hdca_DevHeart/data/metadata/HDCA_heart_SC_annotations_DL_240204.csv", header = 1, sep = ";")
+```
+
+
+### Renames proportions columns
+
+```{r}
+# Create a named vector for renaming columns
+rename_vector <- setNames(annotation_DL$cell_type, annotation_DL$cluster)
+
+# Rename the columns of the proportions dataframe
+proportions <- proportions %>%
+  rename_with(~ rename_vector[as.character(.)], everything())
+```
+
+```{r}
+plot.dir <- paste0(c(savepath, "export_matrix", "export-matrix-decon-DL"), collapse = "/")
+if (dir.exists(plot.dir)) {
+} else {
+  dir.create(plot.dir, recursive = TRUE)
+}
+```
+
+```{r}
+proportions_dl_list <- list()
+
+# Extract the unique numbers after the "_" sign in the sample_id
+unique_suffixes <- unique(sub(".*_(.*)", "\\1", ST$sample_id))
+
+for (suffix in unique_suffixes) {
+  print(suffix)
+  pattern <- paste0("_", suffix, "$")
+  sample <- paste0("section_", suffix)
+  
+  indices <- grep(pattern, ST$sample_id)
+  df_small <- proportions[indices, ]
+  df_small <- df_small %>%
+    rownames_to_column(var = "barcode") %>%
+    mutate(barcode = sub("_.*", "", barcode))
+  
+  coord <- GetCoordinates(ST_list[[sample]]) %>%
+    select(c(barcode, pxl_col_in_fullres, pxl_row_in_fullres))
+  # substitute spotID with coordinates
+  df_small_coor <- df_small %>%
+    inner_join(coord, by = "barcode")
+  
+  proportions_dl_list[[sample]] <- df_small_coor
+  
+  write.csv(df_small_coor, file = paste0(plot.dir, "/", sample, "_spot_decon_DL", ".csv"))
+}
+```
+
+
+## Export deconvolution results - Age specific
+
+```{r}
+ST_meta <- read.csv(file = paste0("~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/export_data/", "metadata_age", ".csv"))
+```
+
+```{r}
+id <- setNames(ST_meta$age_groups, nm = ST_meta$sample_id)
+ST$age_groups <- id[as.character(ST$sample_id)]
+
+ages <- setNames(ST_meta$age, nm = ST_meta$sample_id)
+ST$age <- ages[as.character(ST$sample_id)]
+```
+
+```{r}
+table(ST$age)
+```
+
+```{r}
+ST_age_1 <- ST[, ST$age %in% c("6", "7", "7.5")]
+ST_age_2 <- ST[, ST$age %in% c("8", "9")]
+ST_age_3 <- ST[, ST$age %in% c("10", "10.5", "11", "12")]
+```
+
+
+## High level - age 1
+
+```{r}
+proportions <- read.table("~/hdca_DevHeart/data/ST/stereoscope/W.2024-06-18174922.543951_hl_age1.tsv", header = TRUE, check.names = FALSE)
+
+proportions <- proportions %>% select(-c("6", "34"))
+
+# Check that all spot IDs are matched
+all(colnames(ST_age_1) == rownames(proportions))
+```
+
+### Load High level annotation 
+
+```{r}
+annotation_HL <- read.csv2("~/hdca_DevHeart/data/metadata/HDCA_heart_SC_annotations_HL_240115.csv", header = 1, sep = ";")
+```
+
+
+### Renames proportions columns
+
+```{r}
+# Create a named vector for renaming columns
+rename_vector <- setNames(annotation_HL$cell_type, annotation_HL$cluster)
+
+# Rename the columns of the proportions dataframe
+proportions <- proportions %>%
+  rename_with(~ rename_vector[as.character(.)], everything())
+```
+
+```{r}
+plot.dir <- paste0(c(savepath, "export_matrix", "export-matrix-decon-HL-age-1"), collapse = "/")
+if (dir.exists(plot.dir)) {
+} else {
+  dir.create(plot.dir, recursive = TRUE)
+}
+```
+
+```{r}
+proportions_hl_list <- list()
+
+# Extract the unique numbers after the "_" sign in the sample_id
+unique_suffixes <- unique(sub(".*_(.*)", "\\1", ST_age_1$sample_id))
+
+for (suffix in unique_suffixes) {
+  print(suffix)
+  pattern <- paste0("_", suffix, "$")
+  sample <- paste0("section_", suffix)
+  
+  indices <- grep(pattern, ST_age_1$sample_id)
+  df_small <- proportions[indices, ]
+  df_small <- df_small %>%
+    rownames_to_column(var = "barcode") %>%
+    mutate(barcode = sub("_.*", "", barcode))
+  
+  coord <- GetCoordinates(ST_list[[sample]]) %>%
+    select(c(barcode, pxl_col_in_fullres, pxl_row_in_fullres))
+  # substitute spotID with coordinates
+  df_small_coor <- df_small %>%
+    inner_join(coord, by = "barcode")
+  
+  proportions_hl_list[[sample]] <- df_small_coor
+  
+  write.csv(df_small_coor, file = paste0(plot.dir, "/", sample, "_spot_decon_HL", ".csv"))
+}
+```
+
+
+## High level - age 2
+
+```{r}
+proportions <- read.table("~/hdca_DevHeart/data/ST/stereoscope/W.2024-06-18174933.221917_hl_age2.tsv", header = TRUE, check.names = FALSE)
+
+proportions <- proportions %>% select(-c("6", "34"))
+
+# Check that all spot IDs are matched
+all(colnames(ST_age_2) == rownames(proportions))
+```
+
+### Load High level annotation 
+
+```{r}
+annotation_HL <- read.csv2("~/hdca_DevHeart/data/metadata/HDCA_heart_SC_annotations_HL_240115.csv", header = 1, sep = ";")
+```
+
+
+### Renames proportions columns
+
+```{r}
+# Create a named vector for renaming columns
+rename_vector <- setNames(annotation_HL$cell_type, annotation_HL$cluster)
+
+# Rename the columns of the proportions dataframe
+proportions <- proportions %>%
+  rename_with(~ rename_vector[as.character(.)], everything())
+```
+
+```{r}
+plot.dir <- paste0(c(savepath, "export_matrix", "export-matrix-decon-HL-age-2"), collapse = "/")
+if (dir.exists(plot.dir)) {
+} else {
+  dir.create(plot.dir, recursive = TRUE)
+}
+```
+
+```{r}
+proportions_hl_list <- list()
+
+# Extract the unique numbers after the "_" sign in the sample_id
+unique_suffixes <- unique(sub(".*_(.*)", "\\1", ST_age_2$sample_id))
+
+for (suffix in unique_suffixes) {
+  print(suffix)
+  pattern <- paste0("_", suffix, "$")
+  sample <- paste0("section_", suffix)
+  
+  indices <- grep(pattern, ST_age_2$sample_id)
+  df_small <- proportions[indices, ]
+  df_small <- df_small %>%
+    rownames_to_column(var = "barcode") %>%
+    mutate(barcode = sub("_.*", "", barcode))
+  
+  coord <- GetCoordinates(ST_list[[sample]]) %>%
+    select(c(barcode, pxl_col_in_fullres, pxl_row_in_fullres))
+  # substitute spotID with coordinates
+  df_small_coor <- df_small %>%
+    inner_join(coord, by = "barcode")
+  
+  proportions_hl_list[[sample]] <- df_small_coor
+  
+  write.csv(df_small_coor, file = paste0(plot.dir, "/", sample, "_spot_decon_HL", ".csv"))
+}
+```
+
+
+## High level - age 3
+
+```{r}
+proportions <- read.table("~/hdca_DevHeart/data/ST/stereoscope/W.2024-06-18174942.575147_hl_age3.tsv", header = TRUE, check.names = FALSE)
+
+proportions <- proportions %>% select(-c("6", "34"))
+
+# Check that all spot IDs are matched
+all(colnames(ST_age_3) == rownames(proportions))
+```
+
+### Load High level annotation 
+
+```{r}
+annotation_HL <- read.csv2("~/hdca_DevHeart/data/metadata/HDCA_heart_SC_annotations_HL_240115.csv", header = 1, sep = ";")
+```
+
+
+### Renames proportions columns
+
+```{r}
+# Create a named vector for renaming columns
+rename_vector <- setNames(annotation_HL$cell_type, annotation_HL$cluster)
+
+# Rename the columns of the proportions dataframe
+proportions <- proportions %>%
+  rename_with(~ rename_vector[as.character(.)], everything())
+```
+
+```{r}
+plot.dir <- paste0(c(savepath, "export_matrix", "export-matrix-decon-HL-age-3"), collapse = "/")
+if (dir.exists(plot.dir)) {
+} else {
+  dir.create(plot.dir, recursive = TRUE)
+}
+```
+
+```{r}
+proportions_hl_list <- list()
+
+# Extract the unique numbers after the "_" sign in the sample_id
+unique_suffixes <- unique(sub(".*_(.*)", "\\1", ST_age_3$sample_id))
+
+for (suffix in unique_suffixes) {
+  print(suffix)
+  pattern <- paste0("_", suffix, "$")
+  sample <- paste0("section_", suffix)
+  
+  indices <- grep(pattern, ST_age_3$sample_id)
+  df_small <- proportions[indices, ]
+  df_small <- df_small %>%
+    rownames_to_column(var = "barcode") %>%
+    mutate(barcode = sub("_.*", "", barcode))
+  
+  coord <- GetCoordinates(ST_list[[sample]]) %>%
+    select(c(barcode, pxl_col_in_fullres, pxl_row_in_fullres))
+  # substitute spotID with coordinates
+  df_small_coor <- df_small %>%
+    inner_join(coord, by = "barcode")
+  
+  proportions_hl_list[[sample]] <- df_small_coor
+  
+  write.csv(df_small_coor, file = paste0(plot.dir, "/", sample, "_spot_decon_HL", ".csv"))
+}
+```
+
+
+## Load BANKSY regions
+
+```{r}
+banksy_regions <- read.csv2("~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/banksy/metadata.csv", header = 1, sep = ",") %>%
+  mutate(X = sub("_section", "", X)) %>%
+  select(c("X", "clust_Harmony_BANKSY_k50_res0.9"))
+
+banksy_regions$sample <- sub(".*_(\\d+)$", "\\1", banksy_regions$X)
+split_data <- split(banksy_regions$X, banksy_regions$sample)
+list_of_lists <- lapply(split_data, function(barcodes) {
+  sub("_[0-9]+$", "", barcodes)
+})
+list_of_lists <- list_of_lists[order(as.numeric(names(list_of_lists)))]
+```
+
+
+### Annotate section with corresponding sampleID
+
+```{r}
+regions <- setNames(banksy_regions$clust_Harmony_BANKSY_k50_res0.9, nm = banksy_regions$X)
+ST$banksy_09 <- regions[as.character(colnames(ST))]
+```
+
+```{r}
+# sanity check
+table(ST$sample_id, ST$banksy_09)
+```
+
+```{r}
+# annotation banksy regions
+banksy_num <- c(7, 6, 1, 2, 4, 5, 11, 13, 9, 10, 3, 14, 8, 15, 12)
+banksy_annot <- c("LA", "RA", "LV_C", "RV_C_1", "LV_T", "RV_T", "EP", "CV-LYV", "AVP-PM", "V", "OFT-GV", "ICGP", "B", "RV_C_2", "NA")
+banksy_09_annot <- setNames(banksy_annot, nm = banksy_num)
+ST$banksy_09_annot <- banksy_09_annot[as.character(ST$banksy_09)]
+```
+
+
+### get barcodes for each of the sample_id
+
+```{r}
+meta <- ST@meta.data
+```
+
+```{r}
+  plot.dir <- paste0(c(savepath, "export_matrix", "export-matrix-spot-banksy"), collapse = "/")
+  if (dir.exists(plot.dir)) {
+  } else {
+    dir.create(plot.dir, recursive = TRUE)
+  }
+```
+
+```{r}
+ST_clustering_meta_list <- list()
+
+for (sample in names(split_data)) {
+  print(sample)
+
+  meta_sample <- meta[rownames(meta) %in% split_data[[sample]],] %>% select("banksy_09", "banksy_09_annot", "sample_id") %>%
+    rownames_to_column(var = "barcode")
+  
+  meta_sample <- meta_sample %>%
+    mutate(barcode = sub("_.*", "", barcode))
+  
+  coord <- GetCoordinates(ST_list[[paste0("section_", sample)]]) %>%
+    select(c(barcode, pxl_col_in_fullres, pxl_row_in_fullres))
+  # substitute spotID with coordinates
+  meta_sample_coor <- meta_sample %>%
+    inner_join(coord, by = "barcode")
+
+  ST_clustering_meta_list[[as.character(sample)]] <- meta_sample_coor
+
+  #Save tables
+  write.csv(meta_sample_coor, file = paste0(plot.dir, "/", "section_", sample, "_spot_banksy", ".csv"))
+}
+```
+
+
+
+
+
+```{r}
+sessionInfo()
+```
+
+```{r}
+
+```
+
+
+

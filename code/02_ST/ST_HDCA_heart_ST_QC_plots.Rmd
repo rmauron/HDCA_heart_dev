@@ -308,6 +308,45 @@ dev.off()
 ```
 
 
+### Batch effect (embedding by sample)
+
+### Re-order sample by setting factors
+
+```{r}
+ST_clustering$sample_id <- factor(ST_clustering$sample_id, levels = c("section_1", "section_2", "section_3",  "section_4",  "section_5",  "section_6",  "section_7",  "section_8",  "section_10", "section_11", "section_24", "section_28", "section_29", "section_31", "section_32", "section_33", "section_34"))
+
+ST_clustering$age <- factor(ST_clustering$age, levels = c("w6", "w7", "w8",  "w9",  "w10",  "w10.5",  "w12"))
+```
+
+```{r}
+pdf(file = paste0(myfolder, "ST_umap_allspots_sample_id.pdf"), width = 15, height = 15, bg = "transparent")
+DimPlot(ST_clustering, reduction = "umap", group.by = "sample_id")
+dev.off()
+
+pdf(file = paste0(myfolder, "ST_umap_allspots_age.pdf"), width = 15, height = 15, bg = "transparent")
+DimPlot(ST_clustering, reduction = "umap", group.by = "age")
+dev.off()
+```
+
+
+```{r}
+pdf(file = paste0(myfolder, "ST_umap_allspots_sample_id_age_1.pdf"), width = 15, height = 15, bg = "transparent")
+DimPlot(age1, reduction = "umap", group.by = "sample_id")
+dev.off()
+
+pdf(file = paste0(myfolder, "ST_umap_allspots_sample_id_age_2.pdf"), width = 15, height = 15, bg = "transparent")
+DimPlot(age2, reduction = "umap", group.by = "sample_id")
+dev.off()
+
+pdf(file = paste0(myfolder, "ST_umap_allspots_sample_id_age_3.pdf"), width = 15, height = 15, bg = "transparent")
+DimPlot(age3, reduction = "umap", group.by = "sample_id")
+dev.off()
+
+```
+
+
+
+
 ================================================================================
 ================================================================================
 ================================================================================

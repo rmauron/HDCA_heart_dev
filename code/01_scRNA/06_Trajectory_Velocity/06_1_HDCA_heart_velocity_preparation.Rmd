@@ -126,17 +126,17 @@ Convert("~/hdca_DevHeart/data/AnnData/data_unspliced.h5Seurat", dest = "h5ad")
 ### Save metadata to use when building the AnnData objects
 
 ```{r}
-fwrite(data@meta.data, paste0("/home/rstudio/project/data/AnnData/metadata.tsv"), sep='\t', col.names = T, row.names = T, quote=F)
+fwrite(data@meta.data, paste0("/home/rstudio/project/data/AnnData2/metadata.tsv"), sep='\t', col.names = T, row.names = T, quote=F)
 
-fwrite(CM@meta.data, paste0("/home/rstudio/project/data/AnnData/metadata_CM.tsv"), sep='\t', col.names = T, row.names = T, quote=F)
+fwrite(CM@meta.data, paste0("/home/rstudio/project/data/AnnData2/metadata_CM.tsv"), sep='\t', col.names = T, row.names = T, quote=F)
 
-fwrite(EN@meta.data, paste0("/home/rstudio/project/data/AnnData/metadata_EN.tsv"), sep='\t', col.names = T, row.names = T, quote=F)
+fwrite(EN@meta.data, paste0("/home/rstudio/project/data/AnnData2/metadata_EN.tsv"), sep='\t', col.names = T, row.names = T, quote=F)
 
-fwrite(FB@meta.data, paste0("/home/rstudio/project/data/AnnData/metadata_FB.tsv"), sep='\t', col.names = T, row.names = T, quote=F)
+fwrite(FB@meta.data, paste0("/home/rstudio/project/data/AnnData2/metadata_FB.tsv"), sep='\t', col.names = T, row.names = T, quote=F)
 
-fwrite(IN@meta.data, paste0("/home/rstudio/project/data/AnnData/metadata_IN.tsv"), sep='\t', col.names = T, row.names = T, quote=F)
+fwrite(IN@meta.data, paste0("/home/rstudio/project/data/AnnData2/metadata_IN.tsv"), sep='\t', col.names = T, row.names = T, quote=F)
 
-fwrite(IN_subset@meta.data, paste0("/home/rstudio/project/data/AnnData/metadata_IN_selection.tsv"), sep='\t', col.names = T, row.names = T, quote=F)
+fwrite(IN_subset@meta.data, paste0("/home/rstudio/project/data/AnnData2/metadata_IN_selection.tsv"), sep='\t', col.names = T, row.names = T, quote=F)
 ```
 
 
@@ -145,17 +145,17 @@ fwrite(IN_subset@meta.data, paste0("/home/rstudio/project/data/AnnData/metadata_
 ### Save UMAPs
 
 ```{r}
-write.csv(data@reductions$umap_oi@cell.embeddings, file = paste("/home/rstudio/project/data/AnnData/UMAP.csv",sep=""))
+write.csv(data@reductions$umap_oi@cell.embeddings, file = paste("/home/rstudio/project/data/AnnData2/UMAP.csv",sep=""))
 
-write.csv(CM@reductions$umap_subset@cell.embeddings, file = paste("/home/rstudio/project/data/AnnData/UMAP_CM.csv",sep=""))
+write.csv(CM@reductions$umap_subset@cell.embeddings, file = paste("/home/rstudio/project/data/AnnData2/UMAP_CM.csv",sep=""))
 
-write.csv(EN@reductions$umap_subset@cell.embeddings, file = paste("/home/rstudio/project/data/AnnData/UMAP_EN.csv",sep=""))
+write.csv(EN@reductions$umap_subset@cell.embeddings, file = paste("/home/rstudio/project/data/AnnData2/UMAP_EN.csv",sep=""))
 
-write.csv(FB@reductions$umap_subset@cell.embeddings, file = paste("/home/rstudio/project/data/AnnData/UMAP_FB.csv",sep=""))
+write.csv(FB@reductions$umap_subset@cell.embeddings, file = paste("/home/rstudio/project/data/AnnData2/UMAP_FB.csv",sep=""))
 
-write.csv(IN@reductions$umap_subset@cell.embeddings, file = paste("/home/rstudio/project/data/AnnData/UMAP_IN.csv",sep=""))
+write.csv(IN@reductions$umap_subset@cell.embeddings, file = paste("/home/rstudio/project/data/AnnData2/UMAP_IN.csv",sep=""))
 
-write.csv(IN_subset@reductions$umap_subset_sub@cell.embeddings, file = paste("/home/rstudio/project/data/AnnData/UMAP_IN_selection.csv",sep=""))
+write.csv(IN_subset@reductions$umap_subset@cell.embeddings, file = paste("/home/rstudio/project/data/AnnData2/UMAP_IN_selection.csv",sep=""))
 ```
 
 

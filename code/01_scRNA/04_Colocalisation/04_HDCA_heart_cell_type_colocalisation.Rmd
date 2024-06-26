@@ -1707,6 +1707,117 @@ dev.off()
 ```
 
 
+### Reviewer's answers
+
+#### "CM-19-1", "CM-18", "CM-4-2", sc. 3, 4
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("CM-19-1", "CM-18", "CM-4-2"),
+                      section_number = 3)
+
+pdf(file = paste0(myfolder, "colocalization/CM-19-1_CM-18_CM-4-2_section_3.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("CM-19-1", "CM-18", "CM-4-2"),
+                      section_number = 4)
+
+pdf(file = paste0(myfolder, "colocalization/CM-19-1_CM-18_CM-4-2_section_4.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+
+#### "CM-19-2", "CM-19-1", sc. 16, 18, 19, 27
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("CM-19-2", "CM-19-1"),
+                      section_number = 16)
+
+pdf(file = paste0(myfolder, "colocalization/CM-19-2_CM-19-1_section_16.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("CM-19-2", "CM-19-1"),
+                      section_number = 18)
+
+pdf(file = paste0(myfolder, "colocalization/CM-19-2_CM-19-1_section_18.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("CM-19-2", "CM-19-1"),
+                      section_number = 19)
+
+pdf(file = paste0(myfolder, "colocalization/CM-19-2_CM-19-1_section_19.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("CM-19-2", "CM-19-1"),
+                      section_number = 27)
+
+pdf(file = paste0(myfolder, "colocalization/CM-19-2_CM-19-1_section_27.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+
+#### "CM-18", "CM-4-2", sc. 27, 16, 18, 19
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("CM-18", "CM-4-2"),
+                      section_number = 16)
+
+pdf(file = paste0(myfolder, "colocalization/CM-18_CM-4-2_section_16.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("CM-18", "CM-4-2"),
+                      section_number = 18)
+
+pdf(file = paste0(myfolder, "colocalization/CM-18_CM-4-2_section_18.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("CM-18", "CM-4-2"),
+                      section_number = 19)
+
+pdf(file = paste0(myfolder, "colocalization/CM-18_CM-4-2_section_19.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("CM-18", "CM-4-2"),
+                      section_number = 27)
+
+pdf(file = paste0(myfolder, "colocalization/CM-18_CM-4-2_section_27.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+
 ================================================================================
 ================================================================================
 ================================================================================

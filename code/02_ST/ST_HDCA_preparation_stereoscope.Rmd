@@ -1,0 +1,189 @@
+---
+title: "ST_HDCA_preparation_stereoscope"
+author: "Raphaël Mauron"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+
+Alt1 - a .tsv file with spots as rows and genes as columns
+
+
+### Knit setup
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+### Load library
+
+```{r}
+library(semla)
+library(tidyr)
+library(RcppML)
+library(ggplot2)
+library(openxlsx)
+library(tidyverse)
+```
+
+
+### Set working directory
+
+```{r}
+myfolder <- "~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/stereoscope/"
+```
+
+
+### Load `Seurat` object with ST data
+
+```{r}
+ST <- readRDS("~/hdca_DevHeart/data/ST/220114_STdata_harmony_semla.rds")
+```
+
+```{r}
+ST$sample_id <- paste0("section_", GetCoordinates(ST)$sampleID)
+```
+
+
+```{r}
+# ST_decon_file <- readr::read_tsv("~/hdca_DevHeart/data/ST/hdca_heart_ST_data.tsv")
+# #colnames(ST_decon_file) --> genes
+# #ST_decon_file[,1] --> barcodes
+# #rownames(ST_decon_file) --> 1,2,3,4,5,...
+# ST_decon_file[1:10, 1:10]
+# 
+# dim(ST_decon_file)
+# sort(colnames(ST_decon_file))
+```
+
+
+
+```{r}
+# stereoscope_data_ST <- as.matrix(ST@assays$Spatial@counts)
+# 
+# colnames(ST@assays$Spatial@counts)
+# sort(rownames(ST@assays$Spatial@counts))
+# 
+# 
+# common <- intersect(sort(colnames(ST_decon_file)), sort(rownames(ST@assays$Spatial@counts)))
+# length(common)
+
+```
+
+
+
+
+
+
+# Temporal deconvolution - preparation ST files
+We split the ST object by age and export the count matrix for each of these 3 subsets
+
+```{r}
+ST_meta <- read.csv(file = paste0("~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/export_data/", "metadata_age", ".csv"))
+```
+
+```{r}
+id <- setNames(ST_meta$age_groups, nm = ST_meta$sample_id)
+ST$age_groups <- id[as.character(ST$sample_id)]
+
+ages <- setNames(ST_meta$age, nm = ST_meta$sample_id)
+ST$age <- ages[as.character(ST$sample_id)]
+```
+
+```{r}
+table(ST$age)
+```
+
+```{r}
+ST_age_1 <- ST[, ST$age %in% c("6", "7", "7.5")]
+ST_age_2 <- ST[, ST$age %in% c("8", "9")]
+ST_age_3 <- ST[, ST$age %in% c("10", "10.5", "11", "12")]
+
+rm(ST)
+```
+
+```{r}
+table(ST_age_1$age)
+table(ST_age_2$age)
+table(ST_age_3$age)
+
+table(ST_age_1$sample_id)
+table(ST_age_2$sample_id)
+table(ST_age_3$sample_id)
+```
+
+
+```{r}
+ST_file_age_1 <- as.data.frame(t(ST_age_1@assays[["Spatial"]]@counts)) %>%
+  rownames_to_column()
+
+colnames(ST_file_age_1)[colnames(ST_file_age_1) == "rowname"] <- ""
+
+#check
+colnames(ST_file_age_1)
+rownames(ST_file_age_1)
+ST_file_age_1[,1]
+ST_file_age_1[1:10,1:10]
+
+write_tsv(ST_file_age_1, file = paste0("~/hdca_DevHeart/data/ST/", "hdca_heart_ST_data_age_1", ".tsv"))
+#ST_file_age_1 <- readr::read_tsv("~/hdca_DevHeart/data/ST/hdca_heart_ST_data_age_1.tsv")
+rm(ST_age_1, ST_file_age_1)
+```
+
+```{r}
+ST_file_age_2 <- as.data.frame(t(ST_age_2@assays[["Spatial"]]@counts)) %>%
+  rownames_to_column()
+
+colnames(ST_file_age_2)[colnames(ST_file_age_2) == "rowname"] <- ""
+
+#check
+colnames(ST_file_age_2)
+rownames(ST_file_age_2)
+ST_file_age_2[,1]
+ST_file_age_2[1:10,1:10]
+
+write_tsv(ST_file_age_2, file = paste0("~/hdca_DevHeart/data/ST/", "hdca_heart_ST_data_age_2", ".tsv"))
+rm(ST_age_2, ST_file_age_2)
+```
+
+```{r}
+ST_file_age_3 <- as.data.frame(t(ST_age_3@assays[["Spatial"]]@counts)) %>%
+  rownames_to_column()
+
+colnames(ST_file_age_3)[colnames(ST_file_age_3) == "rowname"] <- ""
+
+#check
+colnames(ST_file_age_3)
+rownames(ST_file_age_3)
+ST_file_age_3[,1]
+ST_file_age_3[1:10,1:10]
+
+write_tsv(ST_file_age_3, file = paste0("~/hdca_DevHeart/data/ST/", "hdca_heart_ST_data_age_3", ".tsv"))
+rm(ST_age_3, ST_file_age_3)
+```
+
+
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

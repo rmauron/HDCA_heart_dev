@@ -874,6 +874,27 @@ dev.off()
 ```
 
 
+### Temporal check of integration of High Level UMAP
+
+```{r}
+pdf(file = paste0(myfolder, "Clusters_age_5_to_6_weeks_full_size_origine.pdf"), width = 15, height = 15, bg = "transparent")
+DimPlot(ages[[1]][, as.character(ages[[1]]$high_level_clusters_removed) %in% levels(ages[[1]]$high_level_clusters_removed)], reduction = "umap_oi", group.by = "orig.ident", raster = F, pt.size = 1)
+dev.off()
+
+pdf(file = paste0(myfolder, "Clusters_age_7_to_8_weeks_full_size_origine.pdf"), width = 15, height = 15, bg = "transparent")
+DimPlot(ages[[2]][, as.character(ages[[2]]$high_level_clusters_removed) %in% levels(ages[[2]]$high_level_clusters_removed)], reduction = "umap_oi", group.by = "orig.ident", raster = F, pt.size = 1)
+dev.off()
+
+pdf(file = paste0(myfolder, "Clusters_age_9_to_11_weeks_full_size_origine.pdf"), width = 15, height = 15, bg = "transparent")
+DimPlot(ages[[3]][, as.character(ages[[3]]$high_level_clusters_removed) %in% levels(ages[[3]]$high_level_clusters_removed)], reduction = "umap_oi", group.by = "orig.ident", raster = F, pt.size = 1)
+dev.off()
+
+pdf(file = paste0(myfolder, "Clusters_age_12_to_14_weeks_full_size_origine.pdf"), width = 15, height = 15, bg = "transparent")
+DimPlot(ages[[4]][, as.character(ages[[4]]$high_level_clusters_removed) %in% levels(ages[[4]]$high_level_clusters_removed)], reduction = "umap_oi", group.by = "orig.ident", raster = F, pt.size = 1)
+dev.off()
+```
+
+
 ### Cell type proportion by age group in entire data (Fig. 2F, Supp Fig. 6C)
 
 ```{r}

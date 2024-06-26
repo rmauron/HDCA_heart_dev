@@ -376,6 +376,40 @@ gc()
 ```
 
 
+### DEG EN selection of markers (reviewer 2)
+
+```{r}
+# specific list of marker to project the dotplot on
+my_markers <- c("GJA5", "ASS1", "HEY1", "S100A4", "SOX17", "PLAUR", "EFNB2", "ACKR1", "ICAM1", "EGR2", "LRG1", "IRF1", "SELP", "SELE", "CLU", "VWF", "TEK", "S1PR1", "S1PR2", "S1PR3", "S1PR4", "S1PR5", "ADRB1", "ADRB2", "ADRB3", "RAPGEF3", "RAPGEF4", "CDH2", "TRIO", "TFRC", "FLT1", "KDR", "CDH5", "HRH1", "HRH2", "HRH3", "HRH4", "PTK2", "BDKRB1", "BDKRB2", "ANGPT1", "ANGPT2", "CCL14")
+
+
+values_to_keep <- c("1", "12", "3", "6", "18", "17", "7", "19", "15", "13", "10", "2", "5", "21", "16", "20", "11", "14")
+
+data_EN <- EN[, EN$clusters_subset %in% values_to_keep]
+
+data_EN$clusters_subset <- factor(data_EN$clusters_subset, 
+                                              levels = values_to_keep)
+
+data_EN <- SetIdent(data_EN, value = "clusters_subset")
+
+p <- DotPlot(data_EN, features = my_markers) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+
+pdf(paste0(myfolder, "endothelial/dotplot_markers_EN_reviewer2.pdf"), width = 8, height = 9)
+print(p)
+dev.off()
+
+rm(p)
+gc()
+```
+
+
 ### FeaturePlot (Supp Fig. 5B)
 
 ```{r}

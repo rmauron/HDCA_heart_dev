@@ -1,0 +1,421 @@
+---
+title: "ST_HDCA_NMF"
+author: "Raphaël Mauron"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# HDCA heart ST NMF
+
+This script presents the process for computing non-negative matrix factorisation.
+
+NOTE: The path to load the data and the path to save the figures should be changed at your convenience.
+
+Environment: **Conda: r-semla**
+
+## Set up and loading material
+
+### Knit setup
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+### Load library
+
+```{r}
+library(semla)
+library(tidyr)
+library(RcppML)
+library(ggplot2)
+library(openxlsx)
+library(RcppML)
+library(singlet)
+library(tidyverse)
+```
+
+
+### Set working directory
+
+```{r}
+myfolder <- "~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/ST_nmf/"
+```
+
+
+### Load `Seurat` object with ST data
+
+```{r}
+ST <- readRDS("~/hdca_DevHeart/data/ST/220114_STdata_harmony_semla.rds")
+ST_clustering <- readRDS("~/hdca_DevHeart/data/ST/HDCA_heart_clustering.rds")
+```
+
+
+### Update image paths
+
+```{r}
+image_files <- list.files(path = "~/hdca_DevHeart/data/ST", 
+                          pattern = "tissue_hires_image.png", 
+                          full.names = TRUE, 
+                          recursive = TRUE)
+ST@tools$Staffli@imgs <- image_files
+```
+
+
+### Load H&E images
+
+```{r}
+ST <- LoadImages(ST, image_height = 1.5e3)
+```
+
+
+### Add section ID's to the ST object
+
+```{r}
+ST$sample_id <- paste0("section_", GetCoordinates(ST)$sampleID)
+```
+
+
+## Age specific cell type co-localization
+
+```{r}
+ST_meta_data <- openxlsx::read.xlsx("~/hdca_DevHeart/data/ST/HDCA_heart_ST_sections_overview_chambers_present.xlsx")
+ST_meta_data$age <- as.numeric(gsub("[^0-9.]", "", ST_meta_data$Age))
+
+ST_meta_data <- select(ST_meta_data, Section, age)
+ST_meta_data$sample_id <- paste0("section_", ST_meta_data$Section)
+ST_meta_data
+```
+
+
+### Re-order sample by setting factors
+
+```{r}
+ST$sample_id <- factor(ST$sample_id, levels = unique(ST_meta_data$sample_id))
+```
+
+
+## NMF
+
+
+### All sections together
+
+#### Check if object okay for NMF
+
+```{r}
+object <- ST
+```
+
+
+```{r}
+length(VariableFeatures(object))
+```
+
+
+#### Run NMF
+
+```{r}
+set.seed(42)
+object <- RunNMF(object, assay = "Spatial") # run NMF
+```
+
+
+#### Save object
+
+```{r}
+saveRDS(object,
+        file = paste0("~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/", "rds_objects/", "ST_processed_nmf", ".rds"))
+```
+
+```{r, eval = FALSE}
+object <- readRDS(paste0("~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/", "rds_objects/", "ST_processed_nmf", ".rds"))
+```
+
+
+#### Check optimal number of factors k
+
+```{r}
+k <- ncol(object@reductions$nmf@feature.loadings)
+k
+```
+
+```{r}
+plot.dir <- paste0(c(myfolder, "nmf_sections", "k"), collapse = "/")
+if(dir.exists(plot.dir)) {
+} else {
+  dir.create(plot.dir, recursive = TRUE)
+}
+```
+
+
+#### Print factorization rank
+
+```{r}
+pdf(paste0(plot.dir, "/RankPlot_nmf", ".pdf"), width = 25, height = 12)
+print(RankPlot(object))
+dev.off()
+```
+
+
+#### Spatial visualization of nmf
+
+```{r}
+plot.dir <- paste0(c(myfolder, "nmf_sections", "nmf"), collapse = "/")
+if(dir.exists(plot.dir)) {
+} else {
+  dir.create(plot.dir, recursive = TRUE)
+}
+```
+
+```{r}
+numbsection <- dim(object@tools$Staffli@image_info)[1]
+
+for (section in 1:numbsection) {
+  point_size <- 1.5
+  p <- MapFeatures(object,
+          section_number = section,
+          label_by = "sample_id",
+          features = paste0("NMF_", 1:k),
+          override_plot_dims = FALSE,
+          pt_size = point_size,
+          colors = viridis::magma(n = 11, direction = -1)) &
+      theme(plot.title = element_blank())
+  pdf(paste0(plot.dir, "/", unique(object$sample_id)[section], "_nmf_", ".pdf"), width = 30, height = 40)
+  print(p)
+  dev.off()
+}
+```
+
+
+#### Spatial visualization (1 nmf accross every sections)
+
+```{r}
+plot.dir <- paste0(c(myfolder, "nmf_across_all_sections"), collapse = "/")
+if(dir.exists(plot.dir)) {
+} else {
+  dir.create(plot.dir, recursive = TRUE)
+}
+```
+
+
+```{r}
+for (nmf in 1:k) {
+  point_size <- 1.5
+  p <- MapFeatures(object,
+          label_by = "sample_id",
+          features = paste0("NMF_", nmf),
+          override_plot_dims = FALSE,
+          pt_size = point_size,
+          colors = viridis::magma(n = 11, direction = -1)) &
+      theme(plot.title = element_blank())
+  pdf(paste0(plot.dir, "/", "nmf_", nmf, ".pdf"), width = 30, height = 40)
+  print(p)
+  dev.off()
+}
+```
+
+
+
+#### Plot Feature loadings
+
+```{r}
+plot.dir <- paste0(c(myfolder, "nmf_sections", "features_loading"), collapse = "/")
+if(dir.exists(plot.dir)) {
+} else {
+  dir.create(plot.dir, recursive = TRUE)
+}
+```
+
+```{r}
+for (factor in 1:k) {
+  p <- PlotFeatureLoadings(object,
+                      dims = factor,
+                      reduction = "nmf",
+                      nfeatures = 30,
+                      mode = "dotplot",
+                      fill = "darkmagenta",
+                      pt_size = 3)
+  pdf(paste0(plot.dir, "/factor_", factor, "_loading", ".pdf"), width = 7, height = 8)
+  print(p)
+  dev.off()
+}
+```
+
+
+
+
+
+
+
+### All sections together // k = 20
+
+#### Check if object okay for NMF
+
+```{r}
+object_20 <- ST
+```
+
+
+```{r}
+length(VariableFeatures(object_20))
+```
+
+
+#### Run NMF
+
+```{r}
+set.seed(42)
+object_20 <- RunNMF(object_20, k = 20, assay = "Spatial") # run NMF
+```
+
+
+#### Save object
+
+```{r}
+saveRDS(object_20,
+        file = paste0("~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/", "rds_objects/", "ST_processed_20_nmf", ".rds"))
+```
+
+```{r, eval = FALSE}
+object_20 <- readRDS(paste0("~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/", "rds_objects/", "ST_processed_20_nmf", ".rds"))
+```
+
+
+#### Check optimal number of factors k
+
+```{r}
+k <- ncol(object_20@reductions$nmf@feature.loadings)
+k
+```
+
+```{r}
+plot.dir <- paste0(c(myfolder, "20_nmf_sections", "k"), collapse = "/")
+if(dir.exists(plot.dir)) {
+} else {
+  dir.create(plot.dir, recursive = TRUE)
+}
+```
+
+
+#### Print factorization rank
+
+```{r}
+pdf(paste0(plot.dir, "/RankPlot_nmf", ".pdf"), width = 25, height = 12)
+print(RankPlot(object_20))
+dev.off()
+```
+
+
+#### Spatial visualization of nmf
+
+```{r}
+plot.dir <- paste0(c(myfolder, "20_nmf_sections_redo", "nmf"), collapse = "/")
+if(dir.exists(plot.dir)) {
+} else {
+  dir.create(plot.dir, recursive = TRUE)
+}
+```
+
+```{r}
+numbsection <- dim(object_20@tools$Staffli@image_info)[1]
+
+for (section in 1:numbsection) {
+  point_size <- 1.5
+  p <- MapFeatures(object_20,
+          section_number = section,
+          label_by = "sample_id",
+          features = paste0("NMF_", 1:k),
+          override_plot_dims = FALSE,
+          pt_size = point_size,
+          colors = viridis::magma(n = 11, direction = -1)) &
+      theme(plot.title = element_blank())
+  pdf(paste0(plot.dir, "/", unique(object_20$sample_id)[section], "_nmf_", ".pdf"), width = 30, height = 40)
+  print(p)
+  dev.off()
+}
+```
+
+
+#### Spatial visualization (1 nmf accross every sections)
+
+```{r}
+plot.dir <- paste0(c(myfolder, "20_nmf_across_all_sections_redo"), collapse = "/")
+if(dir.exists(plot.dir)) {
+} else {
+  dir.create(plot.dir, recursive = TRUE)
+}
+```
+
+
+```{r}
+for (nmf in 1:k) {
+  point_size <- 1.5
+  p <- MapFeatures(object_20,
+          label_by = "sample_id",
+          features = paste0("NMF_", nmf),
+          override_plot_dims = FALSE,
+          pt_size = point_size,
+          colors = viridis::magma(n = 11, direction = -1)) &
+      theme(plot.title = element_blank())
+  pdf(paste0(plot.dir, "/", "nmf_", nmf, ".pdf"), width = 30, height = 40)
+  print(p)
+  dev.off()
+}
+```
+
+
+#### Plot Feature loadings
+
+```{r}
+plot.dir <- paste0(c(myfolder, "20_nmf_sections_redo", "features_loading"), collapse = "/")
+if(dir.exists(plot.dir)) {
+} else {
+  dir.create(plot.dir, recursive = TRUE)
+}
+```
+
+```{r}
+for (factor in 1:k) {
+  p <- PlotFeatureLoadings(object_20,
+                      dims = factor,
+                      reduction = "nmf",
+                      nfeatures = 30,
+                      mode = "dotplot",
+                      fill = "darkmagenta",
+                      pt_size = 3)
+  pdf(paste0(plot.dir, "/factor_", factor, "_loading", ".pdf"), width = 7, height = 8)
+  print(p)
+  dev.off()
+}
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

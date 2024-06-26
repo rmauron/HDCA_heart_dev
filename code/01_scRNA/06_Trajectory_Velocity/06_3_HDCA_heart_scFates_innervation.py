@@ -111,7 +111,6 @@ sc.pl.pca(adata_IN_sub,color="t")
 sc.pl.pca(adata_IN_sub, color="clusters_subset")
 
 # Plot features on embedding (Fig. 4C, 4G, Supp Fig. 4C)
-sc.pl.pca(adata_IN_sub,color=["SOX10", "FOXD3", "MBP", "MPZ", "PRPH", "PHOX2B", "PHOX2A", "ASCL1"],cmap="RdBu_r")
-sc.pl.pca(adata_IN_sub,color=["CHGB", "CHGA", "PENK", "MBP", "PMP22", "HTR3A", "TH", "PNMT"],cmap="RdBu_r")
-sc.pl.pca(adata_IN_sub,color=["VIP", "SST", "EPAS1", "COX4I2", "CHAT", "DBH", "PMEL", "DCT"],cmap="RdBu_r")
-sc.pl.pca(adata_IN_sub,color=["VIP", "SST", "EPAS1", "COX4I2", "NDUFS2", "HIGD1C", "PMEL", "DCT"],cmap="RdBu_r")
+sc.pl.pca(adata_IN_sub,color=["SOX10", "FOXD3", "MBP", "MPZ", "ASCL1", "PRPH"],cmap="RdBu_r") #Fig 4C
+sc.pl.pca(adata_IN_sub,color=["EPAS1", "COX4I2", "HIGD1C", "CHGB"],cmap="RdBu_r") #Fig 4G
+sc.pl.pca(adata_IN_sub,color=["PMP22", "PHOX2B", "PHOX2A", "HTR3A", "CHGA", "PENK", "SST", "CHAT", "DBH", "TH", "PNMT", "VIP"],cmap="RdBu_r") #Supp Fig. 4C
