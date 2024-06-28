@@ -1,0 +1,373 @@
+---
+title: "ST_HDCA_banksy"
+author: "Raphaël Mauron"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# HDCA heart ST BANKSY
+
+NOTE: The path to load the data and the path to save the figures should be changed at your convenience.
+
+Environment: **Nexus server**
+
+We follow pipeline from https://prabhakarlab.github.io/Banksy/articles/multi-sample.html
+
+
+## Set up and loading material
+
+### Knit setup
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+.libPaths()
+.libPaths("/home/raphael.mauron/R/x86_64-pc-linux-gnu-library/4.4/")
+
+lapply(.libPaths(), list.files)
+```
+
+
+### Load library
+
+```{r}
+library(semla)
+library(tidyr)
+library(RcppML)
+library(ggplot2)
+library(openxlsx)
+library(tidyverse)
+library(SpatialExperiment)
+library(Banksy)
+library(Seurat)
+library(SeuratData)
+library(gridExtra)
+library(pals)
+library(dplyr)
+library(SummarizedExperiment)
+library(cowplot)
+library(ggspavis)
+library(scater)
+library(data.table)
+library(harmony)
+
+library(SeuratWrappers)
+# Kelly palette for visualization
+mypal <- kelly()[-1]
+```
+
+
+### Set working directory
+
+```{r}
+myfolder <- "/srv/home/raphael.mauron/projects/HDCA_heart/results/"
+```
+
+
+### Load data
+
+```{r}
+section_list <- readRDS("/srv/home/raphael.mauron/projects/HDCA_heart/data/ST_section_list_processed_nmf.rds")
+```
+
+
+### Convert semla object to SpatialExperiment
+
+adapted from: https://github.com/drighelli/SpatialExperiment/issues/115
+
+```{r}
+## Function
+seurat_to_spe <- function(seu, sample_id, img_id) {
+    ## Convert to SCE
+    sce <- Seurat::as.SingleCellExperiment(seu)
+    
+    ## Extract spatial coordinates
+    spatialCoords <- as.matrix(
+        seu@tools$Staffli@meta_data[, c("pxl_col_in_fullres", "pxl_row_in_fullres")])
+    
+    ## Extract and process image data
+    img <- SpatialExperiment::SpatialImage(
+        x = as.raster(seu@tools$Staffli@imgs))
+    
+    # imgData <- DataFrame(
+    #     sample_id = sample_id,
+    #     image_id = img_id,
+    #     data = I(list(img)),
+    #     scaleFactor = seu@tools[["Staffli"]]@scalefactors[["tissue_lowres_scalef"]])
+    
+    # Convert to SpatialExperiment
+    spe <- SpatialExperiment(
+        assays = assays(sce),
+        rowData = rowData(sce),
+        colData = colData(sce),
+        metadata = metadata(sce),
+        reducedDims = reducedDims(sce),
+        altExps = altExps(sce),
+        sample_id = sample_id,
+        spatialCoords = spatialCoords
+        #imgData = imgData
+    )
+    
+    # Trim the data
+    imgData(spe) <- NULL
+    assay(spe, "logcounts") <- NULL
+    reducedDims(spe) <- NULL
+    altExps(spe) <- NULL
+    rowData(spe) <- NULL
+    
+    # indicate all spots are on the tissue
+    spe$in_tissue <- 1
+    spe$sample_id <- sample_id
+    
+    # add colnames
+    colnames(spe) <- paste0(colnames(spe), "_", spe$sample_id)
+    invisible(gc())
+    
+    # Return Spatial Experiment object
+    spe
+}
+
+```
+
+
+### Apply transformation
+
+```{r}
+spe_list <- lapply(names(section_list), function(i) {
+    seurat_to_spe(seu = section_list[[i]], sample_id = i, img_id = i)
+})
+```
+
+```{r}
+# check that the nmf embeddings have been removed
+#spe_list[[1]]@int_colData@listData[["altExps"]]@listData[["Spatial"]]@se@int_colData@listData[["reducedDims"]]
+```
+
+
+## Run BANKSY
+Following the multi sample vignette: https://prabhakarlab.github.io/Banksy/articles/multi-sample.html
+
+
+## Subset data
+
+### From 38 sections to 17 selected sections (same kept for initial clustering (spe_list_17))
+
+```{r}
+section_17 <- c("section_1", "section_2", "section_3", "section_4", "section_5", "section_6", "section_7", "section_8", "section_10", "section_11", "section_24", "section_28", "section_29", "section_31", "section_32", "section_33", "section_34")
+
+# Function to subset a single SpatialExperiment object
+subset_spe <- function(spe, section_17) {
+  # Ensure the object is a SpatialExperiment
+  if (!"SpatialExperiment" %in% class(spe)) {
+    stop("The object is not a SpatialExperiment")
+  }
+  # Access colData and subset based on sample_id
+  col_data <- colData(spe)
+  subset_indices <- col_data$sample_id %in% section_17
+  
+  # Return the subsetted SpatialExperiment object
+  return(spe[, subset_indices])
+}
+
+# Apply the subsetting function to each SpatialExperiment object in the list
+subsetted_spe_list <- lapply(spe_list, subset_spe, section_17 = section_17)
+
+# Filter out any empty SpatialExperiment objects
+spe_list_17 <- subsetted_spe_list[sapply(subsetted_spe_list, function(spe) ncol(spe) > 0)]
+
+#change names of objects
+spe_list_17 <- setNames(spe_list_17, nm = section_17)
+
+rm(subsetted_spe_list)
+gc()
+```
+
+
+```{r}
+# 38 sections
+spe <- do.call(cbind, spe_list)
+unique(spe$sample_id)
+
+#' Stagger spatial coordinates
+locs <- spatialCoords(spe)
+locs <- cbind(locs, sample_id = factor(spe$sample_id))
+locs_dt <- data.table(locs)
+colnames(locs_dt) <- c("sdimx", "sdimy", "group")
+locs_dt[, sdimx := sdimx - min(sdimx), by = group]
+global_max <- max(locs_dt$sdimx) * 1.5
+locs_dt[, sdimx := sdimx + group * global_max]
+locs <- as.matrix(locs_dt[, 1:2])
+rownames(locs) <- colnames(spe)
+spatialCoords(spe) <- locs
+
+# 17 sections
+spe_17 <- spe[, spe$sample_id %in% section_17]
+sample_names <- unique(spe_17$sample_id)
+```
+
+```{r}
+# check sample ids in new objects
+unique(spe$sample_id)
+unique(spe_17$sample_id)
+```
+
+
+
+#### 17
+
+
+```{r}
+#' Get HVGs
+seu_17 <- as.Seurat(spe_17, data = NULL)
+seu_17 <- FindVariableFeatures(seu_17, nfeatures = 2000)
+
+#' Normalize data
+scale_factor <- median(colSums(assay(spe_17, "counts")))
+seu_17 <- NormalizeData(seu_17, scale.factor = scale_factor, normalization.method = "RC")
+
+#' Add data to SpatialExperiment and subset to HVGs
+aname <- "normcounts"
+assay(spe_17, aname) <- GetAssayData(seu_17)
+spe_17 <- spe_17[VariableFeatures(seu_17),]
+```
+
+```{r}
+compute_agf <- TRUE #For characterising neighborhoods, BANKSY computes the weighted neighborhood mean (H_0) and the azimuthal Gabor filter (H_1)
+k_geom <- 6 #first order neighbours per visium spot
+spe_17 <- computeBanksy(spe_17, assay_name = aname, compute_agf = compute_agf, k_geom = k_geom)
+```
+
+```{r}
+# lambda <- 0.2 #small lambda --> cell type detection
+lambda <- 0.8 #high lambda --> region detection
+npcs <- 20
+use_agf <- TRUE
+spe_17 <- runBanksyPCA(spe_17, use_agf = use_agf, lambda = lambda, npcs = npcs, seed = 1000)
+```
+
+```{r}
+set.seed(1000)
+harmony_embedding <- HarmonyMatrix(
+    data_mat = reducedDim(spe_17, "PCA_M1_lam0.8"),
+    meta_data = colData(spe_17),
+    vars_use = c("sample_id"),
+    do_pca = FALSE,
+    max.iter.harmony = 20,
+    verbose = FALSE
+)
+reducedDim(spe_17, "Harmony_BANKSY") <- harmony_embedding
+```
+
+```{r}
+spe_17 <- runBanksyUMAP(spe_17, use_agf = TRUE, lambda = lambda, npcs = npcs)
+spe_17 <- runBanksyUMAP(spe_17, dimred = "Harmony_BANKSY")
+```
+
+```{r}
+plot_grid(
+    plotReducedDim(spe_17, "UMAP_M1_lam0.8", 
+                   point_size = 0.1,
+                   point_alpha = 0.5,
+                   color_by = "sample_id") +
+        theme(legend.position = "none"),
+    plotReducedDim(spe_17, "UMAP_Harmony_BANKSY", 
+                   point_size = 0.1,
+                   point_alpha = 0.5,
+                   color_by = "sample_id") +
+        theme(legend.title = element_blank()) +
+        guides(colour = guide_legend(override.aes = list(size = 5, alpha = 1))),
+    nrow = 1,
+    rel_widths = c(1, 1.2)
+)
+```
+
+```{r}
+# resolution used for Leiden graph-based clustering
+spe_17 <- clusterBanksy(spe_17, dimred = "Harmony_BANKSY", resolution = 0.5,  k_neighbors = 50, seed = 1000)
+spe_17 <- clusterBanksy(spe_17, dimred = "Harmony_BANKSY", resolution = 0.6,  k_neighbors = 50, seed = 1000)
+spe_17 <- clusterBanksy(spe_17, dimred = "Harmony_BANKSY", resolution = 0.7,  k_neighbors = 50, seed = 1000)
+spe_17 <- clusterBanksy(spe_17, dimred = "Harmony_BANKSY", resolution = 0.8,  k_neighbors = 50, seed = 1000)
+spe_17 <- clusterBanksy(spe_17, dimred = "Harmony_BANKSY", resolution = 0.9,  k_neighbors = 50, seed = 1000)
+spe_17 <- clusterBanksy(spe_17, dimred = "Harmony_BANKSY", resolution = 1,  k_neighbors = 50, seed = 1000) #too high
+spe_17 <- clusterBanksy(spe_17, dimred = "Harmony_BANKSY", resolution = 1.2,  k_neighbors = 50, seed = 1000)
+
+spe_17 <- connectClusters(spe_17)
+
+# check number of regions detected per resolutions
+unique(spe_17$clust_Harmony_BANKSY_k50_res0.5)
+unique(spe_17$clust_Harmony_BANKSY_k50_res0.6)
+unique(spe_17$clust_Harmony_BANKSY_k50_res0.7)
+unique(spe_17$clust_Harmony_BANKSY_k50_res0.8)
+unique(spe_17$clust_Harmony_BANKSY_k50_res0.9)
+unique(spe_17$clust_Harmony_BANKSY_k50_res1)
+unique(spe_17$clust_Harmony_BANKSY_k50_res1.2)
+
+
+# length
+length(unique(spe_17$clust_Harmony_BANKSY_k50_res0.5))
+length(unique(spe_17$clust_Harmony_BANKSY_k50_res0.6))
+length(unique(spe_17$clust_Harmony_BANKSY_k50_res0.7))
+length(unique(spe_17$clust_Harmony_BANKSY_k50_res0.8))
+length(unique(spe_17$clust_Harmony_BANKSY_k50_res0.9))
+length(unique(spe_17$clust_Harmony_BANKSY_k50_res1))
+length(unique(spe_17$clust_Harmony_BANKSY_k50_res1.2))
+```
+
+```{r}
+#select the resolution you want to plot regions from:
+clusterNames(spe_17)
+cnm <- clusterNames(spe_17)[4]
+
+sample_names <- unique(spe_17$sample_id)
+spatial_plots <- lapply(sample_names, function(snm) {
+    x <- spe_17[, spe_17$sample_id == snm]
+    df <- cbind.data.frame(clust=colData(x)[[cnm]], spatialCoords(x))
+    ggplot(df, aes(x=sdimy, y=sdimx, col=clust)) +
+        geom_point(size = 1) +
+        scale_color_manual(values = pals::kelly()[-1]) +
+        theme_classic() +
+        theme(
+            legend.position = "none",
+            axis.text.x=element_blank(),
+            axis.text.y=element_blank(),
+            axis.ticks=element_blank(),
+            axis.title.x=element_blank(),
+            axis.title.y=element_blank()) +
+        labs(title = snm) +
+        coord_equal()
+})
+
+title <- ggdraw() + draw_label(cnm, size = 10, hjust = 0, x = 0.05)
+plot_grid(title, plotlist = spatial_plots, ncol = 6, byrow = FALSE)
+```
+
+
+### Save object
+
+```{r}
+saveRDS(spe_17, file = paste0(myfolder, "spe_17_banksy.rds"))
+```
+
+
+
+### Export Banksy matrix
+
+```{r}
+# export metadata of SpatialExperiment object
+metadata <- spe_17@colData
+dim(metadata)
+
+write.csv(metadata, file = paste0(myfolder, "metadata.csv"))
+```
+
+
+
+```{r}
+sessionInfo()
+sessionInfo() %>% capture.output(file=paste0("/home/raphael.mauron/banksy/session_info_banksy.txt"))
+```
+
