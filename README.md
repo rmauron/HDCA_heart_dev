@@ -19,7 +19,7 @@ On the diagram, find the workflow used for the analysis with each major step pre
 - All the scripts are found in the [code folder](./code).
 - All the environments are found in the [environments folder](./environments).
 
-![HDCA_heart_pipeline drawio](https://github.com/rmauron/HDCA_heart_dev/assets/92672952/ed6a7361-ee9c-4c09-8dfc-fb71b57342ed)
+![HDCA_heart_pipeline](https://github.com/rmauron/HDCA_heart_dev/assets/92672952/5d2beacf-8f18-4474-bfc0-199f5d0c0041)
 
 
 ## Data
@@ -32,4 +32,4 @@ The analyses presented in this repository were predominantly conducted on a MacB
 Although an extensive effort was attributed to reproducibility, some system dependencies might slightly affect the results. Support on it is out of the scope of that study.
 
 ## Citation
-TBA
+doi: https://doi.org/10.1101/2024.03.12.584577
