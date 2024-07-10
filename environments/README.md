@@ -8,7 +8,7 @@ The environments used in this project can be restored throught the YAML files fo
 
 <br>
 
-![HDCA_heart_pipeline drawio](https://github.com/rmauron/HDCA_heart_dev/assets/92672952/880e54b7-d3ec-496f-8302-6d9b6f224df4)
+![HDCA_heart_pipeline](https://github.com/rmauron/HDCA_heart_dev/assets/92672952/fb73fa13-9631-45fc-8cd9-bbf22634c9cb)
 
 ---
 
