@@ -14,7 +14,6 @@ NOTE: The path to load the data and the path to save the figures should be chang
 
 Environment: **Conda: r-semla**
 
-
 ## Load Libraries
 
 ```{r}

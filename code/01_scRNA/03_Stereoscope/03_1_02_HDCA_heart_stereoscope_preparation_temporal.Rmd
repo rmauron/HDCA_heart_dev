@@ -1,6 +1,6 @@
 ---
-title: "03_1__02_HDCA_stereoscope_preparation"
-author: "Julia Foyer, Ludvig Larsson & Raphaël Mauron"
+title: "03_1_02_HDCA_stereoscope_preparation"
+author: "Raphaël Mauron"
 output: html_document
 editor_options: 
   chunk_output_type: console

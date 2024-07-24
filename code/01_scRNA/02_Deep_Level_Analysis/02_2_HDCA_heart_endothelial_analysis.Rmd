@@ -68,7 +68,7 @@ set.seed(1)
 ```
 
 
-## Subset, process, clustering (Extended Fig. 3A)
+## Subset, process, clustering (Extended Fig. 13A)
 
 * Keep all cells annotated as endothelial
 * Calculate variable features
@@ -350,7 +350,7 @@ rm(detable, DGE_DATA, top5, DGE_cells, sample_size)
 ```
 
 
-### DEG EN selection of markers (Extended Fig. 3D)
+### DEG EN selection of markers (Extended Fig. 13D)
 
 ```{r}
 # specific list of marker to project the dotplot on

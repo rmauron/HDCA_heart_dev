@@ -1,5 +1,5 @@
 ---
-title: "03_4_HDCA_heart_load_bnaksy regions"
+title: "03_4_HDCA_heart_load_banksy_regions"
 author: "Raphaël Mauron"
 output: html_document
 editor_options: 
@@ -7,6 +7,8 @@ editor_options:
 ---
 
 # HDCA - Heart
+
+Here we load the banksy regions that have been calculated previously and charge them onto the seurat object.
 
 ## Set up
 
@@ -170,7 +172,7 @@ ST$banksy_09_annot <- banksy_09_annot[as.character(ST$banksy_09)]
 ```
 
 
-### DEG banksy 09
+### DEG banksy 09 (Extended Fig. 1C)
 
 ```{r}
 DefaultAssay(ST) <- "SCT"
@@ -239,7 +241,7 @@ rm(detable)
 ```
 
 
-### Export sc. 2, 5, 11 and 24
+### Banksy sc. 2, 5, 11 and 24 (Extended Fig. 1A)
 
 ```{r}
 # time point 1 *section 5*
@@ -276,7 +278,7 @@ write.csv(table_banksy_section, "~/hdca_DevHeart/output/HDCA_heart_sc_analysis_d
 ```
 
 
-### Dot plot selected markers on Banksy regions
+### Dot plot selected markers on Banksy regions (Extended Fig. 1E)
 
 ```{r}
 my_markers <- c("ITLN1", "MYH6", "MYH7", "HEY2", "MB", "IRX2", "EMCN", "SLC25A37", "TBX3", "CNN1", "XPO4", "ACTA1", "MYL2", "ENO1", "IGFBP3", "DCN", "APCDD1", "PENK", "MFAP4", "CDH11", "ELN", "JAG1", "C1QC")
@@ -303,7 +305,7 @@ dev.off()
 ```
 
 
-### Seurat cluster vs Banksy regions
+### Seurat cluster vs Banksy regions (Extended Fib. 1D)
 
 ```{r}
 ST$banksy_09
@@ -345,9 +347,6 @@ dim(ST_clustering)
 dim(DGE_DATA)
 
 length(intersect(as.character(ST_clustering$barcodes), colnames(DGE_DATA)))
-
-
-#table(DGE_DATA$banksy_09, ST_clustering$seurat_clusters)
 ```
 
 ```{r}
@@ -392,7 +391,7 @@ dev.off()
 ```
 
 
-### Add banksy region to ST_clustering object and embed umap
+### Add banksy region to ST_clustering object and embed umap (Extended Fig. 1B)
 
 ```{r}
 # append banksy regions to ST_clustering object
@@ -403,6 +402,18 @@ pdf(file = paste0("~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/banksy/"
 DimPlot(ST_clustering, reduction = "umap", group.by = "banksy_09_annot")
 dev.off()
 ```
+
+
+================================================================================
+================================================================================
+================================================================================
+================================================================================
+================================================================================
+
+
+
+
+
 
 
 

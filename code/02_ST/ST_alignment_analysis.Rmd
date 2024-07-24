@@ -1,14 +1,14 @@
 ---
-title: "ST_HDCA_alignment_metrics"
+title: "ST_HDCA_alignment_analysis"
 author: "Raphaël Mauron"
 output: html_document
 editor_options: 
   chunk_output_type: console
 ---
 
-# HDCA heart ST alignement metrics
+# HDCA heart ST alignement analysis
 
-This script presents the process for computing non-negative matrix factorisation.
+This script presents the process for comparing adjacent sections.
 
 NOTE: The path to load the data and the path to save the figures should be changed at your convenience.
 
@@ -188,21 +188,21 @@ rm(detable)
 
 ```{r}
 replicates_num <- list(c("5", "6"), 
-                   c("7", "8"),
-                   c("13", "14", "15"),
-                   c("35", "36"),
-                   c("37", "38"),
-                   c("9", "10", "11", "12"),
-                   c("16", "18", "19"),
-                   c("17", "20", "21"),
-                   c("22", "23"),
-                   c("24"),
-                   c("33", "34"),
-                   c("1", "2"),
-                   c("3", "4"),
-                   c("25", "26", "30"),
-                   c("27", "28", "29"),
-                   c("31", "32"))
+                       c("7", "8"),
+                       c("13", "14", "15"),
+                       c("35", "36"),
+                       c("37", "38"),
+                       c("9", "10", "11", "12"),
+                       c("16", "18", "19"),
+                       c("17", "20", "21"),
+                       c("22", "23"),
+                       c("24"),
+                       c("33", "34"),
+                       c("1", "2"),
+                       c("3", "4"),
+                       c("25", "26", "30"),
+                       c("27", "28", "29"),
+                       c("31", "32"))
 replicates_num
 ```
 
@@ -236,7 +236,7 @@ rownames(ST)
 
 ### Comparison between replicates
 
-#### Cell type composition per sections (38 section)
+#### Cell type composition per sections (38 section) (Extended Fig. 11C)
 
 ```{r}
 # Extract sample identifiers from the barcodes
@@ -292,11 +292,8 @@ data_long$Section <- factor(data_long$Section, levels = desired_order)
 
 # custom color
 set.seed(42)
-#color_palette <- c("#9E3D22", "#B5153A", "#27763D", "#7C4D79", "#D9452C", "#209d56", "#f3c300", "#875692", "#417aaf", "#008856", "#e68fac", "#fb6843", "#604e97", "#f6a600", "#d13770", "#a93214", "#8db600", "#e25822", "#1f77b4", "#ff8e2b", "#2ca02c", "#9467bd", "#7b7b7b", "#38cca5", "#17becf", "#00439a", "#ffbb78", "#98df8a",  "#9edae5", "#393b79", "#637939", "#7b4173", "#5254a3", "#a55194", "#b5cf6b", "#ffcc00", "#32a852", "#ff5733", "#ff8c00", "#9acd32")
 color_palette <- c("#DE7E18FF", "#875692", "#003C30FF", "#DFC27DFF", "#f6a600", "#8C510AFF", "#6AAC91FF", "#209d56", "#244800", "#01665EFF", "#B8E186FF", "#80CDC1FF", "#417aaf", "#D9452C", "#3bd9d4", "#01665EFF", "#DE77AEFF", "#1f77b4", "#35978FFF", "#A53010FF", "#C51B7DFF", "#92AA4CFF", "#e25822", "#8E0152FF", "#728653FF", "#20ae00", "#DFC27DFF", "#ffbb78", "#f3c300", "#ff8e2b", "#9E3D22", "#B5153A", "#27763D")
 
-
-#colors <- sample(viridis(n))
 colors <- sample(color_palette, size = n, replace = FALSE)
 
 # Plot with custom colors
@@ -352,20 +349,15 @@ dev.off()
 ```
 
 
-
-
-
 ## Group technica replicates (17)
 
 ```{r}
 replicates_num_clust <- list(c("5", "6"), 
                              c("7", "8"),
-                             
                              c("1", "2"),
                              c("3", "4"),
                              c("28", "29"),
                              c("31", "32"),
-                             
                              c("10", "11"),
                              c("24"),
                              c("33", "34"))
@@ -373,7 +365,7 @@ replicates_num_clust
 ```
 
 
-#### Cluster composition per sections (17 section)
+#### Cluster composition per sections (17 section) (Extended Fig. 1B)
 
 ```{r}
 cluster_distribution <- table(ST_clustering$seurat_clusters_annot, ST_clustering$sample_id) |> as.matrix()
@@ -433,11 +425,8 @@ data_long$Section <- factor(data_long$Section, levels = desired_order)
 
 # custom color
 set.seed(42)
-#color_palette <- c("#9E3D22", "#B5153A", "#27763D", "#7C4D79", "#D9452C", "#209d56", "#f3c300", "#875692", "#417aaf", "#008856", "#e68fac", "#fb6843", "#604e97", "#f6a600", "#d13770", "#a93214", "#8db600", "#e25822", "#1f77b4", "#ff8e2b", "#2ca02c", "#9467bd", "#7b7b7b", "#38cca5", "#17becf", "#00439a", "#ffbb78", "#98df8a",  "#9edae5", "#393b79", "#637939", "#7b4173", "#5254a3", "#a55194", "#b5cf6b", "#ffcc00", "#32a852", "#ff5733", "#ff8c00", "#9acd32")
 color_palette <- c("#DE7E18FF", "#875692", "#003C30FF", "#DFC27DFF", "#f6a600", "#8C510AFF", "#6AAC91FF", "#209d56", "#244800", "#01665EFF", "#B8E186FF", "#80CDC1FF", "#417aaf", "#D9452C", "#3bd9d4", "#01665EFF", "#DE77AEFF", "#1f77b4", "#35978FFF", "#A53010FF", "#C51B7DFF", "#92AA4CFF", "#e25822", "#8E0152FF", "#728653FF", "#20ae00", "#DFC27DFF", "#ffbb78", "#f3c300", "#ff8e2b", "#9E3D22", "#B5153A", "#27763D")
 
-
-#colors <- sample(viridis(n))
 colors <- sample(color_palette, size = n, replace = FALSE)
 
 # Plot with custom colors
@@ -510,7 +499,6 @@ list_of_lists <- list_of_lists[order(as.numeric(names(list_of_lists)))]
 ```
 
 
-
 ### Annotate section with corresponding sampleID
 
 ```{r}
@@ -566,6 +554,8 @@ colSums(region_props)
 ```
 
 
+### Distribution banksy regions (Extended Fig. 11A)
+
 ```{r}
 region_props <- region_props |>
   rownames_to_column(var = "Regions")
@@ -597,11 +587,8 @@ data_long$Section <- factor(data_long$Section, levels = desired_order)
 
 # custom color
 set.seed(42)
-#color_palette <- c("#9E3D22", "#B5153A", "#27763D", "#7C4D79", "#D9452C", "#209d56", "#f3c300", "#875692", "#417aaf", "#008856", "#e68fac", "#fb6843", "#604e97", "#f6a600", "#d13770", "#a93214", "#8db600", "#e25822", "#1f77b4", "#ff8e2b", "#2ca02c", "#9467bd", "#7b7b7b", "#38cca5", "#17becf", "#00439a", "#ffbb78", "#98df8a",  "#9edae5", "#393b79", "#637939", "#7b4173", "#5254a3", "#a55194", "#b5cf6b", "#ffcc00", "#32a852", "#ff5733", "#ff8c00", "#9acd32")
 color_palette <- c("#DE7E18FF", "#875692", "#003C30FF", "#DFC27DFF", "#f6a600", "#8C510AFF", "#6AAC91FF", "#209d56", "#244800", "#01665EFF", "#B8E186FF", "#80CDC1FF", "#417aaf", "#D9452C", "#3bd9d4", "#01665EFF", "#DE77AEFF", "#1f77b4", "#35978FFF", "#A53010FF", "#C51B7DFF", "#92AA4CFF", "#e25822", "#8E0152FF", "#728653FF", "#20ae00", "#DFC27DFF", "#ffbb78", "#f3c300", "#ff8e2b", "#9E3D22", "#B5153A", "#27763D")
 
-
-#colors <- sample(viridis(n))
 colors <- sample(color_palette, size = n, replace = FALSE)
 
 # Plot with custom colors
@@ -654,6 +641,13 @@ pdf(paste0(myfolder, "regions_banksy_comp_grouped.pdf"), width = 20, height = 20
 plts
 dev.off()
 ```
+
+
+================================================================================
+================================================================================
+================================================================================
+================================================================================
+================================================================================
 
 
 

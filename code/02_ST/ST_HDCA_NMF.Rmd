@@ -98,8 +98,7 @@ ST$sample_id <- factor(ST$sample_id, levels = unique(ST_meta_data$sample_id))
 
 ## NMF
 
-
-### All sections together
+### All sections together (not using this one)
 
 #### Check if object okay for NMF
 
@@ -117,7 +116,7 @@ length(VariableFeatures(object))
 
 ```{r}
 set.seed(42)
-object <- RunNMF(object, assay = "Spatial") # run NMF
+object <- RunNMF(object, assay = "Spatial") #run NMF
 ```
 
 
@@ -216,7 +215,6 @@ for (nmf in 1:k) {
 ```
 
 
-
 #### Plot Feature loadings
 
 ```{r}
@@ -241,11 +239,6 @@ for (factor in 1:k) {
   dev.off()
 }
 ```
-
-
-
-
-
 
 
 ### All sections together // k = 20
@@ -391,24 +384,11 @@ for (factor in 1:k) {
 ```
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+================================================================================
+================================================================================
+================================================================================
+================================================================================
+================================================================================
 
 
 

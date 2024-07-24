@@ -304,7 +304,7 @@ dev.off()
 ```
 
 
-### Add cl4, cl8 and cl19 subclusters (Extended Fig. 3A)
+### Add cl4, cl8 and cl19 subclusters (Extended Fig. 13A)
 
 ```{r}
 cl4_split <- cl4[[]] %>% 
@@ -508,7 +508,7 @@ rm(detable, DGE_DATA, top5, DGE_cells, sample_size)
 ```
 
 
-### DEG CM selection of markers (not split & all) (Extended Fig. 3D)
+### DEG CM selection of markers (not split & all) (Extended Fig. 13D)
 
 ```{r}
 # specific list of marker to project the dotplot on
@@ -600,7 +600,7 @@ gc()
 ```
 
 
-### DEG CM ADRB1, CHRM2 (Fig. 4F)
+### DEG CM ADRB1, CHRM2 (Fig. 4G)
 
 ```{r}
 values_to_keep <- c("19-2", "19-1", "12", "9", "14", "4-2", "4-1", "18", "6")

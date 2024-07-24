@@ -874,7 +874,7 @@ dev.off()
 ```
 
 
-### Temporal check of integration of High Level UMAP
+### Temporal check of integration of High Level UMAP (Extended Fig. 10C)
 
 ```{r}
 pdf(file = paste0(myfolder, "Clusters_age_5_to_6_weeks_full_size_origine.pdf"), width = 15, height = 15, bg = "transparent")
@@ -892,7 +892,52 @@ dev.off()
 pdf(file = paste0(myfolder, "Clusters_age_12_to_14_weeks_full_size_origine.pdf"), width = 15, height = 15, bg = "transparent")
 DimPlot(ages[[4]][, as.character(ages[[4]]$high_level_clusters_removed) %in% levels(ages[[4]]$high_level_clusters_removed)], reduction = "umap_oi", group.by = "orig.ident", raster = F, pt.size = 1)
 dev.off()
+
+pdf(file = paste0(myfolder, "Clusters_all_age_full_size_origine.pdf"), width = 15, height = 15, bg = "transparent")
+DimPlot(data, reduction = "umap_oi", group.by = "orig.ident", raster = F, pt.size = 1)
+dev.off()
 ```
+
+
+### Temporal check of integration of High Level UMAP HL_6 and HL_34 (Extended Fig. 3B)
+
+```{r}
+data_HL <- data[, data$high_level_clusters %in% c("6", "34")]
+
+pdf(file = paste0(myfolder, "Clusters_all_age_HL_6_HL_34_origine.pdf"), width = 15, height = 15, bg = "transparent")
+DimPlot(data_HL, reduction = "umap_oi", group.by = "age_groups", raster = F, pt.size = 1)
+dev.off()
+
+pdf(file = paste0(myfolder, "Clusters_all_age_HL_6_HL_34_origine_featu.pdf"), width = 15, height = 15, bg = "transparent")
+FeaturePlot(data_HL, reduction = "umap_oi", features = "age", order = TRUE)
+dev.off()
+```
+
+
+```{r}
+# specific list of marker to project the dotplot on
+my_markers <- c("IL5RA", "FCER1A","PF4", "GP9", "PPBP", "ITGA2B", "HBE1", "HBQ1", "HBZ", "HBM", "HBA1", "HBA2", "HBB")
+
+data_HL <- SetIdent(data_HL, value = "high_level_clusters")
+
+p <- DotPlot(data_HL, features = my_markers) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+
+pdf(paste0(myfolder, "DGE_spe_markers_HL6_HL34.pdf"), width = 3.7, height = 4)
+print(p)
+dev.off()
+
+rm(p)
+gc()
+```
+
+
 
 
 ### Cell type proportion by age group in entire data (Fig. 2F, Supp Fig. 6C)

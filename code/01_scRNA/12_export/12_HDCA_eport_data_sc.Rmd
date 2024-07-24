@@ -1,0 +1,126 @@
+---
+title: "12_HDCA_heart_export_data_sc"
+author: "Raphaël Mauron"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# HDCA heart export data for viewer
+
+NOTE: The path to load the data and the path to save the figures should be changed at your convenience.
+
+Environment: **Docker**
+
+
+## Settings
+
+### Set library path
+
+```{r setup, include=FALSE}
+.libPaths("/home/rstudio/project/renv/library/R-4.3/aarch64-unknown-linux-gnu/")
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+### Set environment variables
+
+```{r}
+# Set the directory 
+myfolder <- "/home/rstudio/project/output/HDCA_heart_sc_analysis_docker/"
+```
+
+
+### Load Libraries
+
+```{r, message = FALSE}
+library(Seurat)
+library(Matrix)
+library(future)
+library(RcppHNSW)
+library(igraph)
+library(future.apply)
+library(niceRplots)
+library(DoubletFinder)
+library(ggplot2)
+library(ROCR)
+library(KernSmooth)
+library(dplyr)
+library(patchwork)
+library(harmony)
+library(gprofiler2)
+library(plotly)
+library(gtools)
+library(openxlsx)
+library(dplyr)
+library(tibble)
+```
+
+
+### Set seed
+
+```{r}
+set.seed(1)
+```
+
+
+### Export coarse-grained processed expression data
+
+```{r}
+data <- readRDS(paste0(myfolder, "rds_objects/HDCA_heart_sc_full_extended.rds"))
+mat <- t(GetAssayData(object = data, assay = "RNA", slot = "data"))
+
+rm(data)
+gc()
+
+write.csv(mat, file = paste0(myfolder, "export_data/export_sc/", "coarse_grained_gene_expr", ".csv"))
+```
+
+
+### Export fine-grained processed expression data
+
+```{r}
+#CM
+CM <- readRDS(file = paste0(myfolder, "rds_objects/cardiomyocytes02.rds"))
+mat <- t(GetAssayData(object = CM, assay = "RNA", slot = "data"))
+
+rm(CM)
+gc()
+
+write.csv(mat, file = paste0(myfolder, "export_data/export_sc/", "CM_gene_expr", ".csv"))
+```
+
+```{r}
+#EN
+EN <- readRDS(file = paste0(myfolder, "rds_objects/endothelial.rds"))
+mat <- t(GetAssayData(object = EN, assay = "RNA", slot = "data"))
+
+rm(EN)
+gc()
+
+write.csv(mat, file = paste0(myfolder, "export_data/export_sc/", "EN_gene_expr", ".csv"))
+```
+
+```{r}
+#FB
+FB <- readRDS(paste0(myfolder, "rds_objects/fibroblasts.rds"))
+mat <- t(GetAssayData(object = FB, assay = "RNA", slot = "data"))
+
+rm(FB)
+gc()
+
+write.csv(mat, file = paste0(myfolder, "export_data/export_sc/", "FB_gene_expr", ".csv"))
+```
+
+```{r}
+#IN
+IN <- readRDS(paste0(myfolder, "rds_objects/innervation.rds"))
+mat <- t(GetAssayData(object = IN, assay = "RNA", slot = "data"))
+
+rm(IN)
+gc()
+
+write.csv(mat, file = paste0(myfolder, "export_data/export_sc/", "IN_gene_expr", ".csv"))
+```
+
+

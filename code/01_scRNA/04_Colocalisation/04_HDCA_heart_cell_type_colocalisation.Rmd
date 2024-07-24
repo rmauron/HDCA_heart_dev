@@ -324,7 +324,7 @@ dev.off()
 
 ### Niches
 
-#### Heatmap of niches (Fig. 7B, 7C, Supp Fig. 7C)
+#### Heatmap of niches (Fig. 7B, 7D, Supp Fig. 7C)
 
 ```{r}
 niches <- list(
@@ -1322,7 +1322,7 @@ dev.off()
 
 ### Fig 4
 
-#### "IN-13", "CM-19-2", "IN-1", sc. 16 (Fig. 4D)
+#### "IN-13", "CM-19-2", "IN-1", sc. 16 (Fig. 4E)
 
 ```{r}
 plots <- CellColoc3(ST,
@@ -1335,7 +1335,7 @@ dev.off()
 ```
 
 
-####  "IN-13", "CM-14", "IN-1"  in sc. 22 (Supp Fig. 4D)
+####  "IN-13", "CM-14", "IN-1"  in sc. 22 (Supp Fig. 4B)
 
 ```{r}
 plots <- CellColoc3(ST,
@@ -1348,7 +1348,7 @@ dev.off()
 ```
 
 
-#### "IN-13",  "FB-1",  "IN-1"   in sc. 32 and 34 (Supp Fig. 4D)
+#### "IN-13",  "FB-1",  "IN-1"   in sc. 32 and 34 (Supp Fig. 4B)
 
 ```{r}
 plots <- CellColoc3(ST,
@@ -1371,7 +1371,7 @@ dev.off()
 ```
 
 
-#### "IN-8", "IN-19", sc. 16 (Supp Fig. 4E)
+#### "IN-8", "IN-19", sc. 16 (Supp Fig. 4C)
 
 ```{r}
 plots <- CellColoc(ST,
@@ -1642,7 +1642,7 @@ dev.off()
 ```
 
 
-#### "EN-7", "EN-17", "FB-4", sc. 20 (Fig. 7C)
+#### "EN-7", "EN-17", "FB-4", sc. 20 (Fig. 7D)
 
 ```{r}
 plots <- CellColoc3(ST,
@@ -1655,7 +1655,7 @@ dev.off()
 ```
 
 
-#### "FB-11", "FB-13", "CM-8-2", sc. 20 (Fig. 7C)
+#### "FB-11", "FB-13", "CM-8-2", sc. 20 (Fig. 7D)
 
 ```{r}
 plots <- CellColoc3(ST,
@@ -1813,6 +1813,19 @@ plots <- CellColoc(ST,
                       section_number = 27)
 
 pdf(file = paste0(myfolder, "colocalization/CM-18_CM-4-2_section_27.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+
+#### "EN-20", "HL-29", sc. 16 (Extended Fig. 3E)
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("EN-20", "HL-29"),
+                      section_number = 16)
+
+pdf(file = paste0(myfolder, "colocalization/EN-20_HL-29_section_16.pdf"), width = 15.75, height = 4.5)
 plots
 dev.off()
 ```

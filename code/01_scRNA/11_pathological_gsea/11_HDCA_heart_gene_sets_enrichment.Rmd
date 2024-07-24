@@ -1,0 +1,512 @@
+---
+title: "11_HDCA_heart_gene_sets_enrichment"
+author: "Raphaël Mauron"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# Enrichment of heart markers in SC data
+
+Pathological gene sets enrichment analysis.
+
+NOTE: The path to load the data and the path to save the figures should be changed at your convenience.
+
+Environment: **Docker**
+
+## Settings
+
+### Set library path
+
+
+```{r setup, include=FALSE}
+.libPaths("/home/rstudio/project/renv/library/R-4.3/aarch64-unknown-linux-gnu/")
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+### Set environment variables
+
+```{r}
+# Set the directory 
+myfolder <- "/home/rstudio/project/output/HDCA_heart_sc_analysis_docker/"
+```
+
+
+### Load Seurat object
+
+```{r, message = FALSE}
+data <- readRDS(paste0(myfolder, "rds_objects/HDCA_heart_sc_full_extended.rds"))
+CM <- readRDS(file = paste0(myfolder, "rds_objects/cardiomyocytes02.rds"))
+EN <- readRDS(file = paste0(myfolder, "rds_objects/endothelial.rds"))
+FB <- readRDS(paste0(myfolder, "rds_objects/fibroblasts.rds"))
+IN <- readRDS(paste0(myfolder, "rds_objects/innervation.rds"))
+```
+
+
+### Load libraries
+
+```{r, message = FALSE}
+library(Seurat)
+library(Matrix)
+library(dplyr)
+library(data.table)
+library(tibble)
+library(openxlsx)
+library(patchwork)
+library(tidyr)
+library(ggplot2)
+```
+
+
+
+## Gene Set Enrichment Analysis (GSEA)
+
+### Gene sets
+
+```{r}
+# Keep list in GeneSets that corresponds to ST clusters of interest
+# GeneSets <- list(c("MEIS2", "ISL1", "LGR5", "PDGFRA", "BMP4"),
+#                  c("SOX4", "HES4", "CTHRC1", "IGFBP2"))
+
+GeneSets_path <- read.csv2( "/home/rstudio/project/data/metadata/pathological_gene_enrichment.csv")
+gene_list <- as.list(GeneSets_path)
+gene_list <- lapply(gene_list, function(vec) vec[vec != ""])
+print(gene_list)
+rm(GeneSets_path)
+gc()
+```
+
+
+### For CM
+
+```{r}
+# Compute module score on single-cell data
+CM <- AddModuleScore(CM, features = GeneSets, name = "Enrichment_Score")
+
+# Rename the Enrichment_Score meta.data
+# Create new_column_names using the list of numbers
+new_column_names <- c("CVP", "FVP")
+  
+# Use a loop to rename the columns based on the list of indices and names
+i_start <- as.numeric(dim(CM@meta.data)[2]-length(GeneSets)+1)
+i_end <- as.numeric(dim(CM@meta.data)[2])
+i_column <- as.numeric(dim(CM@meta.data)[2]-length(GeneSets))
+
+for (i in i_start:i_end) {
+  colnames(CM@meta.data)[i] <- new_column_names[i - i_column]
+}
+
+# Plot violin plots
+# If you have 10 clusters, the scores should now be named Enrichment_Score1, Enrichment_Scoree2, ..., Enrichment_Score10
+CM_sub <- CM[, CM$clusters_subset_split %in% c("6",  "1", "10", "8-1", "8-3", "17", "8-2", "18", "4-2",  "4-1", "3", "14",  "9",  "12", "19-2",  "19-1", "7",  "2", "5")]
+selected_clusters <- c("6",  "1", "10", "8-1", "8-3", "17", "8-2", "18", "4-2",  "4-1", "3", "14",  "9",  "12", "19-2",  "19-1", "7",  "2", "5")
+CM_sub$clusters_subset_split <- factor(CM_sub$clusters_subset_split, levels = selected_clusters)
+
+# Plot
+pdf(file = paste0(myfolder, "ST_enrichment/Violin_enrichment_CVP_FVP_CM.pdf"), width = 10, height = 3)
+VlnPlot(CM_sub, features = new_column_names, group.by = "clusters_subset_split", pt.size = 0) +
+  plot_layout(ncol = 2)
+dev.off()
+```
+
+
+### For EN
+
+```{r}
+# Compute module score on single-cell data
+EN <- AddModuleScore(EN, features = GeneSets, name = "Enrichment_Score")
+
+# Rename the Enrichment_Score meta.data
+# Create new_column_names using the list of numbers
+new_column_names <- c("CVP", "FVP")
+
+# Use a loop to rename the columns based on the list of indices and names
+i_start <- as.numeric(dim(EN@meta.data)[2]-length(GeneSets)+1)
+i_end <- as.numeric(dim(EN@meta.data)[2])
+i_column <- as.numeric(dim(EN@meta.data)[2]-length(GeneSets))
+
+for (i in i_start:i_end) {
+  colnames(EN@meta.data)[i] <- new_column_names[i - i_column]
+}
+
+# Plot violin plots
+# If you have 10 clusters, the scores should now be named Enrichment_Score1, Enrichment_Scoree2, ..., Enrichment_Score10
+EN_sub <- EN[, EN$clusters_subset %in% c("1", "12", "3", "6", "18", "17", "7", "19", "15", "13", "10", "2", "5", "21", "16", "20", "11", "14")]
+selected_clusters <- c("1", "12", "3", "6", "18", "17", "7", "19", "15", "13", "10", "2", "5", "21", "16", "20", "11", "14")
+EN$clusters_subset <- factor(EN_sub$clusters_subset, levels = selected_clusters)
+
+# Plot
+pdf(file = paste0(myfolder, "ST_enrichment/Violin_enrichment_CVP_FVP_EN.pdf"), width = 10, height = 3)
+VlnPlot(EN_sub, features = new_column_names, group.by = "clusters_subset", pt.size = 0) + 
+  plot_layout(ncol = 2)
+dev.off()
+```
+
+
+### For FB
+
+```{r}
+# Compute module score on single-cell data
+FB <- AddModuleScore(FB, features = GeneSets, name = "Enrichment_Score")
+
+# Rename the Enrichment_Score meta.data
+# Create new_column_names using the list of numbers
+new_column_names <- c("CVP", "FVP")
+
+# Use a loop to rename the columns based on the list of indices and names
+i_start <- as.numeric(dim(FB@meta.data)[2]-length(GeneSets)+1)
+i_end <- as.numeric(dim(FB@meta.data)[2])
+i_column <- as.numeric(dim(FB@meta.data)[2]-length(GeneSets))
+
+for (i in i_start:i_end) {
+  colnames(FB@meta.data)[i] <- new_column_names[i - i_column]
+}
+
+# Plot violin plots
+# If you have 10 clusters, the scores should now be named Enrichment_Score1, Enrichment_Scoree2, ..., Enrichment_Score10
+FB_sub <- FB[, FB$clusters_subset %in% c("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", "11", "17", "8", "1", "6", "15", "20")]
+selected_clusters <- c("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", "11", "17", "8", "1", "6", "15", "20")
+FB$clusters_subset <- factor(FB_sub$clusters_subset, levels = selected_clusters)
+
+# Plot
+pdf(file = paste0(myfolder, "ST_enrichment/Violin_enrichment_CVP_FVP_FB.pdf"), width = 10, height = 3)
+VlnPlot(FB_sub, features = new_column_names, group.by = "clusters_subset", pt.size = 0) + 
+  plot_layout(ncol = 2)
+dev.off()
+```
+
+
+### For IN
+
+```{r}
+# Compute module score on single-cell data
+IN <- AddModuleScore(IN, features = GeneSets, name = "Enrichment_Score")
+
+# Rename the Enrichment_Score meta.data
+# Create new_column_names using the list of numbers
+new_column_names <- c("CVP", "FVP")
+
+# Use a loop to rename the columns based on the list of indices and names
+i_start <- as.numeric(dim(IN@meta.data)[2]-length(GeneSets)+1)
+i_end <- as.numeric(dim(IN@meta.data)[2])
+i_column <- as.numeric(dim(IN@meta.data)[2]-length(GeneSets))
+
+for (i in i_start:i_end) {
+  colnames(IN@meta.data)[i] <- new_column_names[i - i_column]
+}
+
+# Plot violin plots
+# If you have 10 clusters, the scores should now be named Enrichment_Score1, Enrichment_Scoree2, ..., Enrichment_Score10
+IN_sub <- IN[, IN$clusters_subset %in% c("4", "7", "12", "11", "8", "19", "17", "3", "13", "1")]
+selected_clusters <- c("4", "7", "12", "11", "8", "19", "17", "3", "13", "1")
+IN$clusters_subset <- factor(IN_sub$clusters_subset, levels = selected_clusters)
+
+# Plot
+pdf(file = paste0(myfolder, "ST_enrichment/Violin_enrichment_CVP_FVP_IN.pdf"), width = 10, height = 3)
+VlnPlot(IN_sub, features = new_column_names, group.by = "clusters_subset", pt.size = 0) + 
+  plot_layout(ncol = 2)
+dev.off()
+```
+
+
+
+
+### For CM+EN+FB+IN
+
+```{r}
+# Subset CM clusters of interest (exclude:  11, 13, 15, 16, 20, 22)
+subset_values <- c("1", "2", "3", "4-1", "4-2", "5", "6", "7", "8-1", "8-2", "8-3", "9", "10", "12", "14", "17", "18", "19-1", "19-2", "21")
+CM_subset <- CM[, CM$clusters_subset_split %in% subset_values]
+# reorder the cell types desired
+CM_subset$clusters_subset_split <- factor(CM_subset$clusters_subset_split, levels = c("6", "1", "10", "8-1", "8-3", "17", "8-2", "18", "4-2", "4-1", "3", "14", "9", "12", "21", "19-2", "19-1", "7", "2", "5"))
+rm(CM)
+gc()
+
+# Subset EN clusters of interest (exclude:  11, 13, 15, 16, 20, 22)
+subset_values <- c("1", "12", "3", "6", "18", "17", "7", "19", "15", "13", "10", "2", "5", "21", "16", "20", "11", "14", "22")
+EN_subset <- EN[, EN$clusters_subset %in% subset_values]
+# reorder the cell types desired
+EN_subset$clusters_subset <- factor(EN_subset$clusters_subset, levels = c("1", "12", "3", "6", "18", "17", "7", "19", "15", "13", "10", "2", "5", "21", "16", "20", "11", "14", "22"))
+rm(EN)
+gc()
+
+# Subset FB clusters of interest
+subset_values <- c("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", "11", "17", "8", "1", "6", "15", "20", "21")
+FB_subset <- FB[, FB$clusters_subset %in% subset_values]
+
+# reorder the cell types desired
+FB_subset$clusters_subset <- factor(FB_subset$clusters_subset, levels = c("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", "11", "17", "8", "1", "6", "15", "20", "21"))
+rm(FB)
+gc()
+
+# Subset IN clusters of interest
+subset_values <- c("4", "7", "12", "11", "8", "19", "17", "3", "13", "1")
+IN_subset <- IN[, IN$clusters_subset %in% subset_values]
+
+# reorder the cell types desired
+IN_subset$clusters_subset <- factor(IN_subset$clusters_subset, levels = c("4", "7", "12", "11", "8", "19", "17", "3", "13", "1"))
+rm(IN)
+gc()
+
+# Subset HL clsuters of interest
+subset_values <- c("6", "8", "10", "15", "18_1", "20", "22", "25", "26", "29", "34")
+HL_subset <- data[, data$high_level_clusters %in% subset_values]
+
+# reorder the cell types desired
+HL_subset$high_level_clusters <- factor(HL_subset$high_level_clusters, levels = c("6", "8", "10", "15", "18_1", "20", "22", "25", "26", "29", "34"))
+rm(data)
+gc()
+
+# Create a similarly named meta.data row for each object
+CM_subset$final_clusters <- paste0("CM_", CM_subset$clusters_subset_split)
+EN_subset$final_clusters <- paste0("EN_", EN_subset$clusters_subset)
+FB_subset$final_clusters <- paste0("FB_", FB_subset$clusters_subset)
+IN_subset$final_clusters <- paste0("IN_", IN_subset$clusters_subset)
+HL_subset$final_clusters <- paste0("HL_", HL_subset$high_level_clusters)
+
+
+# Merge the objects and keep the factor level of each of the object
+Merged_object <- merge(CM_subset, y = c(EN_subset, FB_subset, IN_subset, HL_subset))
+
+Merged_object$final_clusters <- factor(Merged_object$final_clusters, 
+                               levels = c(paste0("CM_", levels(CM_subset$clusters_subset_split)),
+                                          paste0("EN_", levels(EN_subset$clusters_subset)),
+                                          paste0("FB_", levels(FB_subset$clusters_subset)),
+                                          paste0("IN_", levels(IN_subset$clusters_subset)),
+                                          paste0("HL_", levels(HL_subset$high_level_clusters))))
+
+rm(CM_subset, EN_subset, FB_subset, IN_subset, HL_subset, subset_values)
+gc()
+```
+
+
+```{r}
+# Compute module score on single-cell data
+Merged_object <- AddModuleScore(Merged_object, features = gene_list, name = "Enrichment_Score")
+
+
+# Get list name to change the column names in meta.data
+# Rename the Enrichment_Score meta.data
+#new_column_names <- c("CVP", "FVP")
+new_column_names <- names(gene_list)
+
+# Use a loop to rename the columns based on the list of indices and names
+i_start <- as.numeric(dim(Merged_object@meta.data)[2]-length(gene_list)+1)
+i_end <- as.numeric(dim(Merged_object@meta.data)[2])
+i_column <- as.numeric(dim(Merged_object@meta.data)[2]-length(gene_list))
+
+for (i in i_start:i_end) {
+  colnames(Merged_object@meta.data)[i] <- new_column_names[i - i_column]
+}
+```
+
+
+```{r}
+# Plot patchwork for every pathology
+pdf(file = paste0(myfolder, "ST_enrichment/Violin_enrichment_CVP_FVP_merged.pdf"), 
+     width = 35, height = 3)
+VlnPlot(Merged_object, features = new_column_names, group.by = "final_clusters", pt.size = 0) + 
+  plot_layout(ncol = 2)
+dev.off()
+
+# Plot new figures for each pathology
+for (condition in new_column_names) {
+  p <- VlnPlot(Merged_object, features = condition, group.by = "final_clusters", pt.size = 0)
+  pdf(file = paste0(myfolder, "ST_enrichment/Violin_enrichment_merged_gene_sets_", condition, ".pdf"), width = 20, height = 3)
+  print(p + geom_hline(yintercept = 0) + theme(legend.position = "none"))
+  dev.off()
+}
+```
+
+
+### Heatmap visualisation
+
+```{r}
+mat <- as.data.frame(Merged_object$final_clusters)
+# mat <- cbind(mat, Merged_object$CVP)
+# mat <- cbind(mat, Merged_object$FVP)
+
+for (i in i_start:i_end) {
+  mat <- cbind(mat, Merged_object@meta.data[,i])
+}
+
+colnames(mat) <- c("clusters", new_column_names)
+
+mat_averages <- mat %>%
+  group_by(clusters) %>%
+  summarize(across(where(is.numeric), ~ mean(.x, na.rm = TRUE), .names = "avg_{col}"))
+print(mat_averages)
+
+pal <- colorRampPalette(RColorBrewer::brewer.pal(n = 8, name = "Reds"))(25)
+
+mat_averages_long <- mat_averages %>%
+  pivot_longer(
+    cols = starts_with("avg_"), # Use starts_with to select all columns that were averaged
+    names_to = "variable",
+    values_to = "value"
+  )
+
+#plot
+p <- ggplot(mat_averages_long, aes(variable, clusters, fill = value)) + 
+  geom_tile() +
+  scale_fill_gradientn(colours = pal) +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle = 90)) +
+  labs(fill = "Enrichment \n score")
+
+pdf(file = paste0(myfolder, "ST_enrichment/Heatmap_enrichment_pathology_merged.pdf"), 
+     width = 4, height = 13)
+p
+dev.off()
+```
+
+
+### Heatmap visualisation (annotated) (Extended Fig. 7B)
+
+```{r}
+mat <- as.data.frame(Merged_object$final_clusters)
+mat <- cbind(mat, Merged_object$cell.types)
+
+for (i in i_start:i_end) {
+  mat <- cbind(mat, Merged_object@meta.data[,i])
+}
+
+colnames(mat) <- c("clusters", "celltype", new_column_names)
+dim(mat)
+
+# Separate the numeric and non-numeric columns
+numeric_cols <- mat %>% select(where(is.numeric))
+non_numeric_cols <- mat %>% select(clusters, celltype)
+
+# Combine numeric columns with clusters for grouping
+mat_with_clusters <- cbind(non_numeric_cols, numeric_cols)
+
+# Group by clusters and calculate averages for numeric columns
+mat_averages <- mat_with_clusters %>%
+  group_by(clusters) %>%
+  summarize(across(where(is.numeric), ~ mean(.x, na.rm = TRUE), .names = "avg_{col}"))
+
+# Combine the non-numeric columns back with the averages
+# Keep the unique combinations of clusters and celltype
+non_numeric_distinct <- non_numeric_cols %>% distinct(clusters, celltype)
+mat_averages <- left_join(non_numeric_distinct, mat_averages, by = "clusters")
+
+pal <- colorRampPalette(RColorBrewer::brewer.pal(n = 8, name = "Reds"))(25)
+
+mat_averages_long <- mat_averages %>%
+  pivot_longer(
+    cols = starts_with("avg_"), # Use starts_with to select all columns that were averaged
+    names_to = "variable",
+    values_to = "value"
+  ) %>%
+  arrange(clusters) %>%
+  mutate(celltype_ordered = factor(celltype, levels = unique(celltype[order(clusters)])))
+
+# Create the heatmap plot
+p <- ggplot(mat_averages_long, aes(variable, celltype_ordered, fill = value)) + 
+  geom_tile() +
+  scale_fill_gradientn(colours = pal) +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle = 90),
+        axis.title.y = element_blank()) +
+  labs(fill = "Enrichment \n score")
+
+pdf(file = paste0(myfolder, "ST_enrichment/Heatmap_enrichment_pathology_merged_annot.pdf"), 
+     width = 4.5, height = 13)
+p
+dev.off()
+```
+
+
+## On coarse-grained clusters
+
+### For data
+
+```{r}
+# Compute module score on single-cell data
+data <- AddModuleScore(data, features = gene_list, name = "Enrichment_Score")
+
+
+# Get list name to change the column names in meta.data
+# Rename the Enrichment_Score meta.data
+new_column_names <- names(gene_list)
+
+# Use a loop to rename the columns based on the list of indices and names
+i_start <- as.numeric(dim(data@meta.data)[2]-length(gene_list)+1)
+i_end <- as.numeric(dim(data@meta.data)[2])
+i_column <- as.numeric(dim(data@meta.data)[2]-length(gene_list))
+
+for (i in i_start:i_end) {
+  colnames(data@meta.data)[i] <- new_column_names[i - i_column]
+}
+```
+
+
+### Heatmap visualisation (annotated) (Extended Fig. 7A)
+
+```{r}
+mat <- as.data.frame(data$high_level_clusters_removed)
+mat <- cbind(mat, data$cell.types)
+
+for (i in i_start:i_end) {
+  mat <- cbind(mat, data@meta.data[,i])
+}
+
+colnames(mat) <- c("clusters", "celltype", new_column_names)
+dim(mat)
+
+# Separate the numeric and non-numeric columns
+numeric_cols <- mat %>% select(where(is.numeric))
+non_numeric_cols <- mat %>% select(clusters, celltype)
+
+# Combine numeric columns with clusters for grouping
+mat_with_clusters <- cbind(non_numeric_cols, numeric_cols)
+
+# Group by clusters and calculate averages for numeric columns
+mat_averages <- mat_with_clusters %>%
+  group_by(clusters) %>%
+  summarize(across(where(is.numeric), ~ mean(.x, na.rm = TRUE), .names = "avg_{col}"))
+
+# Combine the non-numeric columns back with the averages
+# Keep the unique combinations of clusters and celltype
+non_numeric_distinct <- non_numeric_cols %>% distinct(clusters, celltype)
+mat_averages <- left_join(non_numeric_distinct, mat_averages, by = "clusters")
+
+pal <- colorRampPalette(RColorBrewer::brewer.pal(n = 8, name = "Reds"))(25)
+
+mat_averages_long <- mat_averages %>%
+  pivot_longer(
+    cols = starts_with("avg_"), # Use starts_with to select all columns that were averaged
+    names_to = "variable",
+    values_to = "value"
+  ) %>%
+  arrange(clusters) %>%
+  mutate(celltype_ordered = factor(celltype, levels = unique(celltype[order(clusters)])))
+
+# Create the heatmap plot
+p <- ggplot(mat_averages_long, aes(variable, celltype_ordered, fill = value)) + 
+  geom_tile() +
+  scale_fill_gradientn(colours = pal) +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle = 90),
+        axis.title.y = element_blank()) +
+  labs(fill = "Enrichment \n score")
+
+pdf(file = paste0(myfolder, "ST_enrichment/Heatmap_enrichment_pathology_HL_annot.pdf"), 
+     width = 4.5, height = 8)
+p
+dev.off()
+```
+
+================================================================================
+================================================================================
+================================================================================
+================================================================================
+================================================================================
+
+
+
+
+
+

@@ -110,7 +110,7 @@ sc.pl.pca(adata_IN_sub,color="t")
 # Plot clusters
 sc.pl.pca(adata_IN_sub, color="clusters_subset")
 
-# Plot features on embedding (Fig. 4C, 4G, Supp Fig. 4C)
+# Plot features on embedding (Fig. 4D)
 sc.pl.pca(adata_IN_sub,color=["SOX10", "FOXD3", "MBP", "MPZ", "ASCL1", "PRPH"],cmap="RdBu_r") #Fig 4C
 sc.pl.pca(adata_IN_sub,color=["EPAS1", "COX4I2", "HIGD1C", "CHGB"],cmap="RdBu_r") #Fig 4G
 sc.pl.pca(adata_IN_sub,color=["PMP22", "PHOX2B", "PHOX2A", "HTR3A", "CHGA", "PENK", "SST", "CHAT", "DBH", "TH", "PNMT", "VIP"],cmap="RdBu_r") #Supp Fig. 4C

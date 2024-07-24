@@ -116,7 +116,7 @@ data$orig.ident <- factor(data$orig.ident, levels = c("10X303",
 ```
 
 
-### XIST expression (Extended Fig. 2A)
+### XIST expression (Extended Fig. 12A)
 
 ```{r}
 pdf(file = paste0(myfolder, "complementary/Violin_XIST.pdf"),  width = 15, height = 4)
@@ -127,7 +127,7 @@ dev.off()
 ```
 
 
-## UMAP all clusters embedded (Extended Fig. 2E)
+## UMAP all clusters embedded (Extended Fig. 12E)
 
 #### nCount_RNA
 
@@ -169,7 +169,7 @@ gc()
 ```
 
 
-#### HL clusters (Extended Fig. 2C)
+#### HL clusters (Extended Fig. 12C)
 
 ```{r}
 pdf(paste0(myfolder, "complementary/umap_high_level_clusters.pdf"), width = 20, height = 15)
@@ -179,7 +179,7 @@ gc()
 ```
 
 
-#### Sample ID (Extended Fig. 2D)
+#### Sample ID (Extended Fig. 12D)
 
 ```{r}
 pdf(paste0(myfolder, "complementary/umap_sampleID.pdf"), width = 20, height = 15)
@@ -301,7 +301,7 @@ gc()
 ```
 
 
-### Feature barplots (Extended Fig. 2B)
+### Feature barplots (Extended Fig. 12B)
 
 ```{r}
 # Create dataframe from meta.data for feature plotting
@@ -588,7 +588,7 @@ dev.off()
 
 ## Violin plot
 
-### CM (Extended Fig. 3B)
+### CM (Extended Fig. 13B)
 
 ```{r}
 # Create a single violin plot
@@ -600,7 +600,7 @@ dev.off()
 ```
 
 
-#### HBA1 across all CM clusters (without exclusions, unordered) (Extended Fig. 3C)
+#### HBA1 across all CM clusters (without exclusions, unordered) (Extended Fig. 13C)
 
 ```{r}
 pdf(file = paste0(myfolder, "complementary/Vln_feature_CM_HBA1.pdf"),  width = 15, height = 4)
@@ -610,7 +610,7 @@ dev.off()
 ```
 
 
-### EN (Extended Fig. 3B)
+### EN (Extended Fig. 13B)
 
 ```{r}
 # Create a single violin plot
@@ -622,7 +622,7 @@ dev.off()
 ```
 
 
-#### HBA1 across all EN clusters (without exclusions, unordered) (Extended Fig. 3C)
+#### HBA1 across all EN clusters (without exclusions, unordered) (Extended Fig. 13C)
 
 ```{r}
 pdf(file = paste0(myfolder, "complementary/Vln_feature_EN_HBA1.pdf"),  width = 15, height = 4)
@@ -632,7 +632,7 @@ dev.off()
 ```
 
 
-### FB (Extended Fig. 3B)
+### FB (Extended Fig. 13B)
 
 ```{r}
 # Create a single violin plot
@@ -644,7 +644,7 @@ dev.off()
 ```
 
 
-### HBA1 across all FB clusters (again without exclusions, unordered) (Extended Fig. 3C)
+### HBA1 across all FB clusters (again without exclusions, unordered) (Extended Fig. 13C)
 
 ```{r}
 pdf(file = paste0(myfolder, "complementary/Vln_feature_FB_HBA1.pdf"),  width = 15, height = 4)
@@ -656,7 +656,7 @@ dev.off()
 
 ### Data
 
-#### Data - all clusters (clusters_louvain_oi) (Extended Fig. 2F)
+#### Data - all clusters (clusters_louvain_oi) (Extended Fig. 12F)
 
 ```{r}
 # Create a single violin plot
@@ -668,7 +668,7 @@ dev.off()
 ```
 
 
-#### HBA1 across all HL clusters (without exclusions, unordered) (Extended Fig. 2F)
+#### HBA1 across all HL clusters (without exclusions, unordered) (Extended Fig. 12F)
 
 ```{r}
 pdf(file = paste0(myfolder, "complementary/Vln_feature_HL_HBA1.pdf"),  width = 15, height = 4)
@@ -787,7 +787,7 @@ write.csv2(number_cells_annot, paste0(myfolder, "supplementary_tables/extended_t
 ```
 
 
-#### WNT, BMP, TGFb, axes expression "EN_17", "EN_7", "FB_4", "FB_13", "FB_11" (Fig. 7D)
+#### WNT, BMP, TGFb, axes expression "EN_17", "EN_7", "FB_4", "FB_13", "FB_11" (Fig. 7E)
 
 ```{r}
 clusters_to_analyze <- c("EN_17", "EN_7", "FB_4", "FB_13", "FB_11")
@@ -916,7 +916,7 @@ dev.off()
 ```
 
 
-#### Valve pathological gene expression "EN_17", "EN_7", "FB_4", "FB_13", "FB_11" (Fig. 7E)
+#### Valve pathological gene expression "EN_17", "EN_7", "FB_4", "FB_13", "FB_11" (Fig. 7F)
 
 ```{r}
 my_markers <- c("ADAMTS19", "TEX41", "SMAD6", "MUC4", "PALMD", "GATA4", "GATA5", "GATA6", "NOTCH1", "ROBO4", "MAT2A", "ACTA2", "FLNA", "DCHS1", "DZIP1", "SMAD2", "SMAD4", "BMPR1A", "COL1A1", "ELN", "FBN1", "SH3PXD2B", "B3GAT3", "HCN4", "TGFB2", "TGFB3", "TGFBR1", "TGFBR2", "SMAD3")
@@ -1064,6 +1064,90 @@ DimPlot(data_to_plot, reduction = "umap_oi", group.by = "clusters_subset_split",
 dev.off()
 gc()
 ```
+
+
+#### FeaturePlot JAG1 NOTCH3
+
+```{r}
+pdf(paste0(myfolder, "FeaturePlot_JAG1.pdf"), width = 20, height = 15)
+FeaturePlot(data_curated, reduction = "umap_oi", features = 'JAG1', order = TRUE)
+dev.off()
+
+pdf(paste0(myfolder, "FeaturePlot_NOTCH3.pdf"), width = 20, height = 15)
+FeaturePlot(data_curated, reduction = "umap_oi", features = 'NOTCH3', order = TRUE)
+dev.off()
+
+pdf(paste0(myfolder, "FeaturePlot_CD34.pdf"), width = 20, height = 15)
+FeaturePlot(data_curated, reduction = "umap_oi", features = 'CD34', order = TRUE)
+dev.off()
+```
+
+
+#### Dotplot JAG1 NOTCH3 (Extended Fig. 2D)
+
+```{r}
+# specific list of marker to project the dotplot on
+my_markers <- c("JAG1", "NOTCH3")
+
+# remove undesired cells
+cells_to_remove <- data$cell.types == "HL_excl_1" | 
+                   data$cell.types == "HL_excl_2" | 
+                   data$cell.types == "HL_excl_3" | 
+                   data$cell.types == "HL_excl_4"
+
+data_HL <- data[,!cells_to_remove]
+rm(cells_to_remove)
+
+# reorder the cell types desired
+data_HL$high_level_clusters_removed <- factor(data_HL$cell.types, 
+                                              levels = c("Mat_vCM",
+                                                         "Mat_aCM",
+                                                         "MetAct_vCM_1",
+                                                         "MetAct_vCM_2",
+                                                         "MetAct_aCM",
+                                                         "Prol_CM",
+                                                         "Immat_CM",
+                                                         "TMSB10high_C_1",
+                                                         "TMSB10high_C_2",
+                                                         "MacroVasc_EC",
+                                                         "MicroVasc_EC",
+                                                         "PDE4Chigh_EC",
+                                                         "LEC",
+                                                         "Endoc_EC",
+                                                         "EndocCush_EC",
+                                                         "Valve_MC",
+                                                         "PDE4Chigh_FB",
+                                                         "Int_FB",
+                                                         "Peric_MC",
+                                                         "OFT_FB",
+                                                         "EPDC",
+                                                         "AnnFibr_FB",
+                                                         "Prol_FB",
+                                                         "OFT_SMC",
+                                                         "CA_SMC",
+                                                         "PC",
+                                                         "EpC",
+                                                         "NB-N",
+                                                         "SCP-GC",
+                                                         "MyC",
+                                                         "LyC"))
+
+data_HL <- SetIdent(data_HL, value = "high_level_clusters_removed")
+
+p <- DotPlot(data_HL, features = my_markers) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+
+pdf(paste0(myfolder, "HL_dotplot_JAG1_NOTCH3.pdf"), width = 13, height = 4)
+print(p)
+dev.off()
+```
+
 
 
 ================================================================================

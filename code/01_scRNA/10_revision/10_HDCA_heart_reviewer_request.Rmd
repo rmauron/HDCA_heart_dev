@@ -1,0 +1,3034 @@
+---
+title: "10_HDCA_heart_reviewer_request"
+author: "Raphaël Mauron"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# HDCA heart Reviewer requests
+- Temporal DEG for single-cell
+- DEG with ISS gene panel
+- Subclustering analysis HL_20
+- Pathway enrichment analysis
+- CCC analysis from selection of LR pairs
+
+NOTE: The path to load the data and the path to save the figures should be changed at your convenience.
+
+Environment: **Docker**
+
+
+## Settings
+
+### Set library path
+
+```{r setup, include=FALSE}
+.libPaths("/home/rstudio/project/renv/library/R-4.3/aarch64-unknown-linux-gnu/")
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+### Set environment variables
+
+```{r}
+# Set the directory 
+myfolder <- "/home/rstudio/project/output/HDCA_heart_sc_analysis_docker/"
+```
+
+
+### Load Libraries
+
+```{r, message = FALSE}
+library(Seurat)
+library(Matrix)
+library(future)
+library(RcppHNSW)
+library(igraph)
+library(future.apply)
+library(niceRplots)
+library(DoubletFinder)
+library(ggplot2)
+library(ROCR)
+library(KernSmooth)
+library(dplyr)
+library(patchwork)
+library(harmony)
+library(gprofiler2)
+library(plotly)
+library(gtools)
+library(openxlsx)
+library(dplyr)
+library(tibble)
+```
+
+
+### Load global functions
+
+```{r}
+source("/home/rstudio/project/code/global_functions.R")
+source("/home/rstudio/project/code/LR.R")
+```
+
+
+### Set seed
+
+```{r}
+set.seed(1)
+```
+
+
+## Load data
+
+```{r}
+data <- readRDS(paste0(myfolder, "rds_objects/HDCA_heart_sc_full_extended.rds"))
+```
+
+
+## Temporal analysis (single-cell)
+
+### DGE (Extended Fig. 2B, 4B)
+
+```{r}
+# set seed for reproducibility when sampling
+set.seed(1)
+
+# Create groups based on both clusters and ages and save to the object as a factor.
+#groups <- paste0(data$high_level_clusters_removed, '_', as.character(data$age_groups))
+groups_annot <- paste0(data$cell.types, '_', as.character(data$age_groups))
+sort(unique(groups_annot))
+
+#data$subgroups <- factor(groups, levels = mixedsort(unique(groups)))
+data$subgroups_annot <- factor(groups_annot, levels = mixedsort(unique(groups_annot)))
+sort(unique(data$subgroups_annot))
+
+# take only 150 cells per cluster to speed up calculation
+sample_size <- table(data$subgroups_annot)
+sample_size[ sample_size > 150 ] <- 150
+DGE_cells <- lapply(names(sample_size), function(x){
+  set.seed(1)
+  sample( colnames(data) [ data$subgroups_annot == x ] , size = sample_size[x])
+  })
+DGE_cells <- unlist(DGE_cells)
+
+# subset based on previous step, removing NA & setting Identity to these groups (cluster_age)
+DGE_DATA <- data[, DGE_cells]
+DGE_DATA <- DGE_DATA[, !DGE_DATA$subgroups_annot %in% c("HL_excl_1_12-14", "HL_excl_1_5-6", "HL_excl_1_7-8", "HL_excl_1_9-11", "HL_excl_2_12-14", "HL_excl_2_5-6", "HL_excl_2_7-8", "HL_excl_2_9-11", "HL_excl_3_12-14", "HL_excl_3_5-6", "HL_excl_3_7-8", "HL_excl_3_9-11", "HL_excl_4_12-14", "HL_excl_4_5-6", "HL_excl_4_7-8", "HL_excl_4_9-11")]
+sort(unique(DGE_DATA$subgroups_annot))
+
+DGE_DATA$subgroups_annot <- factor(DGE_DATA$subgroups_annot, levels = c(
+  "Mat_vCM_5-6", "Mat_vCM_7-8", "Mat_vCM_9-11", "Mat_vCM_12-14",
+  "Mat_aCM_5-6", "Mat_aCM_7-8", "Mat_aCM_9-11", "Mat_aCM_12-14",
+  "MetAct_vCM_1_5-6", "MetAct_vCM_1_7-8", "MetAct_vCM_1_9-11", "MetAct_vCM_1_12-14",
+  "MetAct_vCM_2_5-6", "MetAct_vCM_2_7-8", "MetAct_vCM_2_9-11", "MetAct_vCM_2_12-14",
+  "MetAct_aCM_5-6", "MetAct_aCM_7-8", "MetAct_aCM_9-11", "MetAct_aCM_12-14",
+  "Prol_CM_5-6", "Prol_CM_7-8", "Prol_CM_9-11", "Prol_CM_12-14",
+  "Immat_CM_5-6", "Immat_CM_7-8", "Immat_CM_9-11", "Immat_CM_12-14",
+  "TMSB10high_C_1_5-6", "TMSB10high_C_1_7-8", "TMSB10high_C_1_9-11", "TMSB10high_C_1_12-14",
+  "TMSB10high_C_2_5-6", "TMSB10high_C_2_7-8", "TMSB10high_C_2_9-11", "TMSB10high_C_2_12-14",
+  "MacroVasc_EC_5-6", "MacroVasc_EC_7-8", "MacroVasc_EC_9-11", "MacroVasc_EC_12-14",
+  "MicroVasc_EC_5-6", "MicroVasc_EC_7-8", "MicroVasc_EC_9-11", "MicroVasc_EC_12-14",
+  "PDE4Chigh_EC_5-6", "PDE4Chigh_EC_7-8", "PDE4Chigh_EC_9-11", "PDE4Chigh_EC_12-14",
+  "LEC_5-6", "LEC_7-8", "LEC_9-11", "LEC_12-14",
+  "Endoc_EC_5-6", "Endoc_EC_7-8", "Endoc_EC_9-11", "Endoc_EC_12-14",
+  "EndocCush_EC_5-6", "EndocCush_EC_7-8", "EndocCush_EC_9-11", "EndocCush_EC_12-14",
+  "Valve_MC_5-6", "Valve_MC_7-8", "Valve_MC_9-11", "Valve_MC_12-14",
+  "PDE4Chigh_FB_5-6", "PDE4Chigh_FB_7-8", "PDE4Chigh_FB_9-11", "PDE4Chigh_FB_12-14",
+  "Int_FB_5-6", "Int_FB_7-8", "Int_FB_9-11", "Int_FB_12-14",
+  "Peric_MC_5-6", "Peric_MC_7-8", "Peric_MC_9-11", "Peric_MC_12-14",
+  "OFT_FB_5-6", "OFT_FB_7-8", "OFT_FB_9-11", "OFT_FB_12-14",
+  "EPDC_5-6", "EPDC_7-8", "EPDC_9-11", "EPDC_12-14",
+  "AnnFibr_FB_5-6", "AnnFibr_FB_7-8", "AnnFibr_FB_9-11", "AnnFibr_FB_12-14",
+  "Prol_FB_5-6", "Prol_FB_7-8", "Prol_FB_9-11", "Prol_FB_12-14",
+  "OFT_SMC_5-6", "OFT_SMC_7-8", "OFT_SMC_9-11", "OFT_SMC_12-14",
+  "CA_SMC_5-6", "CA_SMC_7-8", "CA_SMC_9-11", "CA_SMC_12-14",
+  "PC_5-6", "PC_7-8", "PC_9-11", "PC_12-14",
+  "EpC_5-6", "EpC_7-8", "EpC_9-11", "EpC_12-14",
+  "NB-N_5-6", "NB-N_7-8", "NB-N_9-11", "NB-N_12-14",
+  "SCP-GC_5-6", "SCP-GC_7-8", "SCP-GC_9-11", "SCP-GC_12-14",
+  "MyC_5-6", "MyC_7-8", "MyC_9-11", "MyC_12-14",
+  "LyC_5-6", "LyC_7-8", "LyC_9-11", "LyC_12-14"
+))
+DGE_DATA <- SetIdent(DGE_DATA, value = DGE_DATA@meta.data$subgroups_annot)
+sort(unique(DGE_DATA$subgroups_annot))
+
+# find markers accross every category
+detable <- FindAllMarkers(DGE_DATA,
+                          only.pos = TRUE,
+                          max.cells.per.ident = 150,
+                          logfc.threshold = .1,
+                          assay = "RNA",
+                          min.pct = 0.05,
+                          return.thresh = 1)
+
+# add metrics and save table
+detable <- detable[ detable$p_val < 0.05,  ]
+detable$pct.diff <- detable$pct.1 - detable$pct.2
+detable$log.pct.diff <- log2( (detable$pct.1+1) / (detable$pct.2+1) )
+write.csv2(detable, paste0(myfolder, "detable_for_each_cluster_split_by_age.csv"))
+
+# Save results as a dot plot
+detable$groups <- paste0(detable$cell_cluster,detable$cluster)
+
+detable %>%
+  group_by(groups) %>%
+  top_n(-40, p_val) %>%
+  top_n(20, pct.diff) %>%
+  top_n(5, avg_log2FC) ->
+  top5
+
+# save
+pdf(paste0(myfolder, "DGE_temporal_v2_2.pdf"), width = 60, height = 100)
+par(mfrow=c(1,1), mar=c(3,6,2,5))
+DotPlot(DGE_DATA, features = top5 %>% pull(gene) %>% unique()) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+dev.off()
+```
+
+
+### DGE - order ISS genes & clusters
+
+```{r}
+# specific list of marker to project the dotplot on
+iss_gene <- read.csv(file = paste0(myfolder, "supplementary_tables/extended_table_01_ISS_gene_list.csv"))
+my_markers <- iss_gene$Gene.list
+
+# set seed for reproducibility when sampling
+set.seed(1)
+
+# Create groups based on both clusters and ages and save to the object as a factor.
+#groups <- paste0(data$high_level_clusters_removed, '_', as.character(data$age_groups))
+groups_annot <- paste0(data$cell.types, '_', as.character(data$age_groups))
+sort(unique(groups_annot))
+
+#data$subgroups <- factor(groups, levels = mixedsort(unique(groups)))
+data$subgroups_annot <- factor(groups_annot, levels = mixedsort(unique(groups_annot)))
+sort(unique(data$subgroups_annot))
+
+# take only 150 cells per cluster to speed up calculation
+sample_size <- table(data$subgroups_annot)
+sample_size[ sample_size > 150 ] <- 150
+DGE_cells <- lapply(names(sample_size), function(x){
+  set.seed(1)
+  sample( colnames(data) [ data$subgroups_annot == x ] , size = sample_size[x])
+  })
+DGE_cells <- unlist(DGE_cells)
+
+# subset based on previous step, removing NA & setting Identity to these groups (cluster_age)
+DGE_DATA <- data[, DGE_cells]
+DGE_DATA <- DGE_DATA[, !DGE_DATA$subgroups_annot %in% c("HL_excl_1_12-14", "HL_excl_1_5-6", "HL_excl_1_7-8", "HL_excl_1_9-11", "HL_excl_2_12-14", "HL_excl_2_5-6", "HL_excl_2_7-8", "HL_excl_2_9-11", "HL_excl_3_12-14", "HL_excl_3_5-6", "HL_excl_3_7-8", "HL_excl_3_9-11", "HL_excl_4_12-14", "HL_excl_4_5-6", "HL_excl_4_7-8", "HL_excl_4_9-11")]
+sort(unique(DGE_DATA$subgroups_annot))
+
+
+DGE_DATA$subgroups_annot <- factor(DGE_DATA$subgroups_annot, levels = c(
+  "Mat_vCM_5-6", "Mat_vCM_7-8", "Mat_vCM_9-11", "Mat_vCM_12-14",
+  "Mat_aCM_5-6", "Mat_aCM_7-8", "Mat_aCM_9-11", "Mat_aCM_12-14",
+  "MetAct_vCM_1_5-6", "MetAct_vCM_1_7-8", "MetAct_vCM_1_9-11", "MetAct_vCM_1_12-14",
+  "MetAct_vCM_2_5-6", "MetAct_vCM_2_7-8", "MetAct_vCM_2_9-11", "MetAct_vCM_2_12-14",
+  "MetAct_aCM_5-6", "MetAct_aCM_7-8", "MetAct_aCM_9-11", "MetAct_aCM_12-14",
+  "Prol_CM_5-6", "Prol_CM_7-8", "Prol_CM_9-11", "Prol_CM_12-14",
+  "Immat_CM_5-6", "Immat_CM_7-8", "Immat_CM_9-11", "Immat_CM_12-14",
+  "TMSB10high_C_1_5-6", "TMSB10high_C_1_7-8", "TMSB10high_C_1_9-11", "TMSB10high_C_1_12-14",
+  "TMSB10high_C_2_5-6", "TMSB10high_C_2_7-8", "TMSB10high_C_2_9-11", "TMSB10high_C_2_12-14",
+  "MacroVasc_EC_5-6", "MacroVasc_EC_7-8", "MacroVasc_EC_9-11", "MacroVasc_EC_12-14",
+  "MicroVasc_EC_5-6", "MicroVasc_EC_7-8", "MicroVasc_EC_9-11", "MicroVasc_EC_12-14",
+  "PDE4Chigh_EC_5-6", "PDE4Chigh_EC_7-8", "PDE4Chigh_EC_9-11", "PDE4Chigh_EC_12-14",
+  "LEC_5-6", "LEC_7-8", "LEC_9-11", "LEC_12-14",
+  "Endoc_EC_5-6", "Endoc_EC_7-8", "Endoc_EC_9-11", "Endoc_EC_12-14",
+  "EndocCush_EC_5-6", "EndocCush_EC_7-8", "EndocCush_EC_9-11", "EndocCush_EC_12-14",
+  "Valve_MC_5-6", "Valve_MC_7-8", "Valve_MC_9-11", "Valve_MC_12-14",
+  "PDE4Chigh_FB_5-6", "PDE4Chigh_FB_7-8", "PDE4Chigh_FB_9-11", "PDE4Chigh_FB_12-14",
+  "Int_FB_5-6", "Int_FB_7-8", "Int_FB_9-11", "Int_FB_12-14",
+  "Peric_MC_5-6", "Peric_MC_7-8", "Peric_MC_9-11", "Peric_MC_12-14",
+  "OFT_FB_5-6", "OFT_FB_7-8", "OFT_FB_9-11", "OFT_FB_12-14",
+  "EPDC_5-6", "EPDC_7-8", "EPDC_9-11", "EPDC_12-14",
+  "AnnFibr_FB_5-6", "AnnFibr_FB_7-8", "AnnFibr_FB_9-11", "AnnFibr_FB_12-14",
+  "Prol_FB_5-6", "Prol_FB_7-8", "Prol_FB_9-11", "Prol_FB_12-14",
+  "OFT_SMC_5-6", "OFT_SMC_7-8", "OFT_SMC_9-11", "OFT_SMC_12-14",
+  "CA_SMC_5-6", "CA_SMC_7-8", "CA_SMC_9-11", "CA_SMC_12-14",
+  "PC_5-6", "PC_7-8", "PC_9-11", "PC_12-14",
+  "EpC_5-6", "EpC_7-8", "EpC_9-11", "EpC_12-14",
+  "NB-N_5-6", "NB-N_7-8", "NB-N_9-11", "NB-N_12-14",
+  "SCP-GC_5-6", "SCP-GC_7-8", "SCP-GC_9-11", "SCP-GC_12-14",
+  "MyC_5-6", "MyC_7-8", "MyC_9-11", "MyC_12-14",
+  "LyC_5-6", "LyC_7-8", "LyC_9-11", "LyC_12-14"
+))
+DGE_DATA <- SetIdent(DGE_DATA, value = DGE_DATA@meta.data$subgroups_annot)
+sort(unique(DGE_DATA$subgroups_annot))
+
+p <- DotPlot(DGE_DATA, features = my_markers) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+
+pdf(paste0(myfolder, "DGE_temporal_ISS_markers.pdf"), width = 40, height = 30)
+print(p)
+dev.off()
+
+rm(p)
+gc()
+```
+
+
+### DGE - selection of HL clusters
+
+```{r}
+# set seed for reproducibility when sampling
+set.seed(1)
+
+# Create groups based on both clusters and ages and save to the object as a factor.
+groups <- paste0(data$high_level_clusters_removed, '_', as.character(data$age_groups))
+data$subgroups <- factor(groups, levels = mixedsort(unique(groups)))
+
+# take only 150 cells per cluster to speed up calculation
+sample_size <- table(data$subgroups)
+sample_size[ sample_size > 150 ] <- 150
+DGE_cells <- lapply(names(sample_size), function(x){
+  set.seed(1)
+  sample( colnames(data) [ data$subgroups == x ] , size = sample_size[x])
+  })
+DGE_cells <- unlist(DGE_cells)
+
+# subset based on previous step, removing NA & setting Identity to these groups (cluster_age)
+DGE_DATA <- data[, DGE_cells]
+DGE_DATA <- DGE_DATA[, DGE_DATA$subgroups %in% c("1_5-6", "1_7-8", "1_9-11", "1_12-14",
+                                                 "8_5-6", "8_7-8", "8_9-11", "8_12-14",
+                                                 "10_5-6", "10_7-8", "10_9-11", "10_12-14",
+                                                 "13_5-6", "13_7-8", "13_9-11", "13_12-14",
+                                                 "20_5-6", "20_7-8", "20_9-11", "20_12-14",
+                                                 "22_5-6", "22_7-8", "22_9-11", "22_12-14"
+                                                 )]
+DGE_DATA <- SetIdent(DGE_DATA, value = DGE_DATA@meta.data$subgroups)
+
+# find markers accross every category
+detable <- FindAllMarkers(DGE_DATA,
+                          only.pos = TRUE,
+                          max.cells.per.ident = 150,
+                          logfc.threshold = .1,
+                          assay = "RNA",
+                          min.pct = 0.05,
+                          return.thresh = 1)
+
+# add metrics and save table
+detable <- detable[ detable$p_val < 0.05,  ]
+detable$pct.diff <- detable$pct.1 - detable$pct.2
+detable$log.pct.diff <- log2( (detable$pct.1+1) / (detable$pct.2+1) )
+write.csv2(detable, paste0(myfolder, "detable_selection_HL_split_by_age.csv"))
+
+# Save results as a dot plot
+detable$groups <- paste0(detable$cell_cluster,detable$cluster)
+
+detable %>%
+  group_by(groups) %>%
+  top_n(-40, p_val) %>%
+  top_n(20, pct.diff) %>%
+  top_n(10, avg_log2FC) ->
+  top10
+
+# save
+pdf(paste0(myfolder, "DGE_temporal_selection_HL.pdf"), width = 15, height = 40)
+par(mfrow=c(1,1), mar=c(3,6,2,5))
+DotPlot(DGE_DATA, features = top10 %>% pull(gene) %>% unique()) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+dev.off()
+```
+
+
+### DGE - selection of HL clusters (HL_10)
+
+```{r}
+# set seed for reproducibility when sampling
+set.seed(1)
+
+# Create groups based on both clusters and ages and save to the object as a factor.
+groups <- paste0(data$high_level_clusters_removed, '_', as.character(data$age_groups))
+data$subgroups <- factor(groups, levels = mixedsort(unique(groups)))
+
+# take only 150 cells per cluster to speed up calculation
+sample_size <- table(data$subgroups)
+sample_size[ sample_size > 150 ] <- 150
+DGE_cells <- lapply(names(sample_size), function(x){
+  set.seed(1)
+  sample( colnames(data) [ data$subgroups == x ] , size = sample_size[x])
+  })
+DGE_cells <- unlist(DGE_cells)
+
+# subset based on previous step, removing NA & setting Identity to these groups (cluster_age)
+DGE_DATA <- data[, DGE_cells]
+DGE_DATA <- DGE_DATA[, DGE_DATA$subgroups %in% c("10_5-6", "10_7-8", "10_9-11", "10_12-14")]
+DGE_DATA <- SetIdent(DGE_DATA, value = DGE_DATA@meta.data$subgroups)
+
+# find markers accross every category
+detable <- FindAllMarkers(DGE_DATA,
+                          only.pos = TRUE,
+                          max.cells.per.ident = 150,
+                          logfc.threshold = .1,
+                          assay = "RNA",
+                          min.pct = 0.05,
+                          return.thresh = 1)
+
+# add metrics and save table
+detable <- detable[ detable$p_val < 0.05,  ]
+detable$pct.diff <- detable$pct.1 - detable$pct.2
+detable$log.pct.diff <- log2( (detable$pct.1+1) / (detable$pct.2+1) )
+#write.csv2(detable, paste0(myfolder, "detable_selection_HL_split_by_age.csv"))
+
+# Save results as a dot plot
+detable$groups <- paste0(detable$cell_cluster,detable$cluster)
+
+detable %>%
+  group_by(groups) %>%
+  top_n(-40, p_val) %>%
+  top_n(20, pct.diff) %>%
+  top_n(10, avg_log2FC) ->
+  top10
+
+# save
+pdf(paste0(myfolder, "DGE_temporal_selection_HL10.pdf"), width = 5, height = 10)
+par(mfrow=c(1,1), mar=c(3,6,2,5))
+DotPlot(DGE_DATA, features = top10 %>% pull(gene) %>% unique()) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+dev.off()
+```
+
+
+### DGE - selection of HL clusters (HL_8)
+
+```{r}
+# set seed for reproducibility when sampling
+set.seed(1)
+
+# Create groups based on both clusters and ages and save to the object as a factor.
+groups <- paste0(data$high_level_clusters_removed, '_', as.character(data$age_groups))
+data$subgroups <- factor(groups, levels = mixedsort(unique(groups)))
+
+# take only 150 cells per cluster to speed up calculation
+sample_size <- table(data$subgroups)
+sample_size[ sample_size > 150 ] <- 150
+DGE_cells <- lapply(names(sample_size), function(x){
+  set.seed(1)
+  sample( colnames(data) [ data$subgroups == x ] , size = sample_size[x])
+  })
+DGE_cells <- unlist(DGE_cells)
+
+# subset based on previous step, removing NA & setting Identity to these groups (cluster_age)
+DGE_DATA <- data[, DGE_cells]
+DGE_DATA <- DGE_DATA[, DGE_DATA$subgroups %in% c("8_5-6", "8_7-8", "8_9-11", "8_12-14")]
+DGE_DATA <- SetIdent(DGE_DATA, value = DGE_DATA@meta.data$subgroups)
+
+# find markers accross every category
+detable <- FindAllMarkers(DGE_DATA,
+                          only.pos = TRUE,
+                          max.cells.per.ident = 150,
+                          logfc.threshold = .1,
+                          assay = "RNA",
+                          min.pct = 0.05,
+                          return.thresh = 1)
+
+# add metrics and save table
+detable <- detable[ detable$p_val < 0.05,  ]
+detable$pct.diff <- detable$pct.1 - detable$pct.2
+detable$log.pct.diff <- log2( (detable$pct.1+1) / (detable$pct.2+1) )
+#write.csv2(detable, paste0(myfolder, "detable_selection_HL_split_by_age.csv"))
+
+# Save results as a dot plot
+detable$groups <- paste0(detable$cell_cluster,detable$cluster)
+
+detable %>%
+  group_by(groups) %>%
+  top_n(-40, p_val) %>%
+  top_n(20, pct.diff) %>%
+  top_n(10, avg_log2FC) ->
+  top10
+
+# save
+pdf(paste0(myfolder, "DGE_temporal_selection_HL8.pdf"), width = 5, height = 10)
+par(mfrow=c(1,1), mar=c(3,6,2,5))
+DotPlot(DGE_DATA, features = top10 %>% pull(gene) %>% unique()) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+dev.off()
+```
+
+
+### DGE - selection of HL clusters (HL_22)
+
+```{r}
+# set seed for reproducibility when sampling
+set.seed(1)
+
+# Create groups based on both clusters and ages and save to the object as a factor.
+groups <- paste0(data$high_level_clusters_removed, '_', as.character(data$age_groups))
+data$subgroups <- factor(groups, levels = mixedsort(unique(groups)))
+
+# take only 150 cells per cluster to speed up calculation
+sample_size <- table(data$subgroups)
+sample_size[ sample_size > 150 ] <- 150
+DGE_cells <- lapply(names(sample_size), function(x){
+  set.seed(1)
+  sample( colnames(data) [ data$subgroups == x ] , size = sample_size[x])
+  })
+DGE_cells <- unlist(DGE_cells)
+
+# subset based on previous step, removing NA & setting Identity to these groups (cluster_age)
+DGE_DATA <- data[, DGE_cells]
+DGE_DATA <- DGE_DATA[, DGE_DATA$subgroups %in% c("22_5-6", "22_7-8", "22_9-11", "22_12-14")]
+DGE_DATA <- SetIdent(DGE_DATA, value = DGE_DATA@meta.data$subgroups)
+
+# find markers accross every category
+detable <- FindAllMarkers(DGE_DATA,
+                          only.pos = TRUE,
+                          max.cells.per.ident = 150,
+                          logfc.threshold = .1,
+                          assay = "RNA",
+                          min.pct = 0.05,
+                          return.thresh = 1)
+
+# add metrics and save table
+detable <- detable[ detable$p_val < 0.05,  ]
+detable$pct.diff <- detable$pct.1 - detable$pct.2
+detable$log.pct.diff <- log2( (detable$pct.1+1) / (detable$pct.2+1) )
+#write.csv2(detable, paste0(myfolder, "detable_selection_HL_split_by_age.csv"))
+
+# Save results as a dot plot
+detable$groups <- paste0(detable$cell_cluster,detable$cluster)
+
+detable %>%
+  group_by(groups) %>%
+  top_n(-40, p_val) %>%
+  top_n(20, pct.diff) %>%
+  top_n(10, avg_log2FC) ->
+  top10
+
+# save
+pdf(paste0(myfolder, "DGE_temporal_selection_HL22.pdf"), width = 5, height = 10)
+par(mfrow=c(1,1), mar=c(3,6,2,5))
+DotPlot(DGE_DATA, features = top10 %>% pull(gene) %>% unique()) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+dev.off()
+```
+
+
+### DGE - selection of HL clusters (HL_23)
+
+```{r}
+# set seed for reproducibility when sampling
+set.seed(1)
+
+# Create groups based on both clusters and ages and save to the object as a factor.
+groups <- paste0(data$high_level_clusters_removed, '_', as.character(data$age_groups))
+data$subgroups <- factor(groups, levels = mixedsort(unique(groups)))
+
+# take only 150 cells per cluster to speed up calculation
+sample_size <- table(data$subgroups)
+sample_size[ sample_size > 150 ] <- 150
+DGE_cells <- lapply(names(sample_size), function(x){
+  set.seed(1)
+  sample( colnames(data) [ data$subgroups == x ] , size = sample_size[x])
+  })
+DGE_cells <- unlist(DGE_cells)
+
+# subset based on previous step, removing NA & setting Identity to these groups (cluster_age)
+DGE_DATA <- data[, DGE_cells]
+DGE_DATA <- DGE_DATA[, DGE_DATA$subgroups %in% c("23_5-6", "23_7-8", "23_9-11", "23_12-14")]
+DGE_DATA <- SetIdent(DGE_DATA, value = DGE_DATA@meta.data$subgroups)
+
+# find markers accross every category
+detable <- FindAllMarkers(DGE_DATA,
+                          only.pos = TRUE,
+                          max.cells.per.ident = 150,
+                          logfc.threshold = .1,
+                          assay = "RNA",
+                          min.pct = 0.05,
+                          return.thresh = 1)
+
+# add metrics and save table
+detable <- detable[ detable$p_val < 0.05,  ]
+detable$pct.diff <- detable$pct.1 - detable$pct.2
+detable$log.pct.diff <- log2( (detable$pct.1+1) / (detable$pct.2+1) )
+#write.csv2(detable, paste0(myfolder, "detable_selection_HL_split_by_age.csv"))
+
+# Save results as a dot plot
+detable$groups <- paste0(detable$cell_cluster,detable$cluster)
+
+detable %>%
+  group_by(groups) %>%
+  top_n(-40, p_val) %>%
+  top_n(20, pct.diff) %>%
+  top_n(10, avg_log2FC) ->
+  top10
+
+# save
+pdf(paste0(myfolder, "DGE_temporal_selection_HL23.pdf"), width = 5, height = 10)
+par(mfrow=c(1,1), mar=c(3,6,2,5))
+DotPlot(DGE_DATA, features = top10 %>% pull(gene) %>% unique()) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+dev.off()
+```
+
+
+### DGE - selection of HL clusters (HL_20)
+
+```{r}
+# set seed for reproducibility when sampling
+set.seed(1)
+
+# Create groups based on both clusters and ages and save to the object as a factor.
+groups <- paste0(data$high_level_clusters_removed, '_', as.character(data$age_groups))
+data$subgroups <- factor(groups, levels = mixedsort(unique(groups)))
+
+# take only 150 cells per cluster to speed up calculation
+sample_size <- table(data$subgroups)
+sample_size[ sample_size > 150 ] <- 150
+DGE_cells <- lapply(names(sample_size), function(x){
+  set.seed(1)
+  sample( colnames(data) [ data$subgroups == x ] , size = sample_size[x])
+  })
+DGE_cells <- unlist(DGE_cells)
+
+# subset based on previous step, removing NA & setting Identity to these groups (cluster_age)
+DGE_DATA <- data[, DGE_cells]
+DGE_DATA <- DGE_DATA[, DGE_DATA$subgroups %in% c("20_5-6", "20_7-8", "20_9-11", "20_12-14")]
+DGE_DATA <- SetIdent(DGE_DATA, value = DGE_DATA@meta.data$subgroups)
+
+# find markers accross every category
+detable <- FindAllMarkers(DGE_DATA,
+                          only.pos = TRUE,
+                          max.cells.per.ident = 150,
+                          logfc.threshold = .1,
+                          assay = "RNA",
+                          min.pct = 0.05,
+                          return.thresh = 1)
+
+# add metrics and save table
+detable <- detable[ detable$p_val < 0.05,  ]
+detable$pct.diff <- detable$pct.1 - detable$pct.2
+detable$log.pct.diff <- log2( (detable$pct.1+1) / (detable$pct.2+1) )
+#write.csv2(detable, paste0(myfolder, "detable_selection_HL_split_by_age.csv"))
+
+# Save results as a dot plot
+detable$groups <- paste0(detable$cell_cluster,detable$cluster)
+
+detable %>%
+  group_by(groups) %>%
+  top_n(-40, p_val) %>%
+  top_n(20, pct.diff) %>%
+  top_n(10, avg_log2FC) ->
+  top10
+
+# save
+pdf(paste0(myfolder, "DGE_temporal_selection_HL20.pdf"), width = 5, height = 10)
+par(mfrow=c(1,1), mar=c(3,6,2,5))
+DotPlot(DGE_DATA, features = top10 %>% pull(gene) %>% unique()) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+dev.off()
+```
+
+
+### DGE - selection of HL clusters (HL_1)
+
+```{r}
+# set seed for reproducibility when sampling
+set.seed(1)
+
+# Create groups based on both clusters and ages and save to the object as a factor.
+groups <- paste0(data$high_level_clusters_removed, '_', as.character(data$age_groups))
+data$subgroups <- factor(groups, levels = mixedsort(unique(groups)))
+
+# take only 150 cells per cluster to speed up calculation
+sample_size <- table(data$subgroups)
+sample_size[ sample_size > 150 ] <- 150
+DGE_cells <- lapply(names(sample_size), function(x){
+  set.seed(1)
+  sample( colnames(data) [ data$subgroups == x ] , size = sample_size[x])
+  })
+DGE_cells <- unlist(DGE_cells)
+
+# subset based on previous step, removing NA & setting Identity to these groups (cluster_age)
+DGE_DATA <- data[, DGE_cells]
+DGE_DATA <- DGE_DATA[, DGE_DATA$subgroups %in% c("1_5-6", "1_7-8", "1_9-11", "1_12-14")]
+DGE_DATA <- SetIdent(DGE_DATA, value = DGE_DATA@meta.data$subgroups)
+
+# find markers accross every category
+detable <- FindAllMarkers(DGE_DATA,
+                          only.pos = TRUE,
+                          max.cells.per.ident = 150,
+                          logfc.threshold = .1,
+                          assay = "RNA",
+                          min.pct = 0.05,
+                          return.thresh = 1)
+
+# add metrics and save table
+detable <- detable[ detable$p_val < 0.05,  ]
+detable$pct.diff <- detable$pct.1 - detable$pct.2
+detable$log.pct.diff <- log2( (detable$pct.1+1) / (detable$pct.2+1) )
+#write.csv2(detable, paste0(myfolder, "detable_selection_HL_split_by_age.csv"))
+
+# Save results as a dot plot
+detable$groups <- paste0(detable$cell_cluster,detable$cluster)
+
+detable %>%
+  group_by(groups) %>%
+  top_n(-40, p_val) %>%
+  top_n(20, pct.diff) %>%
+  top_n(10, avg_log2FC) ->
+  top10
+
+# save
+pdf(paste0(myfolder, "DGE_temporal_selection_HL1.pdf"), width = 5, height = 10)
+par(mfrow=c(1,1), mar=c(3,6,2,5))
+DotPlot(DGE_DATA, features = top10 %>% pull(gene) %>% unique()) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+dev.off()
+```
+
+
+### DGE normal - selection of HL clusters (HL_8, HL_10, HL_22) (Extended Fig. 2C)
+
+```{r}
+# set seed for reproducibility when sampling
+set.seed(1)
+
+# take only 150 cells per cluster to speed up calculation
+sample_size <- table(data$high_level_clusters_removed)
+sample_size[ sample_size > 150 ] <- 150
+DGE_cells <- lapply(names(sample_size), function(x){
+  set.seed(1)
+  sample( colnames(data) [ data$high_level_clusters_removed == x ] , size = sample_size[x])
+  })
+DGE_cells <- unlist(DGE_cells)
+
+# subset based on previous step, removing NA & setting Identity to these groups (cluster_age)
+DGE_DATA <- data[, DGE_cells]
+DGE_DATA <- DGE_DATA[, DGE_DATA$high_level_clusters_removed %in% c("8", "10", "22")]
+DGE_DATA <- SetIdent(DGE_DATA, value = DGE_DATA@meta.data$high_level_clusters_removed)
+unique(DGE_DATA$high_level_clusters_removed)
+
+# find markers accross every category
+detable <- FindAllMarkers(DGE_DATA,
+                          only.pos = TRUE,
+                          max.cells.per.ident = 150,
+                          logfc.threshold = .1,
+                          assay = "RNA",
+                          min.pct = 0.05,
+                          return.thresh = 1)
+
+# add metrics and save table
+detable <- detable[ detable$p_val < 0.05,  ]
+detable$pct.diff <- detable$pct.1 - detable$pct.2
+detable$log.pct.diff <- log2( (detable$pct.1+1) / (detable$pct.2+1) )
+#write.csv2(detable, paste0(myfolder, "detable_selection_HL_split_by_age.csv"))
+
+# Save results as a dot plot
+detable$groups <- paste0(detable$cell_cluster,detable$cluster)
+
+detable %>%
+  group_by(groups) %>%
+  top_n(-40, p_val) %>%
+  top_n(20, pct.diff) %>%
+  top_n(10, avg_log2FC) ->
+  top10
+
+# save
+pdf(paste0(myfolder, "DGE_selection_HL8_10_22.pdf"), width = 4.5, height = 8)
+par(mfrow=c(1,1), mar=c(3,6,2,5))
+DotPlot(DGE_DATA, features = top10 %>% pull(gene) %>% unique()) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+dev.off()
+```
+
+
+### DGE - special genes temporal in EN clusters
+
+```{r}
+EN <- readRDS(file = paste0(myfolder, "rds_objects/endothelial.rds"))
+
+# specific list of marker to project the dotplot on
+my_markers <- c("RALYL", "CACNA2D1", "NRG3", "POLQ", "ARL15", "EYS", "PLD5", "KCNMB2-AS", "NRXN3", "TMEM132D", "KCNQ5", "AC015574.1", "AL357507.1", "DOCK4", "ARHGEF28", "RGS6")
+
+values_to_keep <- c("1", "12", "3", "6", "18", "17", "7", "19", "15", "13", "10", "2", "5", "21", "16", "20", "11", "14")
+
+data_EN <- EN[, EN$clusters_subset %in% values_to_keep]
+
+# Create groups based on both clusters and ages and save to the object as a factor.
+groups <- paste0(data_EN$clusters_subset, '_', as.character(data_EN$age_groups))
+data_EN$subgroups <- factor(groups, levels = mixedsort(unique(groups)))
+
+data_EN <- SetIdent(data_EN, value = "subgroups")
+
+p <- DotPlot(data_EN, features = my_markers) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+
+pdf(paste0(myfolder, "DGE_temporal_spe_genes_EN_cl.pdf"), width = 30, height = 5)
+print(p)
+dev.off()
+
+rm(p)
+gc()
+```
+
+
+### DGE - special genes in EN clusters
+
+```{r}
+EN <- readRDS(file = paste0(myfolder, "rds_objects/endothelial.rds"))
+
+# specific list of marker to project the dotplot on
+my_markers <- c("NPR3", "APCDD1", "GJA5", "HEY1", "RGCC", "APLNR", "CCL21", "TMSB4X", "PDE4C", "ACKR1", "ACKR4", "NRP1", "BMPR2", "ICAM1", "VCAM1", "SELE", "SELP", "VWF")
+
+values_to_keep <- c("1", "12", "3", "6", "18", "17", "7", "19", "15", "13", "10", "2", "5", "21", "16", "20", "11", "14")
+
+data_EN <- EN[, EN$clusters_subset %in% values_to_keep]
+
+# # Create groups based on both clusters and ages and save to the object as a factor.
+# groups <- paste0(data_EN$clusters_subset, '_', as.character(data_EN$age_groups))
+# data_EN$subgroups <- factor(groups, levels = mixedsort(unique(groups)))
+
+data_EN$clusters_subset <- factor(data_EN$clusters_subset, levels = values_to_keep)
+data_EN <- SetIdent(data_EN, value = "clusters_subset")
+
+p <- DotPlot(data_EN, features = my_markers) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+
+pdf(paste0(myfolder, "DGE_spe_genes_EN_cl_r2q1.pdf"), width = 10, height = 5)
+print(p)
+dev.off()
+
+rm(p)
+gc()
+```
+
+
+### DGE - special genes in CM clusters
+
+```{r}
+CM <- readRDS(file = paste0(myfolder, "rds_objects/cardiomyocytes02.rds"))
+
+# specific list of marker to project the dotplot on
+my_markers <- c("TENM1", "TENM2", "TENM3", "TENM4", "ADGRL1", "ADGRL2", "ADGRL3", "ADGRL4")
+
+values_to_keep <- c("19-2", "19-1", "12", "9", "14")
+
+data_CM <- CM[, CM$clusters_subset_split %in% values_to_keep]
+
+data_CM$clusters_subset_split <- factor(data_CM$clusters_subset_split, levels = values_to_keep)
+data_CM <- SetIdent(data_CM, value = "clusters_subset_split")
+
+p <- DotPlot(data_CM, features = my_markers) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+
+pdf(paste0(myfolder, "DGE_spe_genes_CM_R2Q2.pdf"), width = 5, height = 4)
+print(p)
+dev.off()
+
+rm(p)
+gc()
+```
+
+
+### FeaturePlots - special in HL_15 clusters (Extended Fig. 3C)
+
+```{r}
+data_HL <- data[, data$high_level_clusters_removed %in% "15"]
+data_HL <- SetIdent(data_HL, value = "high_level_clusters_removed")
+
+p1 <- FeaturePlot(data_HL, reduction = "umap_oi", features = 'FLT3', order = TRUE)
+p2 <- FeaturePlot(data_HL, reduction = "umap_oi", features = 'CX3CR1', order = TRUE)
+p3 <- FeaturePlot(data_HL, reduction = "umap_oi", features = 'CSF1R', order = TRUE)
+
+pdf(paste0(myfolder, "complementary/umap_HL15_FLT3.pdf"), width = 5, height = 5)
+print(p1)
+dev.off()
+
+pdf(paste0(myfolder, "complementary/umap_HL15_CX3CR1.pdf"), width = 5, height = 5)
+print(p2)
+dev.off()
+
+pdf(paste0(myfolder, "complementary/umap_HL15_CSF1R.pdf"), width = 5, height = 5)
+print(p3)
+dev.off()
+
+rm(p)
+gc()
+```
+
+
+### FeaturePlots - special in HL_29 clusters (Extended Fig. 3C)
+
+```{r}
+data_HL <- data[, data$high_level_clusters_removed %in% "29"]
+data_HL <- SetIdent(data_HL, value = "high_level_clusters_removed")
+
+p1 <- FeaturePlot(data_HL, reduction = "umap_oi", features = 'JCHAIN', order = TRUE)
+p2 <- FeaturePlot(data_HL, reduction = "umap_oi", features = 'CD3E', order = TRUE)
+p3 <- FeaturePlot(data_HL, reduction = "umap_oi", features = 'KLRB1', order = TRUE)
+
+pdf(paste0(myfolder, "complementary/umap_HL29_JCHAIN.pdf"), width = 5, height = 5)
+print(p1)
+dev.off()
+
+pdf(paste0(myfolder, "complementary/umap_HL29_CD3E.pdf"), width = 5, height = 5)
+print(p2)
+dev.off()
+
+pdf(paste0(myfolder, "complementary/umap_HL29_KLRB1.pdf"), width = 5, height = 5)
+print(p3)
+dev.off()
+
+rm(p)
+gc()
+```
+
+
+## ISS DEG (HL/DL)
+
+```{r}
+#load file containing kept cells and DL clusters
+annotation_split <- read.csv(file = paste0("/home/rstudio/project/output/HDCA_heart_sc_analysis_docker/stereoscope/annotation_split.csv"))
+
+#load ISS gene list
+iss_gene <- read.csv(file = paste0(myfolder, "supplementary_tables/extended_table_01_ISS_gene_list.csv"))
+```
+
+
+### Keep only cells present in annotation_split
+
+```{r}
+data_kept_cells <- data[, colnames(data) %in% annotation_split$ID]
+```
+
+```{r}
+#sanity check
+identical(colnames(data_kept_cells), sort(annotation_split$ID))
+```
+
+
+## Add DL annotation
+
+```{r}
+annot_dl <- setNames(annotation_split$clusters_subset_split, nm = annotation_split$ID)
+data_kept_cells$annot_dl <- factor(annot_dl[as.character(colnames(data_kept_cells))], levels = unique(annotation_split$clusters_subset_split))
+
+
+#sanity check
+table(data_kept_cells$annot_dl, data_kept_cells$high_level_clusters_removed)
+
+rm(annot_dl, annotation_split)
+```
+
+
+### Compute DEG for ISS gene over HL clusters
+
+```{r}
+# specific list of marker to project the dotplot on
+my_markers <- iss_gene$Gene.list
+
+# remove undesired cells
+cells_to_remove <- data$cell.types == "HL_excl_1" | 
+                   data$cell.types == "HL_excl_2" | 
+                   data$cell.types == "HL_excl_3" | 
+                   data$cell.types == "HL_excl_4"
+
+data_HL <- data[,!cells_to_remove]
+rm(cells_to_remove)
+
+# reorder the cell types desired
+data_HL$high_level_clusters_removed <- factor(data_HL$cell.types, 
+                                              levels = c("Mat_vCM",
+                                                         "Mat_aCM",
+                                                         "MetAct_vCM_1",
+                                                         "MetAct_vCM_2",
+                                                         "MetAct_aCM",
+                                                         "Prol_CM",
+                                                         "Immat_CM",
+                                                         "TMSB10high_C_1",
+                                                         "TMSB10high_C_2",
+                                                         "MacroVasc_EC",
+                                                         "MicroVasc_EC",
+                                                         "PDE4Chigh_EC",
+                                                         "LEC",
+                                                         "Endoc_EC",
+                                                         "EndocCush_EC",
+                                                         "Valve_MC",
+                                                         "PDE4Chigh_FB",
+                                                         "Int_FB",
+                                                         "Peric_MC",
+                                                         "OFT_FB",
+                                                         "EPDC",
+                                                         "AnnFibr_FB",
+                                                         "Prol_FB",
+                                                         "OFT_SMC",
+                                                         "CA_SMC",
+                                                         "PC",
+                                                         "EpC",
+                                                         "NB-N",
+                                                         "SCP-GC",
+                                                         "MyC",
+                                                         "LyC"))
+
+data_HL <- SetIdent(data_HL, value = "high_level_clusters_removed")
+
+p <- DotPlot(data_HL, features = my_markers) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+
+pdf(paste0(myfolder, "HL_dotplot_ISS_genes.pdf"), width = 11, height = 24)
+  print(p)
+dev.off()
+
+rm(data_HL)
+gc()
+```
+
+
+### Compute DEG for ISS gene over DL clusters
+
+```{r}
+# specific list of marker to project the dotplot on
+my_markers <- iss_gene$Gene.list
+
+# reorder the cell types desired
+data_kept_cells$annot_dl <- factor(data_kept_cells$annot_dl, 
+                                   levels = c("CM_1",   "CM_2",   "CM_3",   "CM_4-1", "CM_4-2", "CM_5",   "CM_6",   "CM_7",   "CM_8-1", "CM_8-2", "CM_8-3", "CM_9",   "CM_10", "CM_12",  "CM_14",  "CM_17",  "CM_18",  "CM_19-1", "CM_19-2",
+                                              "EN_1",  "EN_2",  "EN_3",  "EN_5",  "EN_6",  "EN_7",  "EN_10", "EN_11", "EN_12", "EN_13", "EN_14", "EN_15", "EN_16", "EN_17", "EN_18", "EN_19", "EN_20", "EN_21",
+                                              "FB_1",  "FB_2",  "FB_3",  "FB_4",  "FB_5",  "FB_6",  "FB_7",  "FB_8",  "FB_9",  "FB_11", "FB_12", "FB_13", "FB_14", "FB_15", "FB_17", "FB_18", "FB_19", "FB_20",
+                                              "IN_1",  "IN_3",  "IN_4",  "IN_7",  "IN_8",  "IN_11", "IN_12", "IN_13", "IN_17", "IN_19",
+                                              "HL_6",    "HL_8",    "HL_10",   "HL_15",   "HL_18_1", "HL_20",   "HL_22",   "HL_29",   "HL_34"
+                                              ))
+
+data_kept_cells <- SetIdent(data_kept_cells, value = "annot_dl")
+
+p <- DotPlot(data_kept_cells, features = my_markers) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+
+pdf(paste0(myfolder, "DL_dotplot_ISS_genes.pdf"), width = 24, height = 24)
+  print(p)
+dev.off()
+```
+
+```{r}
+#export annotation DL
+write.csv(data_kept_cells$annot_dl, file = paste0(myfolder, "annotation_dl_extra_metadata.csv"))
+```
+
+
+### Specific gene over all DL clusters - CPCS
+
+```{r}
+# specific list of marker to project the dotplot on
+my_markers <- c("SHOX2", "PRRX1", "TBX18", "ZNF385B", "TENM2", "TENM3", "TENM4", "GDF10", "SLIT2",
+                "RCAN1", "IRX1", "IRX2", "IRX5", "BRINP3", "SEMA3A", "IRX3", "CSMD1", "PLXNA4",
+                "HCN1", "HCN4", "CACNA1D", "CACNA1G")
+
+# reorder the cell types desired
+data_kept_cells$annot_dl <- factor(data_kept_cells$annot_dl, 
+                                   levels = c("CM_1",   "CM_2",   "CM_3",   "CM_4-1", "CM_4-2", "CM_5",   "CM_6",   "CM_7",   "CM_8-1", "CM_8-2", "CM_8-3", "CM_9",   "CM_10", "CM_12",  "CM_14",  "CM_17",  "CM_18",  "CM_19-1", "CM_19-2",
+                                              "EN_1",  "EN_2",  "EN_3",  "EN_5",  "EN_6",  "EN_7",  "EN_10", "EN_11", "EN_12", "EN_13", "EN_14", "EN_15", "EN_16", "EN_17", "EN_18", "EN_19", "EN_20", "EN_21",
+                                              "FB_1",  "FB_2",  "FB_3",  "FB_4",  "FB_5",  "FB_6",  "FB_7",  "FB_8",  "FB_9",  "FB_11", "FB_12", "FB_13", "FB_14", "FB_15", "FB_17", "FB_18", "FB_19", "FB_20",
+                                              "IN_1",  "IN_3",  "IN_4",  "IN_7",  "IN_8",  "IN_11", "IN_12", "IN_13", "IN_17", "IN_19",
+                                              "HL_6",    "HL_8",    "HL_10",   "HL_15",   "HL_18_1", "HL_20",   "HL_22",   "HL_29",   "HL_34"
+                                              ))
+
+data_kept_cells <- SetIdent(data_kept_cells, value = "annot_dl")
+
+p <- DotPlot(data_kept_cells, features = my_markers) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+
+pdf(paste0(myfolder, "DL_dotplot_CPCS_marker_genes.pdf"), width = 20, height = 5)
+  print(p)
+dev.off()
+```
+
+
+### Specific gene over all DL clusters - ox sensing
+
+```{r}
+# specific list of marker to project the dotplot on
+my_markers <- c("EPAS1", "COX4I2", "HIGD1C")
+
+# reorder the cell types desired
+data_kept_cells$annot_dl <- factor(data_kept_cells$annot_dl, 
+                                   levels = c("CM_1",   "CM_2",   "CM_3",   "CM_4-1", "CM_4-2", "CM_5",   "CM_6",   "CM_7",   "CM_8-1", "CM_8-2", "CM_8-3", "CM_9",   "CM_10", "CM_12",  "CM_14",  "CM_17",  "CM_18",  "CM_19-1", "CM_19-2",
+                                              "EN_1",  "EN_2",  "EN_3",  "EN_5",  "EN_6",  "EN_7",  "EN_10", "EN_11", "EN_12", "EN_13", "EN_14", "EN_15", "EN_16", "EN_17", "EN_18", "EN_19", "EN_20", "EN_21",
+                                              "FB_1",  "FB_2",  "FB_3",  "FB_4",  "FB_5",  "FB_6",  "FB_7",  "FB_8",  "FB_9",  "FB_11", "FB_12", "FB_13", "FB_14", "FB_15", "FB_17", "FB_18", "FB_19", "FB_20",
+                                              "IN_1",  "IN_3",  "IN_4",  "IN_7",  "IN_8",  "IN_11", "IN_12", "IN_13", "IN_17", "IN_19",
+                                              "HL_6",    "HL_8",    "HL_10",   "HL_15",   "HL_18_1", "HL_20",   "HL_22",   "HL_29",   "HL_34"
+                                              ))
+
+data_kept_cells <- SetIdent(data_kept_cells, value = "annot_dl")
+
+p <- DotPlot(data_kept_cells, features = my_markers) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+
+pdf(paste0(myfolder, "DL_dotplot_ox-sensing_marker_genes.pdf"), width = 20, height = 5)
+  print(p)
+dev.off()
+```
+
+```{r}
+# specific list of marker to project the dotplot on
+my_markers <- c("EPAS1", "COX4I2", "HIGD1C", "RGS5", "RGS4", "NDUFA4L2")
+
+# reorder the cell types desired
+data_kept_cells$annot_dl <- factor(data_kept_cells$annot_dl, 
+                                   levels = c("CM_1",   "CM_2",   "CM_3",   "CM_4-1", "CM_4-2", "CM_5",   "CM_6",   "CM_7",   "CM_8-1", "CM_8-2", "CM_8-3", "CM_9",   "CM_10", "CM_12",  "CM_14",  "CM_17",  "CM_18",  "CM_19-1", "CM_19-2",
+                                              "EN_1",  "EN_2",  "EN_3",  "EN_5",  "EN_6",  "EN_7",  "EN_10", "EN_11", "EN_12", "EN_13", "EN_14", "EN_15", "EN_16", "EN_17", "EN_18", "EN_19", "EN_20", "EN_21",
+                                              "FB_1",  "FB_2",  "FB_3",  "FB_4",  "FB_5",  "FB_6",  "FB_7",  "FB_8",  "FB_9",  "FB_11", "FB_12", "FB_13", "FB_14", "FB_15", "FB_17", "FB_18", "FB_19", "FB_20",
+                                              "IN_1",  "IN_3",  "IN_4",  "IN_7",  "IN_8",  "IN_11", "IN_12", "IN_13", "IN_17", "IN_19",
+                                              "HL_6",    "HL_8",    "HL_10",   "HL_15",   "HL_18_1", "HL_20",   "HL_22",   "HL_29",   "HL_34"
+                                              ))
+
+data_kept_cells <- SetIdent(data_kept_cells, value = "annot_dl")
+
+p <- DotPlot(data_kept_cells, features = my_markers) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+
+pdf(paste0(myfolder, "DL_dotplot_ox-sensing_marker_genes_v2.pdf"), width = 20, height = 4)
+  print(p)
+dev.off()
+```
+
+
+### Specific gene over all DL clusters - CVP-FVP
+
+```{r}
+# specific list of marker to project the dotplot on
+my_markers <- c("MEIS2", "ISL1", "LGR5", "PDGFRA", "BMP4")
+
+# reorder the cell types desired
+data_kept_cells$annot_dl <- factor(data_kept_cells$annot_dl, 
+                                   levels = c("CM_1",   "CM_2",   "CM_3",   "CM_4-1", "CM_4-2", "CM_5",   "CM_6",   "CM_7",   "CM_8-1", "CM_8-2", "CM_8-3", "CM_9",   "CM_10", "CM_12",  "CM_14",  "CM_17",  "CM_18",  "CM_19-1", "CM_19-2",
+                                              "EN_1",  "EN_2",  "EN_3",  "EN_5",  "EN_6",  "EN_7",  "EN_10", "EN_11", "EN_12", "EN_13", "EN_14", "EN_15", "EN_16", "EN_17", "EN_18", "EN_19", "EN_20", "EN_21",
+                                              "FB_1",  "FB_2",  "FB_3",  "FB_4",  "FB_5",  "FB_6",  "FB_7",  "FB_8",  "FB_9",  "FB_11", "FB_12", "FB_13", "FB_14", "FB_15", "FB_17", "FB_18", "FB_19", "FB_20",
+                                              "IN_1",  "IN_3",  "IN_4",  "IN_7",  "IN_8",  "IN_11", "IN_12", "IN_13", "IN_17", "IN_19",
+                                              "HL_6",    "HL_8",    "HL_10",   "HL_15",   "HL_18_1", "HL_20",   "HL_22",   "HL_29",   "HL_34"
+                                              ))
+
+data_kept_cells <- SetIdent(data_kept_cells, value = "annot_dl")
+
+p <- DotPlot(data_kept_cells, features = my_markers) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+
+pdf(paste0(myfolder, "DL_dotplot_CVP_marker_genes.pdf"), width = 20, height = 4)
+  print(p)
+dev.off()
+```
+
+```{r}
+# specific list of marker to project the dotplot on
+my_markers <- c("SOX4", "HES4", "CTHRC1", "IGFBP2")
+
+# reorder the cell types desired
+data_kept_cells$annot_dl <- factor(data_kept_cells$annot_dl, 
+                                   levels = c("CM_1",   "CM_2",   "CM_3",   "CM_4-1", "CM_4-2", "CM_5",   "CM_6",   "CM_7",   "CM_8-1", "CM_8-2", "CM_8-3", "CM_9",   "CM_10", "CM_12",  "CM_14",  "CM_17",  "CM_18",  "CM_19-1", "CM_19-2",
+                                              "EN_1",  "EN_2",  "EN_3",  "EN_5",  "EN_6",  "EN_7",  "EN_10", "EN_11", "EN_12", "EN_13", "EN_14", "EN_15", "EN_16", "EN_17", "EN_18", "EN_19", "EN_20", "EN_21",
+                                              "FB_1",  "FB_2",  "FB_3",  "FB_4",  "FB_5",  "FB_6",  "FB_7",  "FB_8",  "FB_9",  "FB_11", "FB_12", "FB_13", "FB_14", "FB_15", "FB_17", "FB_18", "FB_19", "FB_20",
+                                              "IN_1",  "IN_3",  "IN_4",  "IN_7",  "IN_8",  "IN_11", "IN_12", "IN_13", "IN_17", "IN_19",
+                                              "HL_6",    "HL_8",    "HL_10",   "HL_15",   "HL_18_1", "HL_20",   "HL_22",   "HL_29",   "HL_34"
+                                              ))
+
+data_kept_cells <- SetIdent(data_kept_cells, value = "annot_dl")
+
+p <- DotPlot(data_kept_cells, features = my_markers) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+
+pdf(paste0(myfolder, "DL_dotplot_FVP_marker_genes.pdf"), width = 20, height = 4)
+  print(p)
+dev.off()
+```
+
+
+### Specific gene over all DL clusters - R2Q2
+
+```{r}
+# specific list of marker to project the dotplot on
+my_markers <- c("TENM1", "TENM2", "TENM3", "TENM4", "ADGRL1", "ADGRL2", "ADGRL3", "ADGRL4", "LRRC4C", "NTNG1", "GDF10", "NRXN1", "NRXN3", "NECTIN2", "CLSTN1", "CLSTN2", "NXPH1", "SNAP25", "STX1A", "VAMP2")
+
+# reorder the cell types desired
+data_kept_cells$annot_dl <- factor(data_kept_cells$annot_dl, 
+                                   levels = c("CM_1",   "CM_2",   "CM_3",   "CM_4-1", "CM_4-2", "CM_5",   "CM_6",   "CM_7",   "CM_8-1", "CM_8-2", "CM_8-3", "CM_9",   "CM_10", "CM_12",  "CM_14",  "CM_17",  "CM_18",  "CM_19-1", "CM_19-2",
+                                              "EN_1",  "EN_2",  "EN_3",  "EN_5",  "EN_6",  "EN_7",  "EN_10", "EN_11", "EN_12", "EN_13", "EN_14", "EN_15", "EN_16", "EN_17", "EN_18", "EN_19", "EN_20", "EN_21",
+                                              "FB_1",  "FB_2",  "FB_3",  "FB_4",  "FB_5",  "FB_6",  "FB_7",  "FB_8",  "FB_9",  "FB_11", "FB_12", "FB_13", "FB_14", "FB_15", "FB_17", "FB_18", "FB_19", "FB_20",
+                                              "IN_1",  "IN_3",  "IN_4",  "IN_7",  "IN_8",  "IN_11", "IN_12", "IN_13", "IN_17", "IN_19",
+                                              "HL_6",    "HL_8",    "HL_10",   "HL_15",   "HL_18_1", "HL_20",   "HL_22",   "HL_29",   "HL_34"
+                                              ))
+
+data_kept_cells <- SetIdent(data_kept_cells, value = "annot_dl")
+
+p <- DotPlot(data_kept_cells, features = my_markers) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+
+pdf(paste0(myfolder, "DL_dotplot_R2Q2_marker_genes.pdf"), width = 20, height = 5)
+  print(p)
+dev.off()
+```
+
+
+### Specific gene over all DL clusters - R2Q4
+
+```{r}
+# specific list of marker to project the dotplot on
+my_markers <- c("MESP1", "NKX2-5", "KIT", "KITLG", "CD34", "ABCG2", "ENG", "ALCAM", "GATA4", "MEF2C", "PECAM1", "PTPRC", "KDR", "CD44", "THY1", "CD46", "ITGB1", "MAB21L2", "ETV2", "FUT4", "SOX4", "HES4", "CTHRC1", "IGFBP2", "MEIS2", "LGR5", "BMP4", "ISL1", "PDGFRA")
+
+# reorder the cell types desired
+data_kept_cells$annot_dl <- factor(data_kept_cells$annot_dl, 
+                                   levels = c("CM_1",   "CM_2",   "CM_3",   "CM_4-1", "CM_4-2", "CM_5",   "CM_6",   "CM_7",   "CM_8-1", "CM_8-2", "CM_8-3", "CM_9",   "CM_10", "CM_12",  "CM_14",  "CM_17",  "CM_18",  "CM_19-1", "CM_19-2",
+                                              "EN_1",  "EN_2",  "EN_3",  "EN_5",  "EN_6",  "EN_7",  "EN_10", "EN_11", "EN_12", "EN_13", "EN_14", "EN_15", "EN_16", "EN_17", "EN_18", "EN_19", "EN_20", "EN_21",
+                                              "FB_1",  "FB_2",  "FB_3",  "FB_4",  "FB_5",  "FB_6",  "FB_7",  "FB_8",  "FB_9",  "FB_11", "FB_12", "FB_13", "FB_14", "FB_15", "FB_17", "FB_18", "FB_19", "FB_20",
+                                              "IN_1",  "IN_3",  "IN_4",  "IN_7",  "IN_8",  "IN_11", "IN_12", "IN_13", "IN_17", "IN_19",
+                                              "HL_6",    "HL_8",    "HL_10",   "HL_15",   "HL_18_1", "HL_20",   "HL_22",   "HL_29",   "HL_34"
+                                              ))
+
+data_kept_cells <- SetIdent(data_kept_cells, value = "annot_dl")
+
+p <- DotPlot(data_kept_cells, features = my_markers) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+
+pdf(paste0(myfolder, "DL_dotplot_R2Q4_marker_genes.pdf"), width = 20, height = 7)
+  print(p)
+dev.off()
+```
+
+
+### Specific gene over all DL clusters - R2Q4 - v2
+
+```{r}
+# specific list of marker to project the dotplot on
+my_markers <- c("MESP1", "NKX2-5", "FUT4", "KDR", "PDGFRA", "HCN4", "ISL1", "WT1", "TBX18", "SCX", "SEMA3D", "ADGRL2", "MEIS2", "LGR5", "BMP4", "SOX4", "HES4", "CTHRC1", "IGFBP2", "SALL1", "HOPX1", "FOXA2", "GFRA2", "KIT", "CD24")
+
+# reorder the cell types desired
+data_kept_cells$annot_dl <- factor(data_kept_cells$annot_dl, 
+                                   levels = c("CM_1",   "CM_2",   "CM_3",   "CM_4-1", "CM_4-2", "CM_5",   "CM_6",   "CM_7",   "CM_8-1", "CM_8-2", "CM_8-3", "CM_9",   "CM_10", "CM_12",  "CM_14",  "CM_17",  "CM_18",  "CM_19-1", "CM_19-2",
+                                              "EN_1",  "EN_2",  "EN_3",  "EN_5",  "EN_6",  "EN_7",  "EN_10", "EN_11", "EN_12", "EN_13", "EN_14", "EN_15", "EN_16", "EN_17", "EN_18", "EN_19", "EN_20", "EN_21",
+                                              "FB_1",  "FB_2",  "FB_3",  "FB_4",  "FB_5",  "FB_6",  "FB_7",  "FB_8",  "FB_9",  "FB_11", "FB_12", "FB_13", "FB_14", "FB_15", "FB_17", "FB_18", "FB_19", "FB_20",
+                                              "IN_1",  "IN_3",  "IN_4",  "IN_7",  "IN_8",  "IN_11", "IN_12", "IN_13", "IN_17", "IN_19",
+                                              "HL_6",    "HL_8",    "HL_10",   "HL_15",   "HL_18_1", "HL_20",   "HL_22",   "HL_29",   "HL_34"
+                                              ))
+
+data_kept_cells <- SetIdent(data_kept_cells, value = "annot_dl")
+
+p <- DotPlot(data_kept_cells, features = my_markers) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+
+pdf(paste0(myfolder, "DL_dotplot_R2Q4_marker_genes_v2.pdf"), width = 20, height = 7)
+  print(p)
+dev.off()
+```
+
+
+### Specific gene over FB + HL_22 + HL_10 + HL_8 (Extended Fig. 2F)
+
+```{r}
+# specific list of marker to project the dotplot on
+my_markers <- c("PLA2G5", "APOE", "SEMA5A", "COL4A1", "HEYL", "COL4A2", "F5", "ITGA11", "GUCY1A1", "IGFBP7", "ITGA1", "ENPEP", "CCDC3", "EPS8", "HES4", "DLC1", "LAMC3", "MCAM", "ACTA2")
+
+data_kept <- data_kept_cells[, data_kept_cells$annot_dl %in% c("FB_1",  "FB_2",  "FB_3",  "FB_4",  "FB_5",  "FB_6",  "FB_7",  "FB_8",  "FB_9",  "FB_11", "FB_12", "FB_13", "FB_14", "FB_15", "FB_17", "FB_18", "FB_19", "FB_20",
+                                              "HL_8",    "HL_10", "HL_22")]
+
+# reorder the cell types desired
+data_kept$annot_dl <- factor(data_kept$annot_dl, 
+                                   levels = c("FB_1",  "FB_2",  "FB_3",  "FB_4",  "FB_5",  "FB_6",  "FB_7",  "FB_8",  "FB_9",  "FB_11", "FB_12", "FB_13", "FB_14", "FB_15", "FB_17", "FB_18", "FB_19", "FB_20",
+                                              "HL_8",    "HL_10", "HL_22"))
+
+data_kept <- SetIdent(data_kept, value = "annot_dl")
+
+p <- DotPlot(data_kept, features = my_markers) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+
+pdf(paste0(myfolder, "DL_dotplot_markergenes_FB_HL22_HL10_HL8.pdf"), width = 8, height = 5)
+  print(p)
+dev.off()
+```
+
+
+### Specific gene over FB + HL_20 (Extended Fig. 4C)
+
+```{r}
+# specific list of marker to project the dotplot on
+my_markers <- c("WT1", "TBX18", "BNC1", "RARRES2", "UPK3B", "MSLN", "KRT19", "ITLN1", "PRG4", "SBSPON", "ALDH1A2", "EZR", "HAS1", "POSTN", "TWIST1", "SPARC", "CCBE1", "PDGFRA", "DPT", "IGFBP5", "RGS5", "FNDC1", "DCN", "COL1A1", "MOXD1", "MMP11", "CPB1", "VEGFC", "TCF21", "CENPF", "HMGB2")
+
+data_kept <- data_kept_cells[, data_kept_cells$annot_dl %in% c("FB_1",  "FB_2",  "FB_3",  "FB_4",  "FB_5",  "FB_6",  "FB_7",  "FB_8",  "FB_9",  "FB_11", "FB_12", "FB_13", "FB_14", "FB_15", "FB_17", "FB_18", "FB_19", "FB_20",
+                                              "HL_20")]
+
+# reorder the cell types desired
+data_kept$annot_dl <- factor(data_kept$annot_dl, 
+                                   levels = c("FB_7", "FB_3", "FB_18", "FB_14", "FB_5", "FB_9", "FB_19", "FB_2", "FB_12", "FB_4", "FB_13", "FB_11", "FB_17", "FB_8", "FB_1", "FB_6", "FB_15", "FB_20",
+                                              "HL_20"))
+
+data_kept <- SetIdent(data_kept, value = "annot_dl")
+
+p <- DotPlot(data_kept, features = my_markers) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+
+pdf(paste0(myfolder, "DL_dotplot_markergenes_FB_HL20.pdf"), width = 8, height = 7)
+  print(p)
+dev.off()
+```
+
+
+### Specific gene over CM (Supp Fig. 4E)
+
+```{r}
+# specific list of marker to project the dotplot on
+my_markers <- c("TENM1", "TENM2", "TENM3", "TENM4", "ADGRL1", "ADGRL2", "ADGRL3", "ADGRL4", "LRRC4C", "NTNG1", "GDF10", "NRXN1", "NRXN3", "NECTIN2", "CLSTN1", "CLSTN2", "NXPH1", "SNAP25", "STX1A", "VAMP2")
+
+data_kept <- data_kept_cells[, data_kept_cells$annot_dl %in% c("CM_1",   "CM_2",   "CM_3",   "CM_4-1", "CM_4-2", "CM_5",   "CM_6",   "CM_7",   "CM_8-1", "CM_8-2", "CM_8-3", "CM_9",   "CM_10", "CM_12",  "CM_14",  "CM_17",  "CM_18",  "CM_19-1", "CM_19-2")]
+
+# reorder the cell types desired
+data_kept$annot_dl <- factor(data_kept$annot_dl, 
+                                   levels = c("CM_1",   "CM_2",   "CM_3",   "CM_4-1", "CM_4-2", "CM_5",   "CM_6",   "CM_7",   "CM_8-1", "CM_8-2", "CM_8-3", "CM_9",   "CM_10", "CM_12",  "CM_14",  "CM_17",  "CM_18",  "CM_19-1", "CM_19-2"))
+
+data_kept <- SetIdent(data_kept, value = "annot_dl")
+
+p <- DotPlot(data_kept, features = my_markers) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+
+pdf(paste0(myfolder, "DL_dotplot_marker_genes_only_CM.pdf"), width = 8, height = 7)
+  print(p)
+dev.off()
+```
+
+
+### Specific gene over IN (Supp Fig. 4F)
+
+```{r}
+# specific list of marker to project the dotplot on
+my_markers <- c("TENM1", "TENM2", "TENM3", "TENM4", "ADGRL1", "ADGRL2", "ADGRL3", "ADGRL4", "LRRC4C", "NTNG1", "GDF10", "NRXN1", "NRXN3", "NECTIN2", "CLSTN1", "CLSTN2", "NXPH1", "SNAP25", "STX1A", "VAMP2")
+
+data_kept <- data_kept_cells[, data_kept_cells$annot_dl %in% c("IN_1",  "IN_3",  "IN_4",  "IN_7",  "IN_8",  "IN_11", "IN_12", "IN_13", "IN_17", "IN_19")]
+
+# reorder the cell types desired
+data_kept$annot_dl <- factor(data_kept$annot_dl, 
+                                   levels = c("IN_1",  "IN_3",  "IN_4",  "IN_7",  "IN_8",  "IN_11", "IN_12", "IN_13", "IN_17", "IN_19"))
+
+data_kept <- SetIdent(data_kept, value = "annot_dl")
+
+p <- DotPlot(data_kept, features = my_markers) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+
+pdf(paste0(myfolder, "DL_dotplot_marker_genes_only_IN.pdf"), width = 6, height = 7)
+  print(p)
+dev.off()
+```
+
+
+### Specific gene over FB + HL_20 - R2Q3
+
+```{r}
+# specific list of marker to project the dotplot on
+my_markers <- c("WT1", "TBX18", "BNC1", "RARRES2", "UPK3B", "MSLN", "KRT19", "ITLN1", "PRG4", "SBSPON", "ALDH1A2", "EZR", "HAS1", "POSTN", "TWIST1", "SPARC", "CCBE1", "PDGFRA", "DPT", "IGFBP5", "RGS5", "FNDC1", "DCN", "COL1A1", "MOXD1", "MMP11", "CPB1", "VEGFC", "TCF21", "CENPF", "HMGB2")
+
+data_kept <- data_kept_cells[, data_kept_cells$annot_dl %in% c("FB_7", "FB_3", "HL_20")]
+
+# reorder the cell types desired
+data_kept$annot_dl <- factor(data_kept$annot_dl, 
+                                   levels = c("FB_7", "FB_3", "HL_20"))
+
+data_kept <- SetIdent(data_kept, value = "annot_dl")
+
+p <- DotPlot(data_kept, features = my_markers) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+
+pdf(paste0(myfolder, "DL_dotplot_markergenes_FB_HL20_R2Q3.pdf"), width = 4, height = 7)
+  print(p)
+dev.off()
+```
+
+
+### DEG HL_20, FB_7, FB_3 (Extended Fig. 4D)
+
+```{r}
+cell_to_keep <- c("HL_20", "FB_7", "FB_3")
+data_sel <- data_kept_cells[, data_kept_cells$annot_dl %in% cell_to_keep]
+
+# reorder the cell types desired
+data_sel$annot_dl <- factor(data_sel$annot_dl, levels = cell_to_keep)
+
+data_sel <- SetIdent(data_sel, value = "annot_dl")
+
+
+# The logfc threshold is set to 0.1 as compared to the default 0.25, which makes the detection of weaker signals possible (but it takes more computational power).
+detable <- FindAllMarkers(data_sel,
+                          only.pos = TRUE,
+                          max.cells.per.ident = 300,
+                          logfc.threshold = .1,
+                          assay = "RNA",
+                          min.pct = 0.05)
+
+# Only keep DEG that have a p-value below 0.05.
+detable <- detable[detable$p_val < 0.05, ]
+
+# Adding two extra columns giving the difference (and log difference) between pct1 and pct2.
+# pct1 is the percentage of cells in the specific cluster that express this gene.
+# pct2 is the percentage of cells in all other clusters that express this gene.
+detable$pct.diff <- detable$pct.1 - detable$pct.2
+detable$log.pct.diff <- log2((detable$pct.1*99+1) / (detable$pct.2*99+1))
+
+
+# Pick the 40 genes with the lowest p value for each cluster, then 20 highest based on pct.diff, then 5 highest based on avg_log2FC.
+detable %>%
+  group_by(cluster) %>%
+  top_n(-40, p_val) %>%
+  top_n(20, pct.diff) %>%
+  top_n(10, avg_log2FC) ->
+  top10
+
+pdf(paste0(myfolder, "DEG_top10_HL_20_FB_7_FB_3.pdf"), width = 4.5, height = 7)
+par(mfrow=c(1,1), mar=c(3,6,2,5))
+DotPlot(data_sel, features = top10 %>% pull(gene) %>% unique()) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+dev.off()
+
+gc()
+rm(detable, DGE_DATA, top10, DGE_cells, sample_size)
+```
+
+
+## Subcluster HL_20 (R2-Q3)
+
+```{r}
+hl20 <- data[, as.character(data$high_level_clusters_removed) == "20"] %>% 
+  RunUMAP(dims = 1:50,
+          reduction = "harmony_oi",
+          n.neighbors = 30,
+          n.epochs = 100,
+          n.threads = 7,
+          reduction.key = "subset",
+          reduction.name = "umap_subset_hl20",
+          seed.use = 42)
+
+# Compute k nearest neighbours
+set.seed(1)
+nn <- CreateNNAdjacencyMatrix(data = hl20, reduction = "harmony_oi", k = 30, dims = 1:50)
+
+# Cluster adjacency matrix
+cl <- LouvainClustering(nn = nn, resolution = 0.6)
+hl20$clusters_subset_hl20 <- factor(cl)
+
+pdf(paste0(myfolder, "HL_subclusters_subset_hl20.pdf"), width = 10, height = 10)
+DimPlot(hl20, reduction = "umap_subset_hl20", group.by = "clusters_subset_hl20", label = TRUE) + NoLegend()
+dev.off()
+```
+
+```{r}
+hl20 <- SetIdent(hl20, value = "clusters_subset_hl20")
+de_markers_hl20 <- FindAllMarkers(hl20, only.pos = TRUE, logfc.threshold = 0.5) %>% 
+  filter(p_val_adj < 0.01)
+
+openxlsx::write.xlsx(de_markers_hl20 %>% filter(p_val_adj < 0.01),
+                     file = paste0(myfolder, "detable_hl20.xlsx"))
+
+p <- DotPlot(hl20, features = de_markers_hl20 %>% group_by(cluster) %>% 
+          slice_head(n = 10) %>% pull(gene) %>% unique()) +
+  coord_flip() +  # This flips the plot vertically
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  labs(x = "Genes", y = "Cluster")  # Flipped labels
+
+pdf(paste0(myfolder, "dotplot_de_genes_hl20.pdf"), width = 4, height = 7)
+print(p)
+dev.off()
+```
+
+```{r}
+# Create a single violin plot
+pdf(file = paste0(myfolder, "Vln_nfeature_hl20.pdf"),  width = 5, height = 5)
+VlnPlot(hl20, group.by = "clusters_subset_hl20", features = "nFeature_RNA", pt.size = 0) +
+stat_summary(fun.y = median, geom='point', size = 25, colour = "black", shape = 95) +
+theme(legend.position = 'none')
+dev.off()
+```
+
+```{r}
+# Create a single violin plot
+pdf(file = paste0(myfolder, "Vln_nCount_hl20.pdf"),  width = 5, height = 5)
+VlnPlot(hl20, group.by = "clusters_subset_hl20", features = "nCount_RNA", pt.size = 0) +
+stat_summary(fun.y = median, geom='point', size = 25, colour = "black", shape = 95) +
+theme(legend.position = 'none')
+dev.off()
+```
+
+
+## Subcluster HL_20 (R2-Q3) - higher resolution
+
+```{r}
+# Cluster adjacency matrix
+cl <- LouvainClustering(nn = nn, resolution = 0.7)
+hl20$clusters_subset_hl20_2 <- factor(cl)
+
+pdf(paste0(myfolder, "HL_subclusters_subset_hl20_2.pdf"), width = 10, height = 10)
+DimPlot(hl20, reduction = "umap_subset_hl20", group.by = "clusters_subset_hl20_2", label = TRUE) + NoLegend()
+dev.off()
+```
+
+```{r}
+hl20 <- SetIdent(hl20, value = "clusters_subset_hl20_2")
+de_markers_hl20_2 <- FindAllMarkers(hl20, only.pos = TRUE, logfc.threshold = 0.5) %>% 
+  filter(p_val_adj < 0.01)
+
+openxlsx::write.xlsx(de_markers_hl20_2 %>% filter(p_val_adj < 0.01),
+                     file = paste0(myfolder, "detable_hl20_2.xlsx"))
+
+p <- DotPlot(hl20, features = de_markers_hl20_2 %>% group_by(cluster) %>% 
+          slice_head(n = 10) %>% pull(gene) %>% unique()) +
+  coord_flip() +  # This flips the plot vertically
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  labs(x = "Genes", y = "Cluster")  # Flipped labels
+
+pdf(paste0(myfolder, "dotplot_de_genes_hl20_2.pdf"), width = 4, height = 7)
+print(p)
+dev.off()
+```
+
+```{r}
+# Create a single violin plot
+pdf(file = paste0(myfolder, "Vln_nfeature_hl20_2.pdf"),  width = 5, height = 5)
+VlnPlot(hl20, group.by = "clusters_subset_hl20_2", features = "nFeature_RNA", pt.size = 0) +
+stat_summary(fun.y = median, geom='point', size = 25, colour = "black", shape = 95) +
+theme(legend.position = 'none')
+dev.off()
+```
+
+```{r}
+# Create a single violin plot
+pdf(file = paste0(myfolder, "Vln_nCount_hl20_2.pdf"),  width = 5, height = 5)
+VlnPlot(hl20, group.by = "clusters_subset_hl20_2", features = "nCount_RNA", pt.size = 0) +
+stat_summary(fun.y = median, geom='point', size = 25, colour = "black", shape = 95) +
+theme(legend.position = 'none')
+dev.off()
+```
+
+```{r}
+hl20
+table(data$high_level_clusters_removed)
+table(hl20$clusters_subset_hl20_2)
+table(hl20$clusters_subset_hl20_2, hl20$age)
+
+```
+
+
+## Pathway enrichments analysis
+
+```{r}
+library(gprofiler2)
+```
+
+
+### Load needed DEG
+
+```{r}
+# EN7 , EN17, EN18, FB4, FB11, FB13
+detable_EN <- read.csv2(paste0(myfolder, "supplementary_tables/supplementary_table_5_DEG_EN.csv"))
+detable_FB <- read.csv2(paste0(myfolder, "supplementary_tables/supplementary_table_6_DEG_FB.csv"))
+```
+
+```{r}
+# EN7 = OF_VEC
+# EN17 = IF_VEC
+# EN18 = AtrSept_EC
+# FB4 = VIC
+# FB11 = Valve_MC_2
+# FB13 = Valve_MC_1
+```
+
+
+### Pathway enrichment calculation
+
+#### EN7 = OF_VEC
+
+```{r}
+input <- detable_EN[detable_EN$cluster %in% "OF_VEC", ] |>
+  select(X, avg_log2FC, p_val_adj)
+
+gene_list <- input$X
+length(gene_list)
+```
+
+```{r}
+# interested only in biological processes (GO:BP)
+gostres_EN7 <- gost(query = gene_list, 
+                organism = "hsapiens", ordered_query = TRUE, 
+                multi_query = FALSE, significant = TRUE, exclude_iea = FALSE, 
+                measure_underrepresentation = FALSE, evcodes = TRUE, 
+                user_threshold = 0.05, correction_method = "g_SCS", 
+                domain_scope = "annotated", numeric_ns = "", sources = NULL, as_short_link = FALSE, highlight = FALSE)
+```
+
+```{r}
+# results as dataframe
+df <- as.data.frame(gostres_EN7[["result"]]) |> as.matrix()
+
+# export dataframe
+write.csv2(df, paste0(myfolder, "pathway_enrichment/EN7.csv"))
+```
+
+
+#### EN17 = IF_VEC
+
+```{r}
+input <- detable_EN[detable_EN$cluster %in% "IF_VEC", ] |>
+  select(X, avg_log2FC, p_val_adj)
+
+gene_list <- input$X
+length(gene_list)
+```
+
+```{r}
+# interested only in biological processes (GO:BP)
+gostres <- gost(query = gene_list, 
+                organism = "hsapiens", ordered_query = TRUE, 
+                multi_query = FALSE, significant = TRUE, exclude_iea = FALSE, 
+                measure_underrepresentation = FALSE, evcodes = TRUE, 
+                user_threshold = 0.05, correction_method = "g_SCS", 
+                domain_scope = "annotated", numeric_ns = "", sources = NULL, as_short_link = FALSE, highlight = FALSE)
+```
+
+```{r}
+# results as dataframe
+df <- as.data.frame(gostres[["result"]]) |> as.matrix()
+
+# export dataframe
+write.csv2(df, paste0(myfolder, "pathway_enrichment/EN17.csv"))
+```
+
+
+#### EN18 = AtrSept_EC
+
+```{r}
+input <- detable_EN[detable_EN$cluster %in% "AtrSept_EC", ] |>
+  select(X, avg_log2FC, p_val_adj)
+
+gene_list <- input$X
+length(gene_list)
+```
+
+```{r}
+# interested only in biological processes (GO:BP)
+gostres <- gost(query = gene_list, 
+                organism = "hsapiens", ordered_query = TRUE, 
+                multi_query = FALSE, significant = TRUE, exclude_iea = FALSE, 
+                measure_underrepresentation = FALSE, evcodes = TRUE, 
+                user_threshold = 0.05, correction_method = "g_SCS", 
+                domain_scope = "annotated", numeric_ns = "", sources = NULL, as_short_link = FALSE, highlight = FALSE)
+```
+
+```{r}
+# results as dataframe
+df <- as.data.frame(gostres[["result"]]) |> as.matrix()
+
+# export dataframe
+write.csv2(df, paste0(myfolder, "pathway_enrichment/EN18.csv"))
+```
+
+
+#### FB4 = VIC
+
+```{r}
+input <- detable_FB[detable_FB$cluster %in% "VIC", ] |>
+  select(X, avg_log2FC, p_val_adj)
+
+gene_list <- input$X
+length(gene_list)
+```
+
+```{r}
+# interested only in biological processes (GO:BP)
+gostres_FB4 <- gost(query = gene_list, 
+                organism = "hsapiens", ordered_query = TRUE, 
+                multi_query = FALSE, significant = TRUE, exclude_iea = FALSE, 
+                measure_underrepresentation = FALSE, evcodes = TRUE, 
+                user_threshold = 0.05, correction_method = "g_SCS", 
+                domain_scope = "annotated", numeric_ns = "", sources = NULL, as_short_link = FALSE, highlight = FALSE)
+```
+
+```{r}
+# results as dataframe
+df <- as.data.frame(gostres_FB4[["result"]]) |> as.matrix()
+
+# export dataframe
+write.csv2(df, paste0(myfolder, "pathway_enrichment/FB4.csv"))
+```
+
+
+#### FB11 = Valve_MC_2
+
+```{r}
+input <- detable_FB[detable_FB$cluster %in% "Valve_MC_2", ] |>
+  select(X, avg_log2FC, p_val_adj)
+
+gene_list <- input$X
+length(gene_list)
+```
+
+```{r}
+# interested only in biological processes (GO:BP)
+gostres_FB11 <- gost(query = gene_list, 
+                organism = "hsapiens", ordered_query = TRUE, 
+                multi_query = FALSE, significant = TRUE, exclude_iea = FALSE, 
+                measure_underrepresentation = FALSE, evcodes = TRUE, 
+                user_threshold = 0.05, correction_method = "g_SCS", 
+                domain_scope = "annotated", numeric_ns = "", sources = NULL, as_short_link = FALSE, highlight = FALSE)
+```
+
+```{r}
+# results as dataframe
+df <- as.data.frame(gostres_FB11[["result"]]) |> as.matrix()
+
+# export dataframe
+write.csv2(df, paste0(myfolder, "pathway_enrichment/FB11.csv"))
+```
+
+
+#### FB13 = Valve_MC_1
+
+```{r}
+input <- detable_FB[detable_FB$cluster %in% "Valve_MC_1", ] |>
+  select(X, avg_log2FC, p_val_adj)
+
+gene_list <- input$X
+length(gene_list)
+```
+
+```{r}
+# interested only in biological processes (GO:BP)
+gostres <- gost(query = gene_list, 
+                organism = "hsapiens", ordered_query = TRUE, 
+                multi_query = FALSE, significant = TRUE, exclude_iea = FALSE, 
+                measure_underrepresentation = FALSE, evcodes = TRUE, 
+                user_threshold = 0.05, correction_method = "g_SCS", 
+                domain_scope = "annotated", numeric_ns = "", sources = NULL, as_short_link = FALSE, highlight = FALSE)
+```
+
+```{r}
+# results as dataframe
+df <- as.data.frame(gostres[["result"]]) |> as.matrix()
+
+# export dataframe
+write.csv2(df, paste0(myfolder, "pathway_enrichment/FB13.csv"))
+```
+
+
+### Pathway enrichement plotting
+For selected clusters:
+
+#### Load terms to highlight
+
+```{r}
+GO_highlight_EN7 <- read.xlsx("/home/rstudio/project/output/HDCA_heart_sc_analysis_docker/pathway_enrichment/pathway_enrichment.xlsx", sheet = 1, colNames = FALSE)
+GO_highlight_FB4 <- read.xlsx("/home/rstudio/project/output/HDCA_heart_sc_analysis_docker/pathway_enrichment/pathway_enrichment.xlsx", sheet = 2, colNames = FALSE)
+GO_highlight_FB11 <- read.xlsx("/home/rstudio/project/output/HDCA_heart_sc_analysis_docker/pathway_enrichment/pathway_enrichment.xlsx", sheet = 3, colNames = FALSE)
+```
+
+```{r}
+#plotting
+p <- gostplot(gostres_EN7, capped = FALSE, interactive = FALSE)
+terms <- GO_highlight_EN7$X11
+pp <- publish_gostplot(p, highlight_terms = terms, 
+                       width = 10, height = 5, 
+                       filename = paste0(myfolder, "pathway_enrichment/EN7.pdf"))
+```
+
+```{r}
+#plotting
+p <- gostplot(gostres_FB4, capped = FALSE, interactive = FALSE)
+terms <- GO_highlight_FB4$X11
+
+pp <- publish_gostplot(p, highlight_terms = terms, 
+                       width = 10, height = 10, 
+                       filename = paste0(myfolder, "pathway_enrichment/FB4.pdf"))
+```
+
+```{r}
+#plotting
+p <- gostplot(gostres_FB11, capped = FALSE, interactive = FALSE)
+terms <- GO_highlight_FB11$X11
+pp <- publish_gostplot(p, highlight_terms = terms, 
+                       width = 10, height = 10, 
+                       filename = paste0(myfolder, "pathway_enrichment/FB11.pdf"))
+```
+
+
+## LR selection clusters + selection LR pairs
+
+Calculate mean function of Receptors (R) from SAN_CM with Ligands (L) from its direct neighbors (AVN_CM, Immat_CM_2, CALN1high, Aut_Neu_2, Ven_EC, Chrom_C) from niche network.
+
+For each of the selected clusters, we keep genes that are differentially expressed in that cluster compared to the other DL clusters.
+
+We assess all the pairs from the module of inputs from: https://static-content.springer.com/esm/art%3A10.1038%2Fs41586-023-06311-1/MediaObjects/41586_2023_6311_MOESM5_ESM.xlsx
+
+
+### Load input module
+
+```{r}
+#load module of ligands-receptors
+input_modules <- read.xlsx("/home/rstudio/project/data/metadata/41586_2023_6311_MOESM5_ESM.xlsx")
+
+#keep only rows with values for protein_name_a (L) & protein_name_b (R)
+input_curated <- input_modules |>
+  filter(!is.na(protein_name_a) & protein_name_a != "") |>
+  filter(!is.na(protein_name_b) & protein_name_b != "") |>
+  select(protein_name_a, protein_name_b)
+
+#specify list of LR to add to the module
+LR_pairs_to_add <- list(c("TH", "ADRA1A"),
+                        c("TH", "ADRA1B"),
+                        c("TH", "ADRA1C"),
+                        c("TH", "ADRA1D"),
+                        c("TH", "ADRA2A"),
+                        c("TH", "ADRA2B"),
+                        c("TH", "ADRA2C"),
+                        c("TH", "ADRB1"),
+                        c("TH", "ADRB2"),
+                        c("TH", "ADRB3"),
+                        c("CHAT", "CHRM1"),
+                        c("CHAT", "CHRM2"),
+                        c("CHAT", "CHRM3"),
+                        c("CHAT", "CHRM4"),
+                        c("CHAT", "CHRM5"))
+
+#add the specific pairs to the module
+for (pairs in LR_pairs_to_add) {
+  print(pairs)
+  input_curated <- rbind(input_curated, pairs)
+}
+
+#create a specific list with 1) all ligands, 2) all receptors, 3) all ligands & receptors
+ligands <- input_curated$protein_name_a
+receptors <- input_curated$protein_name_b
+ligands_receptors <- c(ligands, receptors)
+
+rm(input_modules, LR_pairs_to_add)
+gc()
+```
+
+
+### Load DEG from clusters of interest
+SAN_CM = CM_19-2
+AVN_CM = CM_19-1
+Immat_CM_2 = CM_7
+CALN1high_FB = FB_17
+Aut_Neu_2 = IN_13
+Ven_EC = EN_16
+Chrom_C = IN_1
+
+```{r}
+#load DEG tables for each subclustering
+detable_CM <- read.csv2(paste0(myfolder, "supplementary_tables/supplementary_table_3_DEG_CM.csv"))
+detable_IN <- read.csv2(paste0(myfolder, "supplementary_tables/supplementary_table_4_DEG_IN.csv"))
+detable_EN <- read.csv2(paste0(myfolder, "supplementary_tables/supplementary_table_5_DEG_EN.csv"))
+detable_FB <- read.csv2(paste0(myfolder, "supplementary_tables/supplementary_table_6_DEG_FB.csv"))
+
+#extract significant genes from each cluster of interest
+SAN_CM_genes <- detable_CM |>filter(cluster == "SAN_CM") |> pull(gene)
+AVN_CM_genes <- detable_CM |>filter(cluster == "AVN_CM") |> pull(gene)
+Immat_CM_2_genes <- detable_CM |>filter(cluster == "Immat_CM_2") |> pull(gene)
+CALN1high_FB_genes <- detable_FB |>filter(cluster == "CALN1high_FB") |> pull(gene)
+Aut_Neu_2_genes <- detable_IN |>filter(cluster == "Aut_Neu_2") |> pull(gene)
+Ven_EC_genes <- detable_EN |>filter(cluster == "Ven_EC") |> pull(gene)
+Chrom_C_genes <- detable_IN |>filter(cluster == "Chrom_C") |> pull(gene)
+
+#extract only the genes that are present in ligands_receptors
+SAN_CM_genes_extract <- SAN_CM_genes[SAN_CM_genes %in% ligands_receptors == TRUE]
+AVN_CM_genes_extract <- AVN_CM_genes[AVN_CM_genes %in% ligands_receptors == TRUE]
+Immat_CM_2_genes_extract <- Immat_CM_2_genes[Immat_CM_2_genes %in% ligands_receptors == TRUE]
+CALN1high_FB_genes_extract <- CALN1high_FB_genes[CALN1high_FB_genes %in% ligands_receptors == TRUE]
+Aut_Neu_2_genes_extract <- Aut_Neu_2_genes[Aut_Neu_2_genes %in% ligands_receptors == TRUE]
+Ven_EC_genes_extract <- Ven_EC_genes[Ven_EC_genes %in% ligands_receptors == TRUE]
+Chrom_C_genes_extract <- Chrom_C_genes[Chrom_C_genes %in% ligands_receptors == TRUE]
+
+#print ligands_receptors:
+sort(SAN_CM_genes_extract)
+sort(AVN_CM_genes_extract)
+sort(Immat_CM_2_genes_extract)
+sort(CALN1high_FB_genes_extract)
+sort(Aut_Neu_2_genes_extract)
+sort(Ven_EC_genes_extract)
+sort(Chrom_C_genes_extract)
+
+rm(detable_CM, detable_IN, detable_EN, detable_FB)
+gc()
+```
+
+
+### ligands
+
+```{r}
+#extract Ligand for each cluster
+#from SAN_CM_genes, extract only the genes that are present in ligands
+SAN_CM_ligands_extract <- SAN_CM_genes[SAN_CM_genes %in% ligands == TRUE]
+
+#from other clusters, extract only genes that are present in ligands
+AVN_CM_ligands_extract <- AVN_CM_genes[AVN_CM_genes %in% ligands == TRUE]
+Immat_CM_2_ligands_extract <- Immat_CM_2_genes[Immat_CM_2_genes %in% ligands == TRUE]
+CALN1high_FB_ligands_extract <- CALN1high_FB_genes[CALN1high_FB_genes %in% ligands == TRUE]
+Aut_Neu_2_ligands_extract <- Aut_Neu_2_genes[Aut_Neu_2_genes %in% ligands == TRUE]
+Ven_EC_ligands_extract <- Ven_EC_genes[Ven_EC_genes %in% ligands == TRUE]
+Chrom_C_ligands_extract <- Chrom_C_genes[Chrom_C_genes %in% ligands == TRUE]
+
+#print ligands_receptors:
+sort(SAN_CM_ligands_extract)
+
+#print ligands_receptors:
+sort(AVN_CM_ligands_extract)
+sort(Immat_CM_2_ligands_extract)
+sort(CALN1high_FB_ligands_extract)
+sort(Aut_Neu_2_ligands_extract)
+sort(Ven_EC_ligands_extract)
+sort(Chrom_C_ligands_extract)
+```
+
+
+### receptors
+
+```{r}
+#extract Ligand for each cluster
+#from SAN_CM_genes, extract only the genes that are present in receptors
+SAN_CM_receptors_extract <- SAN_CM_genes[SAN_CM_genes %in% receptors == TRUE]
+
+#from other clusters, extract only genes that are present in receptors
+AVN_CM_receptors_extract <- AVN_CM_genes[AVN_CM_genes %in% receptors == TRUE]
+Immat_CM_2_receptors_extract <- Immat_CM_2_genes[Immat_CM_2_genes %in% receptors == TRUE]
+CALN1high_FB_receptors_extract <- CALN1high_FB_genes[CALN1high_FB_genes %in% receptors == TRUE]
+Aut_Neu_2_receptors_extract <- Aut_Neu_2_genes[Aut_Neu_2_genes %in% receptors == TRUE]
+Ven_EC_receptors_extract <- Ven_EC_genes[Ven_EC_genes %in% receptors == TRUE]
+Chrom_C_receptors_extract <- Chrom_C_genes[Chrom_C_genes %in% receptors == TRUE]
+
+#print ligands_receptors:
+sort(SAN_CM_receptors_extract)
+
+#print ligands_receptors:
+sort(AVN_CM_receptors_extract)
+sort(Immat_CM_2_receptors_extract)
+sort(CALN1high_FB_receptors_extract)
+sort(Aut_Neu_2_receptors_extract)
+sort(Ven_EC_receptors_extract)
+sort(Chrom_C_receptors_extract)
+```
+
+
+### Create list of vectors from the input_curated dataframe
+
+```{r}
+#create list of vector for LR pairs from the module
+input_curated_list <- list()
+for (row in seq_along(1:nrow(input_curated))) {
+  print(row)
+  i <- input_curated[row, ] |> pull(protein_name_a)
+  j <- input_curated[row, ] |> pull(protein_name_b)
+  vec <- c(i,j)
+  input_curated_list <- append(input_curated_list, list(vec))
+}
+```
+
+
+### Create a list of vectors for each potential L-R pairs
+
+### from _genes_extract (no directionality kept)
+
+#### SAN_CM & AVN_CM
+
+```{r}
+LR_SAN_AVN_list <- list()
+for (i in SAN_CM_genes_extract){
+  for (j in AVN_CM_genes_extract) {
+    vec <- c(i,j)
+    print(vec)
+    LR_SAN_AVN_list <- append(LR_SAN_AVN_list, list(vec))
+    
+    vec2 <- c(j,i)
+    print(vec2)
+    LR_SAN_AVN_list <- append(LR_SAN_AVN_list, list(vec2))
+  }
+}
+LR_SAN_AVN_list_common <- intersect(input_curated_list, LR_SAN_AVN_list)
+
+rm(LR_SAN_AVN_list)
+gc()
+```
+
+
+#### SAN_CM & Immat_CM_2
+
+```{r}
+LR_SAN_Immat_CM_list <- list()
+for (i in SAN_CM_genes_extract){
+  for (j in Immat_CM_2_genes_extract) {
+    vec <- c(i,j)
+    print(vec)
+    LR_SAN_Immat_CM_list <- append(LR_SAN_Immat_CM_list, list(vec))
+    
+    vec2 <- c(j,i)
+    print(vec2)
+    LR_SAN_Immat_CM_list <- append(LR_SAN_Immat_CM_list, list(vec2))
+  }
+}
+LR_SAN_Immat_CM_list_common <- intersect(input_curated_list, LR_SAN_Immat_CM_list)
+
+rm(LR_SAN_Immat_CM_list)
+gc()
+```
+
+
+#### SAN_CM & CALN1high_FB
+
+```{r}
+LR_SAN_CALN1high_FB_list <- list()
+for (i in SAN_CM_genes_extract){
+  for (j in CALN1high_FB_genes_extract) {
+    vec <- c(i,j)
+    print(vec)
+    LR_SAN_CALN1high_FB_list <- append(LR_SAN_CALN1high_FB_list, list(vec))
+    
+    vec2 <- c(j,i)
+    print(vec2)
+    LR_SAN_CALN1high_FB_list <- append(LR_SAN_CALN1high_FB_list, list(vec2))
+  }
+}
+LR_SAN_CALN1high_FB_list_common <- intersect(input_curated_list, LR_SAN_CALN1high_FB_list)
+
+rm(LR_SAN_CALN1high_FB_list)
+gc()
+```
+
+
+#### SAN_CM & Aut_Neu_2
+
+```{r}
+LR_SAN_Aut_Neu_2_list <- list()
+for (i in SAN_CM_genes_extract){
+  for (j in Aut_Neu_2_genes_extract) {
+    vec <- c(i,j)
+    print(vec)
+    LR_SAN_Aut_Neu_2_list <- append(LR_SAN_Aut_Neu_2_list, list(vec))
+    
+    vec2 <- c(j,i)
+    print(vec2)
+    LR_SAN_Aut_Neu_2_list <- append(LR_SAN_Aut_Neu_2_list, list(vec2))
+
+  }
+}
+LR_SAN_Aut_Neu_2_list_common <- intersect(input_curated_list, LR_SAN_Aut_Neu_2_list)
+
+rm(LR_SAN_Aut_Neu_2_list)
+gc()
+```
+
+
+#### SAN_CM & Ven_EC
+
+```{r}
+LR_SAN_Ven_EC_list <- list()
+for (i in SAN_CM_genes_extract){
+  for (j in Ven_EC_genes_extract) {
+    vec <- c(i,j)
+    print(vec)
+    LR_SAN_Ven_EC_list <- append(LR_SAN_Ven_EC_list, list(vec))
+    
+    vec2 <- c(j,i)
+    print(vec2)
+    LR_SAN_Ven_EC_list <- append(LR_SAN_Ven_EC_list, list(vec2))
+
+  }
+}
+LR_SAN_Ven_EC_list_common <- intersect(input_curated_list, LR_SAN_Ven_EC_list)
+
+rm(LR_SAN_Ven_EC_list)
+gc()
+```
+
+
+#### SAN_CM & Chrom_C
+
+```{r}
+LR_SAN_Chrom_C_list <- list()
+
+for (i in SAN_CM_genes_extract){
+  for (j in Chrom_C_genes_extract) {
+    vec <- c(i,j)
+    print(vec)
+    LR_SAN_Chrom_C_list <- append(LR_SAN_Chrom_C_list, list(vec))
+
+    vec2 <- c(j,i)
+    print(vec2)
+    LR_SAN_Chrom_C_list <- append(LR_SAN_Chrom_C_list, list(vec2))
+
+  }
+}
+LR_SAN_Chrom_C_list_common <- intersect(input_curated_list, LR_SAN_Chrom_C_list)
+
+rm(LR_SAN_Chrom_C_list)
+gc()
+```
+
+
+### All catched LR pairs:
+
+```{r}
+LR_SAN_AVN_list_common
+LR_SAN_Immat_CM_list_common
+LR_SAN_CALN1high_FB_list_common
+LR_SAN_Aut_Neu_2_list_common
+LR_SAN_Ven_EC_list_common
+LR_SAN_Chrom_C_list_common
+
+all_LR_vector <- sort(unique(unlist(c(LR_SAN_AVN_list_common, LR_SAN_Immat_CM_list_common, LR_SAN_CALN1high_FB_list_common, LR_SAN_Aut_Neu_2_list_common, LR_SAN_Ven_EC_list_common, LR_SAN_Chrom_C_list_common))))
+```
+
+
+### from _ligands_extract & _receptors_extract (directionality kept)
+
+#### SAN_CM & AVN_CM
+
+```{r}
+L_SAN_CM_R_AVN_CM_list <- list()
+for (i in SAN_CM_ligands_extract){
+  for (j in AVN_CM_receptors_extract) {
+    vec <- c(i,j)
+    print(vec)
+    L_SAN_CM_R_AVN_CM_list <- append(L_SAN_CM_R_AVN_CM_list, list(vec))
+  }
+}
+L_SAN_CM_R_AVN_CM_list_common <- intersect(input_curated_list, L_SAN_CM_R_AVN_CM_list)
+
+
+
+L_AVN_CM_R_SAN_CM_list <- list()
+for (i in  AVN_CM_ligands_extract){
+  for (j in SAN_CM_receptors_extract) {
+    vec <- c(i,j)
+    print(vec)
+    L_AVN_CM_R_SAN_CM_list <- append(L_AVN_CM_R_SAN_CM_list, list(vec))
+  }
+}
+L_AVN_CM_R_SAN_CM_list_common <- intersect(input_curated_list, L_AVN_CM_R_SAN_CM_list)
+
+rm(L_SAN_CM_R_AVN_CM_list, L_AVN_CM_R_SAN_CM_list)
+gc()
+```
+
+
+#### SAN_CM & Immat_CM_2
+
+```{r}
+L_SAN_CM_R_Immat_CM_2_list <- list()
+for (i in SAN_CM_ligands_extract){
+  for (j in Immat_CM_2_receptors_extract) {
+    vec <- c(i,j)
+    print(vec)
+    L_SAN_CM_R_Immat_CM_2_list <- append(L_SAN_CM_R_Immat_CM_2_list, list(vec))
+  }
+}
+L_SAN_R_Immat_CM_list_common <- intersect(input_curated_list, L_SAN_CM_R_Immat_CM_2_list)
+
+
+
+L_Immat_CM_2_R_SAN_CM_list <- list()
+for (i in  Immat_CM_2_ligands_extract){
+  for (j in SAN_CM_receptors_extract) {
+    vec <- c(i,j)
+    print(vec)
+    L_Immat_CM_2_R_SAN_CM_list <- append(L_Immat_CM_2_R_SAN_CM_list, list(vec))
+  }
+}
+L_Immat_CM_R_SAN_list_common <- intersect(input_curated_list, L_Immat_CM_2_R_SAN_CM_list)
+
+rm(L_SAN_CM_R_Immat_CM_2_list, L_Immat_CM_2_R_SAN_CM_list)
+gc()
+```
+
+
+#### SAN_CM & CALN1high_FB
+
+```{r}
+L_SAN_CM_R_CALN1high_FB_list <- list()
+for (i in SAN_CM_ligands_extract){
+  for (j in CALN1high_FB_receptors_extract) {
+    vec <- c(i,j)
+    print(vec)
+    L_SAN_CM_R_CALN1high_FB_list <- append(L_SAN_CM_R_CALN1high_FB_list, list(vec))
+  }
+}
+L_SAN_CM_R_CALN1high_FB_list_common <- intersect(input_curated_list, L_SAN_CM_R_CALN1high_FB_list)
+
+
+
+L_CALN1high_FB_R_SAN_CM_list <- list()
+for (i in  CALN1high_FB_ligands_extract){
+  for (j in SAN_CM_receptors_extract) {
+    vec <- c(i,j)
+    print(vec)
+    L_CALN1high_FB_R_SAN_CM_list <- append(L_CALN1high_FB_R_SAN_CM_list, list(vec))
+  }
+}
+L_CALN1high_FB_R_SAN_CM_list_common <- intersect(input_curated_list, L_CALN1high_FB_R_SAN_CM_list)
+
+rm(L_SAN_CM_R_CALN1high_FB_list, L_CALN1high_FB_R_SAN_CM_list)
+gc()
+```
+
+
+#### SAN_CM & Aut_Neu_2
+
+```{r}
+L_SAN_CM_R_Aut_Neu_2_list <- list()
+for (i in SAN_CM_ligands_extract){
+  for (j in Aut_Neu_2_receptors_extract) {
+    vec <- c(i,j)
+    print(vec)
+    L_SAN_CM_R_Aut_Neu_2_list <- append(L_SAN_CM_R_Aut_Neu_2_list, list(vec))
+  }
+}
+L_SAN_CM_R_Aut_Neu_2_list_common <- intersect(input_curated_list, L_SAN_CM_R_Aut_Neu_2_list)
+
+
+
+L_Aut_Neu_2_R_SAN_CM_list <- list()
+for (i in  Aut_Neu_2_ligands_extract){
+  for (j in SAN_CM_receptors_extract) {
+    vec <- c(i,j)
+    print(vec)
+    L_Aut_Neu_2_R_SAN_CM_list <- append(L_Aut_Neu_2_R_SAN_CM_list, list(vec))
+  }
+}
+L_Aut_Neu_2_R_SAN_CM_list_common <- intersect(input_curated_list, L_Aut_Neu_2_R_SAN_CM_list)
+
+rm(L_SAN_CM_R_Aut_Neu_2_list, L_Aut_Neu_2_R_SAN_CM_list)
+gc()
+```
+
+
+#### SAN_CM & Ven_EC
+
+```{r}
+L_SAN_CM_R_Ven_EC_list <- list()
+for (i in SAN_CM_ligands_extract){
+  for (j in Ven_EC_receptors_extract) {
+    vec <- c(i,j)
+    print(vec)
+    L_SAN_CM_R_Ven_EC_list <- append(L_SAN_CM_R_Ven_EC_list, list(vec))
+  }
+}
+L_SAN_CM_R_Ven_EC_list_common <- intersect(input_curated_list, L_SAN_CM_R_Ven_EC_list)
+
+
+
+L_Ven_EC_R_SAN_CM_list <- list()
+for (i in  Ven_EC_ligands_extract){
+  for (j in SAN_CM_receptors_extract) {
+    vec <- c(i,j)
+    print(vec)
+    L_Ven_EC_R_SAN_CM_list <- append(L_Ven_EC_R_SAN_CM_list, list(vec))
+  }
+}
+L_Ven_EC_R_SAN_CM_list_common <- intersect(input_curated_list, L_Ven_EC_R_SAN_CM_list)
+
+rm(L_SAN_CM_R_Ven_EC_list, L_Ven_EC_R_SAN_CM_list)
+gc()
+```
+
+
+#### SAN_CM & Chrom_C
+
+```{r}
+L_SAN_CM_R_Chrom_C_list <- list()
+for (i in SAN_CM_ligands_extract){
+  for (j in Chrom_C_receptors_extract) {
+    vec <- c(i,j)
+    print(vec)
+    L_SAN_CM_R_Chrom_C_list <- append(L_SAN_CM_R_Chrom_C_list, list(vec))
+  }
+}
+L_SAN_CM_R_Chrom_C_list_common <- intersect(input_curated_list, L_SAN_CM_R_Chrom_C_list)
+
+
+
+L_Chrom_C_R_SAN_CM_list <- list()
+for (i in  Chrom_C_ligands_extract){
+  for (j in SAN_CM_receptors_extract) {
+    vec <- c(i,j)
+    print(vec)
+    L_Chrom_C_R_SAN_CM_list <- append(L_Chrom_C_R_SAN_CM_list, list(vec))
+  }
+}
+L_Chrom_C_R_SAN_CM_list_common <- intersect(input_curated_list, L_Chrom_C_R_SAN_CM_list)
+
+rm(L_SAN_CM_R_Chrom_C_list, L_Chrom_C_R_SAN_CM_list)
+gc()
+```
+
+
+### All catched LR pairs:
+
+```{r}
+L_SAN_CM_R_AVN_CM_list_common
+L_AVN_CM_R_SAN_CM_list_common
+L_SAN_R_Immat_CM_list_common
+L_Immat_CM_R_SAN_list_common
+L_SAN_CM_R_CALN1high_FB_list_common
+L_CALN1high_FB_R_SAN_CM_list_common
+L_SAN_CM_R_Aut_Neu_2_list_common
+L_Aut_Neu_2_R_SAN_CM_list_common
+L_SAN_CM_R_Ven_EC_list_common
+L_Ven_EC_R_SAN_CM_list_common
+L_SAN_CM_R_Chrom_C_list_common
+L_Chrom_C_R_SAN_CM_list_common
+
+
+all_LR_vector <- sort(unique(unlist(c(L_SAN_CM_R_AVN_CM_list_common,
+L_AVN_CM_R_SAN_CM_list_common,
+L_SAN_R_Immat_CM_list_common,
+L_Immat_CM_R_SAN_list_common,
+L_SAN_CM_R_CALN1high_FB_list_common,
+L_CALN1high_FB_R_SAN_CM_list_common,
+L_SAN_CM_R_Aut_Neu_2_list_common,
+L_Aut_Neu_2_R_SAN_CM_list_common,
+L_SAN_CM_R_Ven_EC_list_common,
+L_Ven_EC_R_SAN_CM_list_common,
+L_SAN_CM_R_Chrom_C_list_common,
+L_Chrom_C_R_SAN_CM_list_common))))
+```
+
+
+### Calculate LR scores
+
+SAN_CM = CM_19-2
+AVN_CM = CM_19-1
+Immat_CM_2 = CM_7
+CALN1high_FB = FB_17
+Aut_Neu_2 = IN_13
+Ven_EC = EN_16
+Chrom_C = IN_1
+
+```{r}
+avg_exp <- AverageExpression(object = data_kept_cells, group.by = c('annot_dl'))$RNA
+avg_exp <- avg_exp[rownames(avg_exp) %in% all_LR_vector, 
+                   colnames(avg_exp) %in% c("CM_19-2", "CM_19-1", "CM_7", "FB_17", "IN_13", "EN_16", "IN_1")]
+```
+
+
+## Function L-->R score
+
+```{r}
+source("/home/rstudio/project/code/LR.R")
+```
+
+
+# No directionality 
+## SAN to Others
+
+### SAN(L) --> AVN(R)
+
+```{r}
+SAN_AVN <- LR_table(avg_exp,
+                       Ligand_source = "CM_19-2",
+                       Receptor_source = "CM_19-1",
+                       list_LR_pairs = LR_SAN_AVN_list_common)
+```
+
+### SAN(L) --> Immat_CM_2(R)
+
+```{r}
+SAN_Immat_CM_2 <- LR_table(avg_exp,
+                       Ligand_source = "CM_19-2",
+                       Receptor_source = "CM_7",
+                       list_LR_pairs = LR_SAN_Immat_CM_list_common)
+```
+
+
+### SAN(L) --> CALN1high_FB(R)
+
+```{r}
+SAN_CALN1high_FB <- LR_table(avg_exp,
+                       Ligand_source = "CM_19-2",
+                       Receptor_source = "FB_17",
+                       list_LR_pairs = LR_SAN_CALN1high_FB_list_common)
+```
+
+
+### SAN(L) --> Aut_Neu_2(R)
+
+```{r}
+SAN_Aut_Neu_2 <- LR_table(avg_exp,
+                       Ligand_source = "CM_19-2",
+                       Receptor_source = "IN_13",
+                       list_LR_pairs = LR_SAN_Aut_Neu_2_list_common)
+#SAN_Aut_Neu_2 <- SAN_Aut_Neu_2 |> filter(Score != 0)
+```
+
+
+### SAN(L) --> Ven_EC(R)
+
+```{r}
+SAN_Ven_EC <- LR_table(avg_exp,
+                       Ligand_source = "CM_19-2",
+                       Receptor_source = "EN_16",
+                       list_LR_pairs = LR_SAN_Ven_EC_list_common)
+```
+
+
+### SAN(L) --> Chrom_C(R)
+
+```{r}
+SAN_Chrom_C <- LR_table(avg_exp,
+                       Ligand_source = "CM_19-2",
+                       Receptor_source = "IN_1",
+                       list_LR_pairs = LR_SAN_Chrom_C_list_common)
+#SAN_Chrom_C <- SAN_Chrom_C |> filter(Score != 0)
+```
+
+
+### Merge data frames SAN (L) --> others (R)
+
+```{r}
+merged_dataframe <- bind_rows(SAN_AVN, SAN_CALN1high_FB, SAN_Aut_Neu_2, SAN_Ven_EC, SAN_Chrom_C) #remove SAN_Immat_CM_2 otherwise the merge does not work.
+merged_dataframe$Score <- as.numeric(merged_dataframe$Score)
+```
+
+
+### Plot Heatmap
+
+```{r}
+pal <- colorRampPalette(RColorBrewer::brewer.pal(n = 8, name = "RdPu"))(25)
+
+#plot
+p <- ggplot(merged_dataframe, aes(merged_dataframe[,1], merged_dataframe[,2], fill = merged_dataframe[,3])) + 
+  geom_tile() +
+  scale_fill_gradientn(colours = pal) +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle = 90)) +
+  labs(fill = "LR score",
+       x = "Source cell types",
+       y = "Ligand --> Receptor")
+
+p
+
+
+pdf(file = paste0(myfolder, "cellcellcommunication/Heatmap_SAN_to_others_v2.pdf"),
+     width = 4, height = 25)
+p
+dev.off()
+```
+
+
+## Others to SAN
+
+### AVN(L) --> SAN(R)
+
+```{r}
+AVN_SAN <- LR_table(avg_exp,
+                       Ligand_source = "CM_19-1",
+                       Receptor_source = "CM_19-2",
+                       list_LR_pairs = LR_SAN_AVN_list_common)
+```
+
+### Immat_CM_2(L) --> SAN(R)
+
+```{r}
+Immat_CM_2_SAN <- LR_table(avg_exp,
+                       Ligand_source = "CM_7",
+                       Receptor_source = "CM_19-2",
+                       list_LR_pairs = LR_SAN_Immat_CM_list_common)
+```
+
+
+### CALN1high_FB(L) --> SAN(R)
+
+```{r}
+CALN1high_FB_SAN <- LR_table(avg_exp,
+                       Ligand_source = "FB_17",
+                       Receptor_source = "CM_19-2",
+                       list_LR_pairs = LR_SAN_CALN1high_FB_list_common)
+```
+
+
+### Aut_Neu_2(L) --> SAN(R)
+
+```{r}
+Aut_Neu_2_SAN <- LR_table(avg_exp,
+                       Ligand_source = "IN_13",
+                       Receptor_source = "CM_19-2",
+                       list_LR_pairs = LR_SAN_Aut_Neu_2_list_common)
+#Aut_Neu_2_SAN <- Aut_Neu_2_SAN |> filter(Score != 0)
+```
+
+
+### Ven_EC(L) --> SAN(R)
+
+```{r}
+Ven_EC_SAN <- LR_table(avg_exp,
+                       Ligand_source = "EN_16",
+                       Receptor_source = "CM_19-2",
+                       list_LR_pairs = LR_SAN_Ven_EC_list_common)
+```
+
+
+### Chrom_C(L) --> SAN(R)
+
+```{r}
+Chrom_C_SAN <- LR_table(avg_exp,
+                       Ligand_source = "IN_1",
+                       Receptor_source = "CM_19-2",
+                       list_LR_pairs = LR_SAN_Chrom_C_list_common)
+#Chrom_C_SAN <- Chrom_C_SAN |> filter(Score != 0)
+```
+
+
+### Merge data frames Others (L) --> SAN (R)
+
+```{r}
+merged_dataframe <- bind_rows(AVN_SAN, CALN1high_FB_SAN, Aut_Neu_2_SAN, Ven_EC_SAN, Chrom_C_SAN)
+merged_dataframe$Score <- as.numeric(merged_dataframe$Score)
+```
+
+
+### Plot Heatmap
+
+```{r}
+pal <- colorRampPalette(RColorBrewer::brewer.pal(n = 8, name = "RdPu"))(25)
+
+#plot
+p <- ggplot(merged_dataframe, aes(merged_dataframe[,1], merged_dataframe[,2], fill = merged_dataframe[,3])) + 
+  geom_tile() +
+  scale_fill_gradientn(colours = pal) +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle = 90)) +
+  labs(fill = "LR score",
+       x = "Source cell types",
+       y = "Ligand --> Receptor")
+
+p
+
+
+pdf(file = paste0(myfolder, "cellcellcommunication/Heatmap_others_to_SAN_v2.pdf"),
+     width = 4, height = 25)
+p
+dev.off()
+```
+
+
+### Merge data frames SAN_CM <-> Aut_Neu_2 // PTPRS-NTRK3 + TENM2-ADGRL1
+
+```{r}
+merged_dataframe <- bind_rows(Aut_Neu_2_SAN, SAN_Aut_Neu_2)
+merged_dataframe$Score <- as.numeric(merged_dataframe$Score)
+
+merged_dataframe <- merged_dataframe |> 
+  filter(`Ligand -> Receptor` %in% c("PTPRS-NTRK3", "TENM2-ADGRL1"))
+```
+
+
+### Plot Heatmap
+
+```{r}
+pal <- colorRampPalette(RColorBrewer::brewer.pal(n = 8, name = "RdPu"))(25)
+
+#plot
+p <- ggplot(merged_dataframe, aes(merged_dataframe[,1], merged_dataframe[,2], fill = merged_dataframe[,3])) + 
+  geom_tile() +
+  scale_fill_gradientn(colours = pal) +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle = 90)) +
+  labs(fill = "LR score",
+       x = "Source cell types",
+       y = "Ligand --> Receptor")
+
+p
+
+pdf(file = paste0(myfolder, "cellcellcommunication/Heatmap_Aut_Neu_2_and_SAN.pdf"),
+     width = 4, height = 4)
+p
+dev.off()
+```
+
+
+# With directionality 
+
+## SAN to Others
+
+### SAN(L) --> AVN(R)
+
+```{r}
+SAN_AVN <- LR_table(avg_exp,
+                       Ligand_source = "CM_19-2",
+                       Receptor_source = "CM_19-1",
+                       list_LR_pairs = L_SAN_CM_R_AVN_CM_list_common)
+```
+
+### SAN(L) --> Immat_CM_2(R)
+
+```{r}
+SAN_Immat_CM_2 <- LR_table(avg_exp,
+                       Ligand_source = "CM_19-2",
+                       Receptor_source = "CM_7",
+                       list_LR_pairs = L_SAN_R_Immat_CM_list_common)
+```
+
+
+### SAN(L) --> CALN1high_FB(R)
+
+```{r}
+SAN_CALN1high_FB <- LR_table(avg_exp,
+                       Ligand_source = "CM_19-2",
+                       Receptor_source = "FB_17",
+                       list_LR_pairs = L_SAN_CM_R_CALN1high_FB_list_common)
+```
+
+
+### SAN(L) --> Aut_Neu_2(R)
+
+```{r}
+SAN_Aut_Neu_2 <- LR_table(avg_exp,
+                       Ligand_source = "CM_19-2",
+                       Receptor_source = "IN_13",
+                       list_LR_pairs = L_SAN_CM_R_Aut_Neu_2_list_common)
+#SAN_Aut_Neu_2 <- SAN_Aut_Neu_2 |> filter(Score != 0)
+```
+
+
+### SAN(L) --> Ven_EC(R)
+
+```{r}
+SAN_Ven_EC <- LR_table(avg_exp,
+                       Ligand_source = "CM_19-2",
+                       Receptor_source = "EN_16",
+                       list_LR_pairs = L_SAN_CM_R_Ven_EC_list_common)
+```
+
+
+### SAN(L) --> Chrom_C(R)
+
+```{r}
+SAN_Chrom_C <- LR_table(avg_exp,
+                       Ligand_source = "CM_19-2",
+                       Receptor_source = "IN_1",
+                       list_LR_pairs = L_SAN_CM_R_Chrom_C_list_common)
+#SAN_Chrom_C <- SAN_Chrom_C |> filter(Score != 0)
+```
+
+
+### Merge data frames SAN (L) --> others (R)
+
+```{r}
+merged_dataframe <- bind_rows(SAN_AVN, SAN_CALN1high_FB, SAN_Aut_Neu_2, SAN_Ven_EC) #remove SAN_Chrom_C, SAN_Immat_CM_2 otherwise the merge does not work.
+merged_dataframe$Score <- as.numeric(merged_dataframe$Score)
+```
+
+
+### Plot Heatmap SAN to others (Fig. 7C)
+
+```{r}
+pal <- colorRampPalette(RColorBrewer::brewer.pal(n = 8, name = "RdPu"))(25)
+
+#plot
+p <- ggplot(merged_dataframe, aes(merged_dataframe[,1], merged_dataframe[,2], fill = merged_dataframe[,3])) + 
+  geom_tile() +
+  scale_fill_gradientn(colours = pal) +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle = 90)) +
+  labs(fill = "LR score",
+       x = "Source cell types",
+       y = "Ligand --> Receptor")
+
+p
+
+
+pdf(file = paste0(myfolder, "cellcellcommunication/Heatmap_SAN_to_others_v3.pdf"),
+     width = 4, height = 11)
+p
+dev.off()
+```
+
+
+## Others to SAN
+
+### AVN(L) --> SAN(R)
+
+```{r}
+AVN_SAN <- LR_table(avg_exp,
+                       Ligand_source = "CM_19-1",
+                       Receptor_source = "CM_19-2",
+                       list_LR_pairs = L_AVN_CM_R_SAN_CM_list_common)
+```
+
+### Immat_CM_2(L) --> SAN(R)
+
+```{r}
+Immat_CM_2_SAN <- LR_table(avg_exp,
+                       Ligand_source = "CM_7",
+                       Receptor_source = "CM_19-2",
+                       list_LR_pairs = L_Immat_CM_R_SAN_list_common)
+```
+
+
+### CALN1high_FB(L) --> SAN(R)
+
+```{r}
+CALN1high_FB_SAN <- LR_table(avg_exp,
+                       Ligand_source = "FB_17",
+                       Receptor_source = "CM_19-2",
+                       list_LR_pairs = L_CALN1high_FB_R_SAN_CM_list_common)
+```
+
+
+### Aut_Neu_2(L) --> SAN(R)
+
+```{r}
+Aut_Neu_2_SAN <- LR_table(avg_exp,
+                       Ligand_source = "IN_13",
+                       Receptor_source = "CM_19-2",
+                       list_LR_pairs = L_Aut_Neu_2_R_SAN_CM_list_common)
+#Aut_Neu_2_SAN <- Aut_Neu_2_SAN |> filter(Score != 0)
+```
+
+
+### Ven_EC(L) --> SAN(R)
+
+```{r}
+Ven_EC_SAN <- LR_table(avg_exp,
+                       Ligand_source = "EN_16",
+                       Receptor_source = "CM_19-2",
+                       list_LR_pairs = L_Ven_EC_R_SAN_CM_list_common)
+```
+
+
+### Chrom_C(L) --> SAN(R)
+
+```{r}
+Chrom_C_SAN <- LR_table(avg_exp,
+                       Ligand_source = "IN_1",
+                       Receptor_source = "CM_19-2",
+                       list_LR_pairs = L_Chrom_C_R_SAN_CM_list_common)
+#Chrom_C_SAN <- Chrom_C_SAN |> filter(Score != 0)
+```
+
+
+### Merge data frames Others (L) --> SAN (R)
+
+```{r}
+merged_dataframe <- bind_rows(AVN_SAN, Aut_Neu_2_SAN, Ven_EC_SAN, Chrom_C_SAN, CALN1high_FB_SAN) #Immat_CM_2_SAN because empty
+merged_dataframe$Score <- as.numeric(merged_dataframe$Score)
+```
+
+
+### Plot Heatmap others to SAN (Fig. 7C)
+
+```{r}
+pal <- colorRampPalette(RColorBrewer::brewer.pal(n = 8, name = "RdPu"))(25)
+
+#plot
+p <- ggplot(merged_dataframe, aes(merged_dataframe[,1], merged_dataframe[,2], fill = merged_dataframe[,3])) + 
+  geom_tile() +
+  scale_fill_gradientn(colours = pal) +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle = 90)) +
+  labs(fill = "LR score",
+       x = "Source cell types",
+       y = "Ligand --> Receptor")
+
+p
+
+
+pdf(file = paste0(myfolder, "cellcellcommunication/Heatmap_others_to_SAN_v3.pdf"),
+     width = 4, height = 8)
+p
+dev.off()
+```
+
+
+
+### Merge data frames IN_1+IN_13 (L) --> SAN (R) // CHAT-CHRM2 and TH-ADRB1 (Supp Fig. 4D)
+
+```{r}
+merged_dataframe <- bind_rows(Aut_Neu_2_SAN, Chrom_C_SAN)
+merged_dataframe$Score <- as.numeric(merged_dataframe$Score)
+
+merged_dataframe <- merged_dataframe |> 
+  filter(`Ligand -> Receptor` %in% c("TH-ADRB1", "CHAT-CHRM2"))
+```
+
+
+### Plot Heatmap
+
+```{r}
+pal <- colorRampPalette(RColorBrewer::brewer.pal(n = 8, name = "RdPu"))(25)
+
+#plot
+p <- ggplot(merged_dataframe, aes(merged_dataframe[,1], merged_dataframe[,2], fill = merged_dataframe[,3])) + 
+  geom_tile() +
+  scale_fill_gradientn(colours = pal) +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle = 90)) +
+  labs(fill = "LR score",
+       x = "Source cell types",
+       y = "Ligand --> Receptor")
+
+p
+
+pdf(file = paste0(myfolder, "cellcellcommunication/Heatmap_IN_to_SAN.pdf"),
+     width = 4, height = 4)
+p
+dev.off()
+```
+
+
+###SAN_CM to IN_13
+
+### Plot Heatmap IN_13 to SAN_CM
+
+```{r}
+Aut_Neu_2_SAN$Score <- as.numeric(Aut_Neu_2_SAN$Score)
+
+pal <- colorRampPalette(RColorBrewer::brewer.pal(n = 8, name = "RdPu"))(25)
+
+#plot
+p <- ggplot(Aut_Neu_2_SAN, aes(Aut_Neu_2_SAN[,1], Aut_Neu_2_SAN[,2], fill = Aut_Neu_2_SAN[,3])) + 
+  geom_tile() +
+  scale_fill_gradientn(colours = pal) +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle = 90)) +
+  labs(fill = "LR score",
+       x = "Source cell types",
+       y = "Ligand --> Receptor")
+
+p
+
+pdf(file = paste0(myfolder, "cellcellcommunication/Heatmap_Aut_Neu_2_SAN.pdf"),
+     width = 3, height = 25)
+p
+dev.off()
+```
+
+
+### Plot Heatmap SAN_CM to IN_13
+
+```{r}
+SAN_Aut_Neu_2$Score <- as.numeric(SAN_Aut_Neu_2$Score)
+
+pal <- colorRampPalette(RColorBrewer::brewer.pal(n = 8, name = "RdPu"))(25)
+
+#plot
+p <- ggplot(SAN_Aut_Neu_2, aes(SAN_Aut_Neu_2[,1], SAN_Aut_Neu_2[,2], fill = SAN_Aut_Neu_2[,3])) + 
+  geom_tile() +
+  scale_fill_gradientn(colours = pal) +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle = 90)) +
+  labs(fill = "LR score",
+       x = "Source cell types",
+       y = "Ligand --> Receptor")
+
+p
+
+pdf(file = paste0(myfolder, "cellcellcommunication/Heatmap_SAN_Aut_Neu_2.pdf"),
+     width = 3, height = 25)
+p
+dev.off()
+```
+
+
+### Plot Heatmap IN_13 to SAN_CM & SAN_CM to IN_13 (Supp Fig. 4G)
+
+```{r}
+merged_dataframe <- bind_rows(Aut_Neu_2_SAN, SAN_Aut_Neu_2)
+
+pal <- colorRampPalette(RColorBrewer::brewer.pal(n = 8, name = "RdPu"))(25)
+
+#plot
+p <- ggplot(merged_dataframe, aes(merged_dataframe[,1], merged_dataframe[,2], fill = merged_dataframe[,3])) + 
+  geom_tile() +
+  scale_fill_gradientn(colours = pal) +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle = 90)) +
+  labs(fill = "LR score",
+       x = "Source cell types",
+       y = "Ligand --> Receptor")
+
+p
+
+pdf(file = paste0(myfolder, "cellcellcommunication/Heatmap_Aut_Neu_2_SAN_AND_SAN_Aut_Neu_2.pdf"),
+     width = 3, height = 25)
+p
+dev.off()
+```
+
+```{r}
+
+```
+
+
+
+
+
+
+

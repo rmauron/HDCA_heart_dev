@@ -92,7 +92,7 @@ sc.pp.neighbors(adata_IN_sub, random_state=0)
 
 
 #############################################
-# Estimate RNA velocity (Fig. 4B)
+# Estimate RNA velocity (Fig. 4C)
 #############################################
 
 scv.tl.velocity(adata_IN_sub)
@@ -102,7 +102,7 @@ scv.pl.velocity_embedding_stream(adata_IN_sub, basis='pca',  color=["clusters_su
 
 
 #############################################
-# Pseudotime (Fig. 4B)
+# Pseudotime (Fig. 4C)
 #############################################
 
 scv.tl.velocity_pseudotime(adata_IN_sub)

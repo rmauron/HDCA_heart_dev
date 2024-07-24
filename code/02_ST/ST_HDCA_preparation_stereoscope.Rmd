@@ -6,9 +6,9 @@ editor_options:
   chunk_output_type: console
 ---
 
+# Stereoscope temporal preparation file
 
-Alt1 - a .tsv file with spots as rows and genes as columns
-
+We prepare the ST data for runnning stereoscope temporally.
 
 ### Knit setup
 
@@ -45,36 +45,6 @@ ST <- readRDS("~/hdca_DevHeart/data/ST/220114_STdata_harmony_semla.rds")
 ```{r}
 ST$sample_id <- paste0("section_", GetCoordinates(ST)$sampleID)
 ```
-
-
-```{r}
-# ST_decon_file <- readr::read_tsv("~/hdca_DevHeart/data/ST/hdca_heart_ST_data.tsv")
-# #colnames(ST_decon_file) --> genes
-# #ST_decon_file[,1] --> barcodes
-# #rownames(ST_decon_file) --> 1,2,3,4,5,...
-# ST_decon_file[1:10, 1:10]
-# 
-# dim(ST_decon_file)
-# sort(colnames(ST_decon_file))
-```
-
-
-
-```{r}
-# stereoscope_data_ST <- as.matrix(ST@assays$Spatial@counts)
-# 
-# colnames(ST@assays$Spatial@counts)
-# sort(rownames(ST@assays$Spatial@counts))
-# 
-# 
-# common <- intersect(sort(colnames(ST_decon_file)), sort(rownames(ST@assays$Spatial@counts)))
-# length(common)
-
-```
-
-
-
-
 
 
 # Temporal deconvolution - preparation ST files
@@ -165,18 +135,11 @@ rm(ST_age_3, ST_file_age_3)
 ```
 
 
-
-```{r}
-
-```
-
-
-
-
-
-
-
-
+================================================================================
+================================================================================
+================================================================================
+================================================================================
+================================================================================
 
 
 

@@ -1,5 +1,5 @@
 ---
-title: "ST_HDCA_alignment_metrics"
+title: "ST_HDCA_spatial_CCC"
 author: "Raphaël Mauron"
 output: html_document
 editor_options: 
@@ -8,7 +8,7 @@ editor_options:
 
 # HDCA heart ST spatial ccc
 
-This script presents the process for computing non-negative matrix factorisation.
+We calculate spatial CCC, or Ligand-Receptor representation.
 
 NOTE: The path to load the data and the path to save the figures should be changed at your convenience.
 
@@ -48,6 +48,13 @@ library(kableExtra)
 
 ```{r}
 myfolder <- "~/hdca_DevHeart/output/HDCA_heart_sc_analysis_docker/ST_spatial_ccc/"
+```
+
+
+### Load custom function
+
+```{r}
+source("~/Documents/GitHub/semla_training/CellColoc.R")
 ```
 
 
@@ -111,7 +118,7 @@ ST$sample_id <- factor(ST$sample_id, levels = unique(ST_meta_data$sample_id))
 ```
 
 
-## Spatial CCC
+## Spatial CCC (Extended Fig. 2E)
 
 ```{r}
 DefaultAssay(ST) <- "SCT"
@@ -146,187 +153,195 @@ ligand_receptor_pairs <- list(
   c("SEMA6B", "PLXNA4"),
   c("SEMA3A", "PLXNA4"),
   c("SEMA3A", "NRP1"))
-section_number_list <- c(5, 2, 11, 24)
+section_number_list <- c(5, 8, 2, 11, 24)
 object <- ST
 pt_size <- 1
-#features <- c()
 
 #loop through all the pairs and all the section required
 for (features in ligand_receptor_pairs) {
   print(features)
   for (section_number in section_number_list) {
     print(section_number)
-    
-    # the function
-    exprVals <- FetchData(ST, vars = features, layer = "data")
-    exprVals_rescaled <- exprVals |> as.data.frame()
-    
-    # Calculate the product of cell state proportion 1 and cell state proportion 2 for each barcode
-    exprVals_rescaled$product <- apply(exprVals_rescaled[, 1:length(features)], 1, prod)
-    
-    # Calculate the geometric mean (in R= exp(mean(log(x))))
-    exprVals_rescaled$geom_mean <- exprVals_rescaled$product ** (1 / length(features))
-    
-    # Colocalisation score is the geom_mean multiplied by the number of events in the calculation
-    exprVals_rescaled$coloc_score <- exprVals_rescaled$geom_mean * length(features)
-    
-    #Also calculate the sum of the events on the spot. Get an idea of the proportion of the spot is taken by those specific events
-    exprVals_rescaled$sum <- apply(exprVals_rescaled[, 1:length(features)], 1, sum)
-    
-    # Fetch the coordinate of each read to plot in 2D, subset to coordinate corresponding to the sectionID selected
-    coor <- GetCoordinates(object)
-    coor2 <- coor[coor$sampleID == section_number, ]
-    rm(coor)
-    
-    # Subset exprVals_rescaled
-    exprVals_rescaled <- exprVals_rescaled[rownames(exprVals_rescaled) %in% coor2$barcode, ]
-    
-    # Create colors for coloc_score
-    coloc_score_normalized <- scales::rescale(exprVals_rescaled$coloc_score, to = c(0, 1))
-    
-    # Generate colors using the normalized coloc_score values
-    cols <- scales::gradient_n_pal(colours = viridis::turbo(n = 11))(coloc_score_normalized)
-    #cols <- scales::gradient_n_pal(colours = viridis::turbo(n = 11))(exprVals_rescaled$coloc_score)
-    exprVals_rescaled$cols <- cols
-    
-    
-    # Create ggplot object to plot
-    gg <- bind_cols(exprVals_rescaled, coor2)
-    
-    # Get maximum dimension from section_number to plot
-    full_width <- object@tools[["Staffli"]]@image_info[["full_width"]][section_number]
-    full_height <- object@tools[["Staffli"]]@image_info[["full_height"]][section_number]
-    
-    score <- gg$coloc_score
-    
-    # Plot coloc_score in 2D
-    plts <- ggplot(gg, aes(pxl_col_in_fullres, pxl_row_in_fullres)) +
-      geom_point(color = cols, size = pt_size, aes(fill = score), show.legend = TRUE) +
-    
-      scale_fill_gradientn(colours = viridis::turbo(n = 11), #use color
-        breaks = c(round(min(score, na.rm = TRUE), digits = 2),
-                   round((max(score, na.rm = TRUE) * 4 / 4), digits = 2),
-                   round((max(score, na.rm = TRUE) * 3 / 4), digits = 2), #add 4 ticks based on the respective cell_proportion
-                   round((max(score, na.rm = TRUE) * 2 / 4), digits = 2),
-                   round((max(score, na.rm = TRUE) * 1 / 4), digits = 2)),
-        limits = c(round(min(score, na.rm = TRUE), digits = 2),
-                   round(max(score, na.rm = TRUE), digits = 2))
-      ) +
-    
-      scale_y_reverse(limits = c(full_height, 0)) +
-      scale_x_continuous(limits = c(0, full_width)) +
-    
-      labs(x = NULL, y = NULL) +
-    
-      theme(panel.background = element_rect(fill = "white",
-                                            colour = "white",
-                                            size = 0,
-                                            linetype = "solid"),
-            panel.grid.major = element_blank(),
-            panel.grid.minor = element_blank(),
-            axis.text = NULL,
-            axis.text.x = element_blank(),
-            axis.text.y = element_blank(),
-            axis.ticks = element_blank(),
-            aspect.ratio = 1) +
-    
-      ggtitle(label = paste(features, collapse = " , "),
-              subtitle = "Colocalisation")
-    
-    #plts
+  
+    plts <- Spatial_LR(object = ST, features = features, section_number = section_number)
     
     pdf(file = paste0(myfolder, features[1], "_", features[2], "_section_", section_number, ".pdf"), width = 6, height = 6)
     print(plts)
     dev.off()
-    
   }
 }
 ```
 
 
-## The code
-
 ```{r}
-exprVals <- FetchData(ST, vars = features, layer = "data")
-exprVals_rescaled <- exprVals |> as.data.frame()
+# parameters
+ligand_receptor_pairs <- list(
+  c("NOTCH3", "JAG1"))
+section_number_list <- c(1, 9, 12, 20)
+object <- ST
+pt_size <- 1
 
-# Calculate the product of cell state proportion 1 and cell state proportion 2 for each barcode
-exprVals_rescaled$product <- apply(exprVals_rescaled[, 1:length(features)], 1, prod)
-
-# Calculate the geometric mean (in R= exp(mean(log(x))))
-exprVals_rescaled$geom_mean <- exprVals_rescaled$product ** (1 / length(features))
-
-# Colocalisation score is the geom_mean multiplied by the number of events in the calculation
-exprVals_rescaled$coloc_score <- exprVals_rescaled$geom_mean * length(features)
-
-#Also calculate the sum of the events on the spot. Get an idea of the proportion of the spot is taken by those specific events
-exprVals_rescaled$sum <- apply(exprVals_rescaled[, 1:length(features)], 1, sum)
-
-# Fetch the coordinate of each read to plot in 2D, subset to coordinate corresponding to the sectionID selected
-coor <- GetCoordinates(object)
-coor2 <- coor[coor$sampleID == section_number, ]
-rm(coor)
-
-# Subset exprVals_rescaled
-exprVals_rescaled <- exprVals_rescaled[rownames(exprVals_rescaled) %in% coor2$barcode, ]
-
-# Create colors for coloc_score
-coloc_score_normalized <- scales::rescale(exprVals_rescaled$coloc_score, to = c(0, 1))
-
-# Generate colors using the normalized coloc_score values
-cols <- scales::gradient_n_pal(colours = viridis::turbo(n = 11))(coloc_score_normalized)
-#cols <- scales::gradient_n_pal(colours = viridis::turbo(n = 11))(exprVals_rescaled$coloc_score)
-exprVals_rescaled$cols <- cols
-
-
-# Create ggplot object to plot
-gg <- bind_cols(exprVals_rescaled, coor2)
-
-# Get maximum dimension from section_number to plot
-full_width <- object@tools[["Staffli"]]@image_info[["full_width"]][section_number]
-full_height <- object@tools[["Staffli"]]@image_info[["full_height"]][section_number]
-
-score <- gg$coloc_score
-
-# Plot coloc_score in 2D
-plts <- ggplot(gg, aes(pxl_col_in_fullres, pxl_row_in_fullres)) +
-  geom_point(color = cols, size = pt_size, aes(fill = score), show.legend = TRUE) +
-
-  scale_fill_gradientn(colours = viridis::turbo(n = 11), #use color
-    breaks = c(round(min(score, na.rm = TRUE), digits = 2),
-               round((max(score, na.rm = TRUE) * 4 / 4), digits = 2),
-               round((max(score, na.rm = TRUE) * 3 / 4), digits = 2), #add 4 ticks based on the respective cell_proportion
-               round((max(score, na.rm = TRUE) * 2 / 4), digits = 2),
-               round((max(score, na.rm = TRUE) * 1 / 4), digits = 2)),
-    limits = c(round(min(score, na.rm = TRUE), digits = 2),
-               round(max(score, na.rm = TRUE), digits = 2))
-  ) +
-
-  scale_y_reverse(limits = c(full_height, 0)) +
-  scale_x_continuous(limits = c(0, full_width)) +
-
-  labs(x = NULL, y = NULL) +
-
-  theme(panel.background = element_rect(fill = "white",
-                                        colour = "white",
-                                        size = 0,
-                                        linetype = "solid"),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        axis.text = NULL,
-        axis.text.x = element_blank(),
-        axis.text.y = element_blank(),
-        axis.ticks = element_blank(),
-        aspect.ratio = 1) +
-
-  ggtitle(label = paste(features, collapse = " , "),
-          subtitle = "Colocalisation")
-
-plts
-
-
+#loop through all the pairs and all the section required
+for (features in ligand_receptor_pairs) {
+  print(features)
+  for (section_number in section_number_list) {
+    print(section_number)
+  
+    plts <- Spatial_LR(object = ST, features = features, section_number = section_number)
+    
+    pdf(file = paste0(myfolder, features[1], "_", features[2], "_section_", section_number, ".pdf"), width = 6, height = 6)
+    print(plts)
+    dev.off()
+  }
+}
 ```
 
+
+### Plot all sections (1 patchwork per cluster)
+Here we project the gene expression of cluster individually on every section
+
+```{r}
+LR_list <- c("NPPA", "NPPB", "NPPC", "NPR1", "NPR2", "NPR3")
+section_number_list <- c(5, 8)
+
+for (marker in LR_list) {
+  for (section_number in section_number_list) {
+    p <- MapFeatures(ST,
+                     features = marker,
+                     colors = viridis::turbo(n = 11),
+                     slot = "data",
+                     section_number = section_number,
+                     pt_size = 1) +
+      ThemeLegendRight()
+    
+    pdf(file = paste0(myfolder, "marker_2_", marker, "_section_", section_number, ".pdf"), width = 4, height = 4)
+    print(p)
+    dev.off()
+  }
+}
+rm(p)
+```
+
+
+```{r}
+# parameters
+ligand_receptor_pairs <- list(
+  c("NPPA", "NPPA"),
+  c("NPPB", "NPPB"),
+  c("NPPC", "NPPC"),
+  c("NPR1", "NPR1"),
+  c("NPR2", "NPR2"),
+  c("NPR3", "NPR3"))
+
+section_number_list <- c(5, 8, 2, 11, 24)
+object <- ST
+pt_size <- 1
+
+#loop through all the pairs and all the section required
+for (features in ligand_receptor_pairs) {
+  print(features)
+  for (section_number in section_number_list) {
+    print(section_number)
+  
+    plts <- Spatial_LR_same(object = ST, features = features, section_number = section_number)
+    
+    pdf(file = paste0(myfolder, "marker_", features[1], "_section_", section_number, ".pdf"), width = 6, height = 6)
+    print(plts)
+    dev.off()
+  }
+}
+```
+
+
+
+### FeaturePlots (Extended Fig. 6B, 6C)
+
+```{r}
+# Create path if not existing
+if (!dir.exists(paste0(myfolder, "featureplot"))){
+  dir.create(paste0(myfolder, "featureplot"), recursive = TRUE)}
+
+for (feature in c("FOXP2", "LRP1B", "FLRT2", "DLK1", "PI15", "PRDM6", "EFNA5")) {
+  p <- MapFeatures(ST,
+                   features = feature,
+                   override_plot_dims = TRUE,
+                   colors = c("lightgrey","mistyrose", "red", "darkred", "black"),
+                   pt_size = 1.5)
+  
+  p5 <- p[[5]] & theme(plot.subtitle = element_blank(), legend.position = "none")
+  p32 <- p[[32]] & theme(plot.subtitle = element_blank(), legend.position = "none")
+  p11 <- p[[11]] & theme(plot.subtitle = element_blank(), legend.position = "right", legend.text = element_text(angle = 0))
+
+  pg <- p5 + p32 + p11 +
+    patchwork::plot_layout(ncol = 3)
+  
+  pdf(file = paste0(myfolder, "featureplot/", feature, ".pdf"), width = 15.75, height = 4.5)
+  print(pg)
+  dev.off()
+}
+rm(p, p32, p5, p11, pg)
+```
+
+
+```{r}
+# Create path if not existing
+if (!dir.exists(paste0(myfolder, "featureplot"))){
+  dir.create(paste0(myfolder, "featureplot"), recursive = TRUE)}
+
+for (feature in c("SEMA3D", "FMOD", "COL12A1", "ADAMTS19")) {
+  p <- MapFeatures(ST,
+                   features = feature,
+                   override_plot_dims = TRUE,
+                   colors = c("lightgrey","mistyrose", "red", "darkred", "black"),
+                   pt_size = 1.5)
+  
+  p5 <- p[[5]] & theme(plot.subtitle = element_blank(), legend.position = "none")
+  p20 <- p[[20]] & theme(plot.subtitle = element_blank(), legend.position = "right", legend.text = element_text(angle = 0))
+
+  pg <- p5 + p20 +
+    patchwork::plot_layout(ncol = 2)
+  
+  pdf(file = paste0(myfolder, "featureplot/", feature, ".pdf"), width = 15.75, height = 4.5)
+  print(pg)
+  dev.off()
+}
+rm(p, p5, p20, pg)
+```
+
+
+```{r}
+# Create path if not existing
+if (!dir.exists(paste0(myfolder, "featureplot"))){
+  dir.create(paste0(myfolder, "featureplot"), recursive = TRUE)}
+
+for (feature in c("CD34")) {
+  p <- MapFeatures(ST,
+                   features = feature,
+                   override_plot_dims = TRUE,
+                   colors = c("lightgrey","mistyrose", "red", "darkred", "black"),
+                   pt_size = 1.5)
+  
+  p5 <- p[[5]] & theme(plot.subtitle = element_blank(), legend.position = "none")
+  p2 <- p[[2]] & theme(plot.subtitle = element_blank(), legend.position = "none")
+  p11 <- p[[11]] & theme(plot.subtitle = element_blank(), legend.position = "none")
+  p24 <- p[[24]] & theme(plot.subtitle = element_blank(), legend.position = "right", legend.text = element_text(angle = 0))
+
+  pg <- p5 + p2 + p11 + p24 +
+    patchwork::plot_layout(ncol = 4)
+  
+  pdf(file = paste0(myfolder, "featureplot/", feature, ".pdf"), width = 15.75, height = 4.5)
+  print(pg)
+  dev.off()
+}
+rm(p, p5, p2, p11, p24, pg)
+```
+
+
+================================================================================
+================================================================================
+================================================================================
+================================================================================
+================================================================================
 
 
 

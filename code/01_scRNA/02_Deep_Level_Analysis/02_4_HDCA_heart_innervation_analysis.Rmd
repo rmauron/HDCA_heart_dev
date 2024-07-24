@@ -68,7 +68,7 @@ set.seed(1)
 ```
 
 
-## Subset, process, clustering (Extended Fig. 4E)
+## Subset, process, clustering (Extended Fig. 14E)
 
 * Keep all cells annotated as endothelial
 * Calculate variable features
@@ -221,7 +221,7 @@ write.csv2(detable, paste0(myfolder, "supplementary_tables/supplementary_table_4
 ```
 
 
-### DEG IN selection of markers (Extended Fig. 4D)
+### DEG IN selection of markers (Extended Fig. 14D)
 
 ```{r}
 # specific list of marker to project the dotplot on
@@ -327,7 +327,7 @@ rm(detable, DGE_DATA, top5, DGE_cells, sample_size)
 ```
 
 
-### DEG IN selection of markers (Supp Fig. 4B)
+### DEG IN selection of markers (Fig. 4B)
 
 ```{r}
 # specific list of marker to project the dotplot on
