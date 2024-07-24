@@ -32,4 +32,4 @@ The analyses presented in this repository were predominantly conducted on a MacB
 Although an extensive effort was attributed to reproducibility, some system dependencies might slightly affect the results. Support on it is out of the scope of that study.
 
 ## Citation
-doi: https://doi.org/10.1101/2024.03.12.584577
+doi: https://doi.org/10.1101/2024.03.12.584577 (preprint)
