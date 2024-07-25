@@ -86,7 +86,7 @@ data <- readRDS(paste0(myfolder, "rds_objects/HDCA_heart_sc_full_extended.rds"))
 
 ## Temporal analysis (single-cell)
 
-### DGE (Extended Fig. 2B, 4B)
+### DGE (Extended Fig. 2B, 4D)
 
 ```{r}
 # set seed for reproducibility when sampling
@@ -1380,7 +1380,7 @@ dev.off()
 ```
 
 
-### Specific gene over FB + HL_20 (Extended Fig. 4C)
+### Specific gene over FB + HL_20 (Extended Fig. 4B)
 
 ```{r}
 # specific list of marker to project the dotplot on
@@ -1498,7 +1498,7 @@ dev.off()
 ```
 
 
-### DEG HL_20, FB_7, FB_3 (Extended Fig. 4D)
+### DEG HL_20, FB_7, FB_3 (Extended Fig. 4C)
 
 ```{r}
 cell_to_keep <- c("HL_20", "FB_7", "FB_3")
