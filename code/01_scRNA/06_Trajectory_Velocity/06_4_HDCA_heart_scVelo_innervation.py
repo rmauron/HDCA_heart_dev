@@ -100,6 +100,7 @@ scv.tl.velocity_graph(adata_IN_sub)
 
 scv.pl.velocity_embedding_stream(adata_IN_sub, basis='pca',  color=["clusters_subset"], size=300, alpha=0.5, add_margin = 0.05, dpi=300, show=False, save=save_path+"IN_velocity_graph_pca.svg")
 
+scv.pl.velocity_embedding_stream(adata_IN_sub, basis='umap',  color=["clusters_subset"], size=300, alpha=0.5, add_margin = 0.05, dpi=300, show=False, save=save_path+"IN_velocity_graph_umap.svg")
 
 #############################################
 # Pseudotime (Fig. 4C)
@@ -109,3 +110,5 @@ scv.tl.velocity_pseudotime(adata_IN_sub)
 scv.pl.scatter(adata_IN_sub, basis='pca', color='velocity_pseudotime', cmap='gnuplot', size=80, add_margin = 0.1, dpi=300, show=True, save=save_path+"IN_velocity_pseudotime_pca.pdf")
 
 scv.pl.velocity_embedding_stream(adata_IN_sub, basis='pca',  color=["velocity_pseudotime"], size=300, alpha=0.5, add_margin = 0.05, dpi=300, show=True, save=save_path+"IN_velocity_graph_velocity_pseudotime_pca.pdf")
+
+

@@ -118,7 +118,7 @@ ST$sample_id <- factor(ST$sample_id, levels = unique(ST_meta_data$sample_id))
 ```
 
 
-## Spatial CCC (Extended Fig. 2E)
+## Spatial CCC (Supp. Fig. 3E)
 
 ```{r}
 DefaultAssay(ST) <- "SCT"
@@ -254,7 +254,7 @@ for (features in ligand_receptor_pairs) {
 
 
 
-### FeaturePlots (Extended Fig. 6B, 6C)
+### FeaturePlots (Supp. Fig. 7B, 7C)
 
 ```{r}
 # Create path if not existing

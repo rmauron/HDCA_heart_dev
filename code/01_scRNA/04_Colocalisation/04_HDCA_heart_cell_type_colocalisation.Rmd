@@ -324,7 +324,7 @@ dev.off()
 
 ### Niches
 
-#### Heatmap of niches (Fig. 7B, 7D, Supp Fig. 7C)
+#### Heatmap of niches (Fig. 7B, 7D, Extended Fig. 7C)
 
 ```{r}
 niches <- list(
@@ -535,7 +535,7 @@ dev.off()
 ```
 
 
-#### Niche 1 "CM-18","CM-4-2", "CM-4-1", "EN-1", "EN-12" (Supp Fig. 7B)
+#### Niche 1 "CM-18","CM-4-2", "CM-4-1", "EN-1", "EN-12" (Extended Fig. 7B)
 
 ```{r}
 niche <- c("CM-18","CM-4-2", "CM-4-1", "EN-1", "EN-12")
@@ -577,7 +577,7 @@ dev.off()
 ```
 
 
-#### Niche 2 "EN-19", "EN-15", "EN-13", "EN-10", "EN-2" (Supp Fig. 7D)
+#### Niche 2 "EN-19", "EN-15", "EN-13", "EN-10", "EN-2" (Extended Fig. 7D)
 
 ```{r}
 niche <- c("EN-19", "EN-15", "EN-13", "EN-10", "EN-2")
@@ -1125,7 +1125,7 @@ cell_types_to_exclude <- c("CM-5", "CM-17", "EN-5", "FB-2", "FB-12", "IN-11", "I
 ```
 
 
-#### ST deep level all ages (Supp Fig. 7A)
+#### ST deep level all ages (Extended Fig. 7A)
 
 ```{r}
 set.seed(1)
@@ -1262,7 +1262,7 @@ dev.off()
 ```
 
 
-#### "CM-4-2", "CM-4-1" - 4 different sections (Supp Fig. 3C)
+#### "CM-4-2", "CM-4-1" - 4 different sections (Extended Fig. 3C)
 
 ```{r}
 # time point 1
@@ -1307,7 +1307,7 @@ dev.off()
 ```
 
 
-#### "CM-8-2", "CM-18", "CM-19-1", in sc. 3 (Supp Fig. 3E)
+#### "CM-8-2", "CM-18", "CM-19-1", in sc. 3 (Extended Fig. 3E)
 
 ```{r}
 plots <- CellColoc3(ST,
@@ -1335,7 +1335,7 @@ dev.off()
 ```
 
 
-####  "IN-13", "CM-14", "IN-1"  in sc. 22 (Supp Fig. 4B)
+####  "IN-13", "CM-14", "IN-1"  in sc. 22 (Extended Fig. 4B)
 
 ```{r}
 plots <- CellColoc3(ST,
@@ -1348,7 +1348,7 @@ dev.off()
 ```
 
 
-#### "IN-13",  "FB-1",  "IN-1"   in sc. 32 and 34 (Supp Fig. 4B)
+#### "IN-13",  "FB-1",  "IN-1"   in sc. 32 and 34 (Extended Fig. 4B)
 
 ```{r}
 plots <- CellColoc3(ST,
@@ -1371,7 +1371,7 @@ dev.off()
 ```
 
 
-#### "IN-8", "IN-19", sc. 16 (Supp Fig. 4C)
+#### "IN-8", "IN-19", sc. 16 (Extended Fig. 4C)
 
 ```{r}
 plots <- CellColoc(ST,
@@ -1409,7 +1409,7 @@ dev.off()
 ```
 
 
-#### "CM-9", "CM-14", "EN-18", sc. 27 (Fig. 5C)
+#### "CM-9", "CM-14", "EN-18", sc. 27 (Fig. 5D)
 
 ```{r}
 plots <- CellColoc3(ST,
@@ -1422,7 +1422,7 @@ dev.off()
 ```
 
 
-#### "EN-7", "EN-17", sc. 6 (Supp Fig. 5D)
+#### "EN-7", "EN-17", sc. 6 (Extended Fig. 5D)
 
 ```{r}
 plots <- CellColoc(ST,
@@ -1435,7 +1435,7 @@ dev.off()
 ```
 
 
-#### "EN-6", "EN-18", "EN-16", sc. 18 (Supp Fig. 5E)
+#### "EN-6", "EN-18", "EN-16", sc. 18 (Extended Fig. 5E)
 
 ```{r}
 plots <- CellColoc3(ST,
@@ -1519,7 +1519,7 @@ dev.off()
 ```
 
 
-#### "FB-7", "FB-8", "FB-14", sc. 23 (Fig. 6C)
+#### "FB-7", "FB-8", "FB-14", sc. 23 (Extended Fig. 6E)
 
 ```{r}
 plots <- CellColoc3(ST,
@@ -1532,7 +1532,7 @@ dev.off()
 ```
 
 
-#### "FB-4", "FB-11", "FB-13", sc. 2, 20, 22, 33 (Fig. 6D)
+#### "FB-4", "FB-11", "FB-13", sc. 20 (Fig. 6E)
 
 ```{r}
 plots <- CellColoc3(ST,
@@ -1588,7 +1588,7 @@ dev.off()
 ```
 
 
-#### "FB-4", "FB-11", "FB-13", sc.22 (Fig. 6E)
+#### "FB-4", "FB-11", "FB-13", sc.22 (Supp Fig. 6F)
 
 ```{r}
 plots <- CellColoc3(ST,
@@ -1601,7 +1601,7 @@ dev.off()
 ```
 
 
-#### "FB-4", "FB-11", "FB-13", sc.20 (Supp Fig. 6F)
+#### "FB-4", "FB-11", "FB-13", sc.20 (Fig. 6E)
 
 ```{r}
 plots <- CellColoc3(ST,
@@ -1668,7 +1668,7 @@ dev.off()
 ```
 
 
-#### "FB-6", "HL-10", "EN-15", sc. 20 (Supp Fig. 7C)
+#### "FB-6", "HL-10", "EN-15", sc. 20 (Extended Fig. 7C)
 
 ```{r}
 plots <- CellColoc3(ST,
@@ -1681,7 +1681,7 @@ dev.off()
 ```
 
 
-#### "FB-1", "HL-15", "EN-20", sc. 20 (Supp Fig. 7C)
+#### "FB-1", "HL-15", "EN-20", sc. 20 (Extended Fig. 7C)
 
 ```{r}
 plots <- CellColoc3(ST,
@@ -1694,7 +1694,7 @@ dev.off()
 ```
 
 
-#### "FB-1", "HL-8", "EN-19", sc.20 (Supp Fig. 7C)
+#### "FB-1", "HL-8", "EN-19", sc.20 (Extended Fig. 7C)
 
 ```{r}
 plots <- CellColoc3(ST,
@@ -1818,7 +1818,7 @@ dev.off()
 ```
 
 
-#### "EN-20", "HL-29", sc. 16 (Extended Fig. 3E)
+#### "EN-20", "HL-29", sc. 16 (Supp. Fig. 4E)
 
 ```{r}
 plots <- CellColoc(ST,
@@ -1826,6 +1826,332 @@ plots <- CellColoc(ST,
                       section_number = 16)
 
 pdf(file = paste0(myfolder, "colocalization/EN-20_HL-29_section_16.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+
+#### "CM-6", "CM-1", sc. 5, 2, 11, 24
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("CM-6", "CM-1"),
+                      section_number = 5)
+
+pdf(file = paste0(myfolder, "colocalization/CM-6_CM-1_section_5.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("CM-6", "CM-1"),
+                      section_number = 2)
+
+pdf(file = paste0(myfolder, "colocalization/CM-6_CM-1_section_2.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("CM-6", "CM-1"),
+                      section_number = 11)
+
+pdf(file = paste0(myfolder, "colocalization/CM-6_CM-1_section_11.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("CM-6", "CM-1"),
+                      section_number = 24)
+
+pdf(file = paste0(myfolder, "colocalization/CM-6_CM-1_section_24.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+
+#### "EN-7", "EN-17", sc. 29, 15 (Supp. Fig. 11D)
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("EN-7", "EN-17"),
+                      section_number = 29)
+
+pdf(file = paste0(myfolder, "colocalization/EN-7_EN-17_section_29.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("EN-7", "EN-17"),
+                      section_number = 15)
+
+pdf(file = paste0(myfolder, "colocalization/EN-7_EN-17_section_15.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+
+#### "EN-19", "EN-15", "EN-21", sc. 10, 12 (Supp. Fig. 11A)
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("EN-19", "EN-15", "EN-21"),
+                      section_number = 10)
+
+pdf(file = paste0(myfolder, "colocalization/EN-19_EN-15_EN-21_section_10.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("EN-19", "EN-15", "EN-21"),
+                      section_number = 12)
+
+pdf(file = paste0(myfolder, "colocalization/EN-19_EN-15_EN-21_section_12.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+
+#### "EN-13", "EN-10", "EN-2", sc. 10, 12 (Supp. Fig. 11A)
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("EN-13", "EN-10", "EN-2"),
+                      section_number = 10)
+
+pdf(file = paste0(myfolder, "colocalization/EN-13_EN-10_EN-2_section_10.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("EN-13", "EN-10", "EN-2"),
+                      section_number = 12)
+
+pdf(file = paste0(myfolder, "colocalization/EN-13_EN-10_EN-2_section_12.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+
+#### "FB-4", "FB-13", "FB-11", sc. 7, 8 (Extended Fig. 6G)
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("FB-4", "FB-11", "FB-13"),
+                      section_number = 7)
+
+pdf(file = paste0(myfolder, "colocalization/FB-4_FB-11_FB-13_section_7.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("FB-4", "FB-11", "FB-13"),
+                      section_number = 8)
+
+pdf(file = paste0(myfolder, "colocalization/FB-4_FB-11_FB-13_section_8.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+
+#### "CM-6", "CM-1", "CM-8-2", sc. 7 (Extended Fig. 7E)
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("CM-6", "CM-1", "CM-8-2"),
+                      section_number = 7)
+
+pdf(file = paste0(myfolder, "colocalization/CM-6_CM-1_CM-8-2_section_7.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+
+#### "CM-9", "CM-14", "CM-19-1", sc. 7 (Extended Fig. 7E)
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("CM-9", "CM-14", "CM-19-1"),
+                      section_number = 7)
+
+pdf(file = paste0(myfolder, "colocalization/CM-9_CM-14_CM-19-1_section_7.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+
+#### "FB-7", "FB-8", "FB-14", sc. 7, sc. 20 (Fig. 6E)
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("FB-7", "FB-8", "FB-14"),
+                      section_number = 7)
+
+pdf(file = paste0(myfolder, "colocalization/FB-7_FB-8_FB-14_section_7.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc3(ST,
+                      features = c("FB-7", "FB-8", "FB-14"),
+                      section_number = 20)
+
+pdf(file = paste0(myfolder, "colocalization/FB-7_FB-8_FB-14_section_20.pdf"), width = 20, height = 6)
+plots
+dev.off()
+```
+
+
+#### "FB-7", "FB-8", sc. 7 (Extended Fig. 6G)
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("FB-7", "FB-8"),
+                      section_number = 7)
+
+pdf(file = paste0(myfolder, "colocalization/FB-7_FB-8_section_7.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+
+#### "EN-2", "EN-10", sc. 5, 2, 11, 24 (Supp. Fig. 11B)
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("EN-2", "EN-10"),
+                      section_number = 5)
+
+pdf(file = paste0(myfolder, "colocalization/EN-2_EN-10_section_5.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("EN-2", "EN-10"),
+                      section_number = 2)
+
+pdf(file = paste0(myfolder, "colocalization/EN-2_EN-10_section_2.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("EN-2", "EN-10"),
+                      section_number = 11)
+
+pdf(file = paste0(myfolder, "colocalization/EN-2_EN-10_section_11.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("EN-2", "EN-10"),
+                      section_number = 24)
+
+pdf(file = paste0(myfolder, "colocalization/EN-2_EN-10_section_24.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+
+#### "EN-1", "EN-12", sc. 5, 2, 11, 24 (Supp. Fig. 11C)
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("EN-1", "EN-12"),
+                      section_number = 5)
+
+pdf(file = paste0(myfolder, "colocalization/EN-1_EN-12_section_5.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("EN-1", "EN-12"),
+                      section_number = 2)
+
+pdf(file = paste0(myfolder, "colocalization/EN-1_EN-12_section_2.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("EN-1", "EN-12"),
+                      section_number = 11)
+
+pdf(file = paste0(myfolder, "colocalization/EN-1_EN-12_section_11.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("EN-1", "EN-12"),
+                      section_number = 24)
+
+pdf(file = paste0(myfolder, "colocalization/EN-1_EN-12_section_24.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+
+#### "EN-3", "EN-6", sc. 5, 2, 11, 24 (Supp. Fig. 11C)
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("EN-3", "EN-6"),
+                      section_number = 5)
+
+pdf(file = paste0(myfolder, "colocalization/EN-3_EN-6_section_5.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("EN-3", "EN-6"),
+                      section_number = 2)
+
+pdf(file = paste0(myfolder, "colocalization/EN-3_EN-6_section_2.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("EN-3", "EN-6"),
+                      section_number = 11)
+
+pdf(file = paste0(myfolder, "colocalization/EN-3_EN-6_section_11.pdf"), width = 15.75, height = 4.5)
+plots
+dev.off()
+```
+
+```{r}
+plots <- CellColoc(ST,
+                      features = c("EN-3", "EN-6"),
+                      section_number = 24)
+
+pdf(file = paste0(myfolder, "colocalization/EN-3_EN-6_section_24.pdf"), width = 15.75, height = 4.5)
 plots
 dev.off()
 ```

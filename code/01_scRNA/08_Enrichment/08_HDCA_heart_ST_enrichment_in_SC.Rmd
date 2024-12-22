@@ -126,7 +126,7 @@ dev.off()
 ```
 
 
-## Enrichment in Deep Level CM (Supp Fig. 3B)
+## Enrichment in Deep Level CM (Extended Fig. 3B)
 
 ### ST clusters to keep
 
@@ -181,7 +181,7 @@ dev.off()
 ```
 
 
-## Enrichment in Deep Level EN (Supp Fig. 5C)
+## Enrichment in Deep Level EN (Extended Fig. 5C)
 
 ### ST clusters to keep
 
@@ -236,7 +236,7 @@ dev.off()
 ```
 
 
-## Enrichment in Deep Level FB (Supp Fig. 6F)
+## Enrichment in Deep Level FB (Extended Fig. 6F)
 
 ### ST clusters to keep
 

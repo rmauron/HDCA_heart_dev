@@ -304,7 +304,7 @@ dev.off()
 ```
 
 
-### Add cl4, cl8 and cl19 subclusters (Extended Fig. 13A)
+### Add cl4, cl8 and cl19 subclusters (Supp. Fig. 16A)
 
 ```{r}
 cl4_split <- cl4[[]] %>% 
@@ -431,7 +431,7 @@ dev.off()
 ```
 
 
-### DEG CM - top5 ordered (Supp Fig. 3A)
+### DEG CM - top5 ordered (Extended Fig. 3A)
 
 ```{r}
 values_to_keep <- c("19-2", "19-1", "12", "9", "14", "4-2", "4-1", "18", "8-2", "8-1", "8-3", "17", "6", "1", "10", "3", "7", "2", "5")
@@ -508,7 +508,7 @@ rm(detable, DGE_DATA, top5, DGE_cells, sample_size)
 ```
 
 
-### DEG CM selection of markers (not split & all) (Extended Fig. 13D)
+### DEG CM selection of markers (not split & all) (Supp. Fig. 16D)
 
 ```{r}
 # specific list of marker to project the dotplot on
@@ -534,7 +534,7 @@ gc()
 ```
 
 
-### DEG CM selection of VCS markers (Fig. 3E)
+### DEG CM selection of VCS markers
 
 ```{r}
 values_to_keep <- c("18", "4-2", "4-1", "6")
@@ -567,7 +567,54 @@ gc()
 ```
 
 
-### DEG CM selection of ACS markers (Fig. 3D)
+#### Avg expression (Fig. 3E)
+
+```{r}
+clusters_to_analyze <- c("18", "4-2", "4-1", "6")
+
+data_sub <- CM[, CM$clusters_subset_split %in% clusters_to_analyze]
+
+table(data_sub$clusters_subset_split)
+table(data_sub$cell.types)
+```
+
+```{r}
+my_markers <- c("RCAN1", "IRX1", "IRX2", "IRX5", "BRINP3", "SEMA3A", "IRX3","CSMD1", "PLXNA4")
+```
+
+```{r}
+#get matrix average expression from marker genes
+mat <- AverageExpression(object = data_sub, features = my_markers, group.by = 'cell.types')$RNA
+
+# plot heatmap
+pal <- colorRampPalette(RColorBrewer::brewer.pal(n = 8, name = "Reds"))(25)
+
+# normalise average expression gene by gene
+gg_mat <- mat |>
+  as.data.frame() |>
+  tibble::rownames_to_column(var = "gene") |>
+  pivot_longer(-gene) |>
+  group_by(gene) |>
+  mutate(value = scale(value, center = F, scale = T)) |>
+  ungroup() |>
+  mutate(gene = factor(gene, levels = rev(my_markers)))
+
+gg_mat$name <- factor(gg_mat$name, levels = c("AVB-BB_CM", "PF_CM", "TsPF_CM", "vCM_4"))
+
+#plot
+p <- ggplot(gg_mat, aes(name, gene, fill = value)) + 
+  geom_tile() +
+  scale_fill_gradientn(colours = pal) +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle = 90)) +
+  labs(fill = "normalised \n score")
+
+pdf(paste0(myfolder, "cardiomyocytes/avg_expr_markers_CM_subset_selection_18_4-2_4-1_6.pdf"), width = 3, height = 2.7)
+p
+dev.off()
+```
+
+### DEG CM selection of ACS markers
 
 ```{r}
 values_to_keep <- c("19-2", "19-1", "12", "9", "14")
@@ -597,6 +644,54 @@ dev.off()
 
 rm(p)
 gc()
+```
+
+
+#### Avg expression  (Fig. 3D)
+
+```{r}
+clusters_to_analyze <- c("19-2", "19-1", "12", "9", "14")
+
+data_sub <- CM[, CM$clusters_subset_split %in% clusters_to_analyze]
+
+table(data_sub$clusters_subset_split)
+table(data_sub$cell.types)
+```
+
+```{r}
+my_markers <- c("SHOX2", "PRRX1", "TBX18",  "ZNF385B", "TENM2", "TENM3", "TENM4", "GDF10", "SLIT2")
+```
+
+```{r}
+#get matrix average expression from marker genes
+mat <- AverageExpression(object = data_sub, features = my_markers, group.by = 'cell.types')$RNA
+
+# plot heatmap
+pal <- colorRampPalette(RColorBrewer::brewer.pal(n = 8, name = "Reds"))(25)
+
+# normalise average expression gene by gene
+gg_mat <- mat |>
+  as.data.frame() |>
+  tibble::rownames_to_column(var = "gene") |>
+  pivot_longer(-gene) |>
+  group_by(gene) |>
+  mutate(value = scale(value, center = F, scale = T)) |>
+  ungroup() |>
+  mutate(gene = factor(gene, levels = rev(my_markers)))
+
+gg_mat$name <- factor(gg_mat$name, levels = c("SAN_CM", "AVN_CM", "Cond_aCM", "Left_aCM", "Right_aCM"))
+
+#plot
+p <- ggplot(gg_mat, aes(name, gene, fill = value)) + 
+  geom_tile() +
+  scale_fill_gradientn(colours = pal) +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle = 90)) +
+  labs(fill = "normalised \n score")
+
+pdf(paste0(myfolder, "cardiomyocytes/avg_expr_markers_CM_subset_selection_19-2_19-1_12_9_14.pdf"), width = 3, height = 2.5)
+p
+dev.off()
 ```
 
 

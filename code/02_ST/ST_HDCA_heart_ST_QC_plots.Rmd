@@ -113,7 +113,7 @@ head(rownames(ST), 10)
 
 #### nCount
 
-##### section 5, 2, 11, 24 (Extended Fig. 9D)
+##### section 5, 2, 11, 24 (Supp. Fig. 12D)
 
 ```{r fig.asp=0.7}
 plots <- MapFeatures(ST,
@@ -171,7 +171,7 @@ dev.off()
 
 ### Plot gender marker accross every sections
 
-#### KDM5D (Extended Fig. 9B)
+#### KDM5D (Supp. Fig. 12B)
 
 ```{r fig.asp=0.7}
 jpeg(filename = paste0(myfolder, "/KDM5D.jpg"), width = 4000, height = 4000, res = 150)
@@ -187,7 +187,7 @@ dev.off()
 ```
 
 
-## Violin plots (Extended Fig. 9C)
+## Violin plots (Supp. Fig. 12C)
 
 ### nCount
 
@@ -229,7 +229,7 @@ dev.off()
 ```
 
 
-### Temporal UMAP (Supp Fig. 1C)
+### Temporal UMAP (Extended Fig. 1C)
 
 ```{r}
 table(ST_clustering$age)
@@ -308,7 +308,7 @@ dev.off()
 ```
 
 
-### Batch effect (embedding by sample) (Extended Fig. 10B)
+### Batch effect (embedding by sample) (Supp. Fig. 13B)
 
 ### Re-order sample by setting factors
 

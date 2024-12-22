@@ -251,6 +251,19 @@ gc()
 ```
 
 
+#### Range of cells / samples
+
+```{r}
+range_cells <- table(data@meta.data[["sampleID"]])
+range_cells
+mean(range_cells)
+sd(range_cells)
+min(range_cells)
+max(range_cells)
+hist(range_cells, 10)
+```
+
+
 ## Export Seurat object unfiltered
 
 ```{r}
@@ -853,7 +866,7 @@ ages <- readRDS(paste0(myfolder, "rds_objects/HDCA_heart_sc_age_groups.rds"))
 ```
 
 
-### Temporal evolution of High Level UMAP (Supp Fig. 2D)
+### Temporal evolution of High Level UMAP (Supp Fig. 2B)
 
 ```{r}
 pdf(file = paste0(myfolder, "Clusters_age_5_to_6_weeks_full_size.pdf"), width = 15, height = 15, bg = "transparent")
@@ -874,7 +887,7 @@ dev.off()
 ```
 
 
-### Temporal check of integration of High Level UMAP (Extended Fig. 10C)
+### Temporal check of integration of High Level UMAP (Supp. Fig. 13C)
 
 ```{r}
 pdf(file = paste0(myfolder, "Clusters_age_5_to_6_weeks_full_size_origine.pdf"), width = 15, height = 15, bg = "transparent")
@@ -899,7 +912,7 @@ dev.off()
 ```
 
 
-### Temporal check of integration of High Level UMAP HL_6 and HL_34 (Extended Fig. 3B)
+### Temporal check of integration of High Level UMAP HL_6 and HL_34 (Supp Fig. 4B)
 
 ```{r}
 data_HL <- data[, data$high_level_clusters %in% c("6", "34")]
@@ -940,7 +953,7 @@ gc()
 
 
 
-### Cell type proportion by age group in entire data (Fig. 2F, Supp Fig. 6C)
+### Cell type proportion by age group in entire data (Fig. 2F, Extended Fig. 6C)
 
 ```{r}
 age1 <- data[,data$age <= 6]
@@ -1092,7 +1105,7 @@ gc()
 ```
 
 
-#### CM from High Level dotplot from selected markers (Supp Fig. 2A)
+#### CM from High Level dotplot from selected markers (Extended Fig. 2A)
 
 ```{r}
 data_CM <- data[, data$high_level_clusters_removed == "4_35" |
@@ -1151,10 +1164,50 @@ At this point, the analysis continues on subsets of the data on other scripts.
 ================================================================================
 
 
+## Plot 3D
+
+```{r}
+# Re-run UMAPs that you have accurate calculations for all UMAP(s)
+data_3d <- RunUMAP(data, 
+                dims = 1:50, 
+                reduction = "harmony_oi",
+                n.neighbors = 10,
+                metric = "cosine",
+                n.epochs = 100,
+                reduction.key = "oi_",
+                reduction.name = "umap_oi",
+                seed.use = 42,
+                n.components = 3L)
+```
 
 
+```{r}
+# Prepare a dataframe for cell plotting
+plot.data <- FetchData(object = data_3d, vars = c("oi_1", "oi_2", "oi_3", "cell.types"))
 
+# Make a column of row name identities (these will be your cell/barcode names)
+plot.data$label <- paste(rownames(plot.data))
 
+plot_ly(data = plot.data, 
+        x = ~oi_1, y = ~oi_2, z = ~oi_3, 
+        color = ~cell.types,
+        type = "scatter3d", 
+        mode = "markers", 
+        marker = list(size = 5, width=2), # controls size of points
+        text=~label, #This is that extra column we made earlier for which we will use for cell ID
+        hoverinfo="text") #When you visualize your plotly object, hovering your mouse pointer over a point shows cell names
+
+```
+
+```{r}
+DimPlot(data, reduction = "umap_oi",  group.by = "cell.types", label = T)
+```
+
+```{r}
+DimPlot(data, reduction = "umap_oi",  group.by = "DoubletFlag", label = T)
+
+dim(data)
+```
 
 
 

@@ -68,7 +68,7 @@ set.seed(1)
 ```
 
 
-## Subset, process, clustering (Extended Fig. 14E)
+## Subset, process, clustering (Supp. Fig. 16E)
 
 * Keep all cells annotated as endothelial
 * Calculate variable features
@@ -221,7 +221,7 @@ write.csv2(detable, paste0(myfolder, "supplementary_tables/supplementary_table_4
 ```
 
 
-### DEG IN selection of markers (Extended Fig. 14D)
+### DEG IN selection of markers (Supp. Fig. 16D)
 
 ```{r}
 # specific list of marker to project the dotplot on
@@ -247,7 +247,7 @@ gc()
 ```
 
 
-### DEG subset of clusters - top5 ordered (Supp Fig. 4A)
+### DEG subset of clusters - top5 ordered (Extended Fig. 4A)
 
 ```{r}
 values_to_keep <- c("4", "7", "12", "11", "8", "19", "17", "3", "13", "1")

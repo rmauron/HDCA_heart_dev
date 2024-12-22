@@ -68,7 +68,7 @@ set.seed(1)
 ```
 
 
-## Subset, process, clustering (Extended Fig. 13A)
+## Subset, process, clustering (Supp. Fig. 16A)
 
 * Keep all cells annotated as endothelial
 * Calculate variable features
@@ -186,7 +186,7 @@ dev.off()
 ```
 
 
-### DEG FB - top5 ordered (Supp Fig. 6A)
+### DEG FB - top5 ordered (Extended Fig. 6A)
 
 ```{r}
 values_to_keep <- c("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", "11", "17", "8", "1", "6", "15", "20")
@@ -274,7 +274,7 @@ rm(detable, DGE_DATA, top5, DGE_cells, sample_size)
 ```
 
 
-### DEG FB selection of markers (Extended Fig. 13D)
+### DEG FB selection of markers (Supp. Fig. 16D)
 
 ```{r}
 # specific list of marker to project the dotplot on
@@ -300,7 +300,7 @@ gc()
 ```
 
 
-### DEG FB - top10 ordered - FB_4, FB_11, FB_13 (Supp Fig. 6E)
+### DEG FB - top10 ordered - FB_4, FB_11, FB_13 (Fig. 6F)
 
 ```{r}
 values_to_keep <- c("4", "11", "13")
@@ -372,7 +372,7 @@ rm(detable, DGE_DATA, top10, DGE_cells, sample_size)
 ```
 
 
-### FeaturePlot (Supp Fig. 6B)
+### FeaturePlot (Extended Fig. 6B)
 
 ```{r}
 values_to_keep <- c("7", "3", "18", "14", "5", "9", "19", "2", "12", "4", "13", "11", "17", "8", "1", "6", "15", "20")

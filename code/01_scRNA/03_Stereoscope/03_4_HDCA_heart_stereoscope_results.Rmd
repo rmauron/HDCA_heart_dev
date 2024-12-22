@@ -130,7 +130,7 @@ rm(celltype, p)
 ```
 
 
-#### Plot on subset of sections (Fig. 2D, Supp Fig. 2B)
+#### Plot on subset of sections (Fig. 2D, Extended Fig. 2B)
 
 ```{r}
 # Create path if not existing

@@ -362,7 +362,7 @@ dev.off()
 ```
 
 
-### Heatmap visualisation (annotated) (Extended Fig. 7B)
+### Heatmap visualisation (annotated) (Supp. Fig. 8B)
 
 ```{r}
 mat <- as.data.frame(Merged_object$final_clusters)
@@ -443,7 +443,7 @@ for (i in i_start:i_end) {
 ```
 
 
-### Heatmap visualisation (annotated) (Extended Fig. 7A)
+### Heatmap visualisation (annotated) (Supp. Fig. 8A)
 
 ```{r}
 mat <- as.data.frame(data$high_level_clusters_removed)

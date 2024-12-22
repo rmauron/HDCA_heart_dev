@@ -172,7 +172,7 @@ ST$banksy_09_annot <- banksy_09_annot[as.character(ST$banksy_09)]
 ```
 
 
-### DEG banksy 09 (Extended Fig. 1C)
+### DEG banksy 09 (Supp. Fig. 1C)
 
 ```{r}
 DefaultAssay(ST) <- "SCT"
@@ -241,7 +241,7 @@ rm(detable)
 ```
 
 
-### Banksy sc. 2, 5, 11 and 24 (Extended Fig. 1A)
+### Banksy sc. 2, 5, 11 and 24 (Supp Fig. 1A)
 
 ```{r}
 # time point 1 *section 5*
@@ -278,7 +278,7 @@ write.csv(table_banksy_section, "~/hdca_DevHeart/output/HDCA_heart_sc_analysis_d
 ```
 
 
-### Dot plot selected markers on Banksy regions (Extended Fig. 1E)
+### Dot plot selected markers on Banksy regions (Supp. Fig. 1E)
 
 ```{r}
 my_markers <- c("ITLN1", "MYH6", "MYH7", "HEY2", "MB", "IRX2", "EMCN", "SLC25A37", "TBX3", "CNN1", "XPO4", "ACTA1", "MYL2", "ENO1", "IGFBP3", "DCN", "APCDD1", "PENK", "MFAP4", "CDH11", "ELN", "JAG1", "C1QC")
@@ -305,7 +305,7 @@ dev.off()
 ```
 
 
-### Seurat cluster vs Banksy regions (Extended Fib. 1D)
+### Seurat cluster vs Banksy regions (Supp. Fib. 1D)
 
 ```{r}
 ST$banksy_09
@@ -391,7 +391,7 @@ dev.off()
 ```
 
 
-### Add banksy region to ST_clustering object and embed umap (Extended Fig. 1B)
+### Add banksy region to ST_clustering object and embed umap (Supp Fig. 1B)
 
 ```{r}
 # append banksy regions to ST_clustering object

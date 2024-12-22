@@ -236,7 +236,7 @@ rownames(ST)
 
 ### Comparison between replicates
 
-#### Cell type composition per sections (38 section) (Extended Fig. 11C)
+#### Cell type composition per sections (38 section) (Supp. Fig. 14C)
 
 ```{r}
 # Extract sample identifiers from the barcodes
@@ -365,7 +365,7 @@ replicates_num_clust
 ```
 
 
-#### Cluster composition per sections (17 section) (Extended Fig. 1B)
+#### Cluster composition per sections (17 section) (Supp. Fig. 14B)
 
 ```{r}
 cluster_distribution <- table(ST_clustering$seurat_clusters_annot, ST_clustering$sample_id) |> as.matrix()
@@ -554,7 +554,7 @@ colSums(region_props)
 ```
 
 
-### Distribution banksy regions (Extended Fig. 11A)
+### Distribution banksy regions (Supp. Fig. 14A)
 
 ```{r}
 region_props <- region_props |>

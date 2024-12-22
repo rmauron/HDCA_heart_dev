@@ -116,7 +116,7 @@ data$orig.ident <- factor(data$orig.ident, levels = c("10X303",
 ```
 
 
-### XIST expression (Extended Fig. 12A)
+### XIST expression (Supp. Fig. 15A)
 
 ```{r}
 pdf(file = paste0(myfolder, "complementary/Violin_XIST.pdf"),  width = 15, height = 4)
@@ -127,7 +127,7 @@ dev.off()
 ```
 
 
-## UMAP all clusters embedded (Extended Fig. 12E)
+## UMAP all clusters embedded (Supp. Fig. 15E)
 
 #### nCount_RNA
 
@@ -169,7 +169,7 @@ gc()
 ```
 
 
-#### HL clusters (Extended Fig. 12C)
+#### HL clusters (Supp. Fig. 15C)
 
 ```{r}
 pdf(paste0(myfolder, "complementary/umap_high_level_clusters.pdf"), width = 20, height = 15)
@@ -179,7 +179,7 @@ gc()
 ```
 
 
-#### Sample ID (Extended Fig. 12D)
+#### Sample ID (Supp. Fig. 15D)
 
 ```{r}
 pdf(paste0(myfolder, "complementary/umap_sampleID.pdf"), width = 20, height = 15)
@@ -301,7 +301,7 @@ gc()
 ```
 
 
-### Feature barplots (Extended Fig. 12B)
+### Feature barplots (Supp. Fig. 15B)
 
 ```{r}
 # Create dataframe from meta.data for feature plotting
@@ -488,7 +488,7 @@ write.csv2(table1, file = paste0(myfolder, "complementary/total_cells_CM.csv"))
 ```
 
 
-### VCS-Ion channel - 1 (Supp Fig. 3F)
+### VCS-Ion channel (Extended Fig. 3F)
 
 ```{r}
 my_markers <- c("HCN4", "SCN5A", "CACNA1C", "CACNA1D", "CACNA1G", "CACNA2D1", "CACNB2", 
@@ -588,7 +588,7 @@ dev.off()
 
 ## Violin plot
 
-### CM (Extended Fig. 13B)
+### CM (Supp. Fig. 16B)
 
 ```{r}
 # Create a single violin plot
@@ -600,7 +600,7 @@ dev.off()
 ```
 
 
-#### HBA1 across all CM clusters (without exclusions, unordered) (Extended Fig. 13C)
+#### HBA1 across all CM clusters (without exclusions, unordered) (Supp. Fig. 16C)
 
 ```{r}
 pdf(file = paste0(myfolder, "complementary/Vln_feature_CM_HBA1.pdf"),  width = 15, height = 4)
@@ -610,7 +610,7 @@ dev.off()
 ```
 
 
-### EN (Extended Fig. 13B)
+### EN (Supp. Fig. 16B)
 
 ```{r}
 # Create a single violin plot
@@ -622,7 +622,7 @@ dev.off()
 ```
 
 
-#### HBA1 across all EN clusters (without exclusions, unordered) (Extended Fig. 13C)
+#### HBA1 across all EN clusters (without exclusions, unordered) (Supp. Fig. 16C)
 
 ```{r}
 pdf(file = paste0(myfolder, "complementary/Vln_feature_EN_HBA1.pdf"),  width = 15, height = 4)
@@ -632,7 +632,7 @@ dev.off()
 ```
 
 
-### FB (Extended Fig. 13B)
+### FB (Supp. Fig. 16B)
 
 ```{r}
 # Create a single violin plot
@@ -644,7 +644,7 @@ dev.off()
 ```
 
 
-### HBA1 across all FB clusters (again without exclusions, unordered) (Extended Fig. 13C)
+### HBA1 across all FB clusters (again without exclusions, unordered) (Supp. Fig. 16C)
 
 ```{r}
 pdf(file = paste0(myfolder, "complementary/Vln_feature_FB_HBA1.pdf"),  width = 15, height = 4)
@@ -656,7 +656,7 @@ dev.off()
 
 ### Data
 
-#### Data - all clusters (clusters_louvain_oi) (Extended Fig. 12F)
+#### Data - all clusters (clusters_louvain_oi) (Supp. Fig. 15F)
 
 ```{r}
 # Create a single violin plot
@@ -668,7 +668,7 @@ dev.off()
 ```
 
 
-#### HBA1 across all HL clusters (without exclusions, unordered) (Extended Fig. 12F)
+#### HBA1 across all HL clusters (without exclusions, unordered) (Supp. Fig. 15F)
 
 ```{r}
 pdf(file = paste0(myfolder, "complementary/Vln_feature_HL_HBA1.pdf"),  width = 15, height = 4)
@@ -784,6 +784,49 @@ colnames(number_cells_annot) <- "number of cells"
 
 # Save the detable as a csv file.
 write.csv2(number_cells_annot, paste0(myfolder, "supplementary_tables/extended_table_11_number_cells_DL.csv"))
+```
+
+
+##### Per sequencing run
+
+DL
+
+```{r}
+number_cells <- as.matrix(table(data$clusters_subset_split, data$orig.ident))
+number_cells_annot <- number_cells
+rownames(number_cells_annot) <- cells_clusters[as.character(rownames(number_cells_annot))]
+
+# Save the detable as a csv file.
+write.csv2(number_cells_annot, paste0(myfolder, "supplementary_tables/extended_table_11_number_cells_DL_per_orig_ident.csv"))
+```
+
+```{r}
+number_cells <- as.matrix(table(data$clusters_subset_split, data$sampleID))
+number_cells_annot <- number_cells
+rownames(number_cells_annot) <- cells_clusters[as.character(rownames(number_cells_annot))]
+
+# Save the detable as a csv file.
+write.csv2(number_cells_annot, paste0(myfolder, "supplementary_tables/extended_table_11_number_cells_DL_per_sampleID.csv"))
+```
+
+HL
+
+```{r}
+number_cells <- as.matrix(table(data$high_level_clusters_removed, data$orig.ident))
+number_cells_annot <- number_cells
+#rownames(number_cells_annot) <- cells_clusters[as.character(rownames(number_cells_annot))]
+
+# Save the detable as a csv file.
+write.csv2(number_cells_annot, paste0(myfolder, "supplementary_tables/extended_table_11_number_cells_HL_per_orig_ident.csv"))
+```
+
+```{r}
+number_cells <- as.matrix(table(data$high_level_clusters_removed, data$sampleID))
+number_cells_annot <- number_cells
+#rownames(number_cells_annot) <- cells_clusters[as.character(rownames(number_cells_annot))]
+
+# Save the detable as a csv file.
+write.csv2(number_cells_annot, paste0(myfolder, "supplementary_tables/extended_table_11_number_cells_HL_per_sampleID.csv"))
 ```
 
 
@@ -955,6 +998,54 @@ dev.off()
 ```
 
 
+#### "EN_7", "EN_17", "FB_4", "FB_11", "FB_13", "CM_8-2" (Fig. 5C)
+
+```{r}
+clusters_to_analyze <- c("EN_17", "EN_7", "FB_4", "FB_13", "FB_11", "CM_8-2")
+
+my_niche <- annotation_split[annotation_split$clusters_subset_split %in% clusters_to_analyze,]
+data_sub <- data[, colnames(data) %in% my_niche$ID]
+
+table(data_sub$clusters_subset_split)
+```
+
+```{r}
+my_markers <- c("PTHLH", "WNT4", "DKK2", "CNR1", "LGR5", "BMP4")
+```
+
+```{r}
+#get matrix average expression from marker genes
+mat <- AverageExpression(object = data_sub, features = my_markers, group.by = 'clusters_subset_split')$RNA
+
+# plot heatmap
+pal <- colorRampPalette(RColorBrewer::brewer.pal(n = 8, name = "Reds"))(25)
+
+# normalise average expression gene by gene
+gg_mat <- mat |>
+  as.data.frame() |>
+  tibble::rownames_to_column(var = "gene") |>
+  pivot_longer(-gene) |>
+  group_by(gene) |>
+  mutate(value = scale(value, center = F, scale = T)) |>
+  ungroup() |>
+  mutate(gene = factor(gene, levels = rev(my_markers)))
+
+gg_mat$name <- factor(gg_mat$name, levels = c("EN_7", "EN_17", "FB_4", "FB_11", "FB_13", "CM_8-2"))
+
+#plot
+p <- ggplot(gg_mat, aes(name, gene, fill = value)) + 
+  geom_tile() +
+  scale_fill_gradientn(colours = pal) +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle = 90)) +
+  labs(fill = "normalised \n score")
+
+pdf(paste0(myfolder, "EN_7_EN_17_FB_4_FB_11_FB_13_CM_8-2_markers_niche_gg_with_norm.pdf"), width = 3, height = 2.5)
+p
+dev.off()
+```
+
+
 ## High Level UMAP embedded with Deep Level cluster
 
 ## High level clusters
@@ -1083,7 +1174,7 @@ dev.off()
 ```
 
 
-#### Dotplot JAG1 NOTCH3 (Extended Fig. 2D)
+#### Dotplot JAG1 NOTCH3 (Supp. Fig. 3D)
 
 ```{r}
 # specific list of marker to project the dotplot on

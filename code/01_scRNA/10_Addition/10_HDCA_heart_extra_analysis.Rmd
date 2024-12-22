@@ -1,5 +1,5 @@
 ---
-title: "10_HDCA_heart_reviewer_request"
+title: "10_HDCA_heart_extra_analysis"
 author: "Raphaël Mauron"
 output: html_document
 editor_options: 
@@ -86,7 +86,7 @@ data <- readRDS(paste0(myfolder, "rds_objects/HDCA_heart_sc_full_extended.rds"))
 
 ## Temporal analysis (single-cell)
 
-### DGE (Extended Fig. 2B, 4D)
+### DGE (Supp. Fig. 3B, 5D)
 
 ```{r}
 # set seed for reproducibility when sampling
@@ -733,7 +733,7 @@ dev.off()
 ```
 
 
-### DGE normal - selection of HL clusters (HL_8, HL_10, HL_22) (Extended Fig. 2C)
+### DGE normal - selection of HL clusters (HL_8, HL_10, HL_22) (Supp. Fig. 3C)
 
 ```{r}
 # set seed for reproducibility when sampling
@@ -900,7 +900,7 @@ gc()
 ```
 
 
-### FeaturePlots - special in HL_15 clusters (Extended Fig. 3C)
+### FeaturePlots - special in HL_15 clusters (Supp Fig. 4C)
 
 ```{r}
 data_HL <- data[, data$high_level_clusters_removed %in% "15"]
@@ -927,7 +927,7 @@ gc()
 ```
 
 
-### FeaturePlots - special in HL_29 clusters (Extended Fig. 3C)
+### FeaturePlots - special in HL_29 clusters (Supp Fig. 4C)
 
 ```{r}
 data_HL <- data[, data$high_level_clusters_removed %in% "29"]
@@ -1349,7 +1349,71 @@ dev.off()
 ```
 
 
-### Specific gene over FB + HL_22 + HL_10 + HL_8 (Extended Fig. 2F)
+### Specific gene over all DL clusters (Supp. Fig. 9C)
+
+```{r}
+# specific list of marker to project the dotplot on
+my_markers <- c("SHOX2", "TBX18", "PRRX1", "ZNF385B", "TENM4", "TENM3", "TENM2", "GDF10", "SLIT2", "RCAN1", "IRX1", "IRX2", "IRX5", "IRX3", "BRINP3", "SEMA3A", "PLXNA4")
+
+# reorder the cell types desired
+data_kept_cells$annot_dl <- factor(data_kept_cells$annot_dl, 
+                                   levels = c("CM_1",   "CM_2",   "CM_3",   "CM_4-1", "CM_4-2", "CM_5",   "CM_6",   "CM_7",   "CM_8-1", "CM_8-2", "CM_8-3", "CM_9",   "CM_10", "CM_12",  "CM_14",  "CM_17",  "CM_18",  "CM_19-1", "CM_19-2",
+                                              "EN_1",  "EN_2",  "EN_3",  "EN_5",  "EN_6",  "EN_7",  "EN_10", "EN_11", "EN_12", "EN_13", "EN_14", "EN_15", "EN_16", "EN_17", "EN_18", "EN_19", "EN_20", "EN_21",
+                                              "FB_1",  "FB_2",  "FB_3",  "FB_4",  "FB_5",  "FB_6",  "FB_7",  "FB_8",  "FB_9",  "FB_11", "FB_12", "FB_13", "FB_14", "FB_15", "FB_17", "FB_18", "FB_19", "FB_20",
+                                              "IN_1",  "IN_3",  "IN_4",  "IN_7",  "IN_8",  "IN_11", "IN_12", "IN_13", "IN_17", "IN_19",
+                                              "HL_6",    "HL_8",    "HL_10",   "HL_15",   "HL_18_1", "HL_20",   "HL_22",   "HL_29",   "HL_34"
+                                              ))
+
+data_kept_cells <- SetIdent(data_kept_cells, value = "annot_dl")
+
+p <- DotPlot(data_kept_cells, features = my_markers) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+
+pdf(paste0(myfolder, "DL_dotplot_marker_genes_v3.pdf"), width = 20, height = 4.5)
+  print(p)
+dev.off()
+```
+
+
+### Specific gene over all DL clusters (Supp. Fig. 5E)
+
+```{r}
+# specific list of marker to project the dotplot on
+my_markers <- c("WT1", "TBX18", "TCF21")
+
+# reorder the cell types desired
+data_kept_cells$annot_dl <- factor(data_kept_cells$annot_dl, 
+                                   levels = c("CM_19-2", "CM_19-1", "CM_12", "CM_9", "CM_14", "CM_4-2", "CM_4-1", "CM_18", "CM_8-2", "CM_8-1", "CM_8-3", "CM_17", "CM_6", "CM_1",  "CM_10", "CM_3", "CM_7", "CM_2", "CM_5",  
+                                             "EN_1", "EN_12",  "EN_3", "EN_6", "EN_18", "EN_17", "EN_7", "EN_19", "EN_15",  "EN_13", "EN_10", "EN_2", "EN_5",  "EN_21", "EN_16",  "EN_20", "EN_11", "EN_14",  
+                                             "FB_7", "FB_3", "FB_18","FB_14", "FB_5", "FB_9", "FB_19", "FB_12", "FB_2", "FB_4", "FB_13", "FB_11", "FB_17", "FB_8", "FB_1", "FB_6", "FB_15",  "FB_20",
+"IN_4", "IN_7", "IN_12", "IN_11", "IN_8", "IN_19", "IN_17", "IN_3", "IN_13", "IN_1",
+                                             "HL_8", "HL_10", "HL_22", "HL_20", "HL_15", "HL_29", "HL_18_1", "HL_6", "HL_34"
+                                              ))
+
+data_kept_cells <- SetIdent(data_kept_cells, value = "annot_dl")
+
+p <- DotPlot(data_kept_cells, features = my_markers) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  labs(x = "", y = "") + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+
+pdf(paste0(myfolder, "DL_dotplot_marker_genes_v3.2.pdf"), width = 20, height = 4.5)
+  print(p)
+dev.off()
+```
+
+
+### Specific gene over FB + HL_22 + HL_10 + HL_8 (Supp. Fig. 3F)
 
 ```{r}
 # specific list of marker to project the dotplot on
@@ -1380,7 +1444,7 @@ dev.off()
 ```
 
 
-### Specific gene over FB + HL_20 (Extended Fig. 4B)
+### Specific gene over FB + HL_20 (Supp. Fig. 5B)
 
 ```{r}
 # specific list of marker to project the dotplot on
@@ -1411,7 +1475,7 @@ dev.off()
 ```
 
 
-### Specific gene over CM (Supp Fig. 4E)
+### Specific gene over CM (Extended Fig. 4E)
 
 ```{r}
 # specific list of marker to project the dotplot on
@@ -1440,7 +1504,7 @@ dev.off()
 ```
 
 
-### Specific gene over IN (Supp Fig. 4F)
+### Specific gene over IN (Extended Fig. 4F)
 
 ```{r}
 # specific list of marker to project the dotplot on
@@ -1469,7 +1533,7 @@ dev.off()
 ```
 
 
-### Specific gene over FB + HL_20 - R2Q3
+### Specific gene over FB + HL_20 (Supp. Fig. 5C)
 
 ```{r}
 # specific list of marker to project the dotplot on
@@ -1498,7 +1562,7 @@ dev.off()
 ```
 
 
-### DEG HL_20, FB_7, FB_3 (Extended Fig. 4C)
+### DEG HL_20, FB_7, FB_3 (Supp. Fig. 4C)
 
 ```{r}
 cell_to_keep <- c("HL_20", "FB_7", "FB_3")
@@ -2908,7 +2972,7 @@ dev.off()
 
 
 
-### Merge data frames IN_1+IN_13 (L) --> SAN (R) // CHAT-CHRM2 and TH-ADRB1 (Supp Fig. 4D)
+### Merge data frames IN_1+IN_13 (L) --> SAN (R) // CHAT-CHRM2 and TH-ADRB1 (Extended Fig. 4D)
 
 ```{r}
 merged_dataframe <- bind_rows(Aut_Neu_2_SAN, Chrom_C_SAN)
@@ -2997,7 +3061,7 @@ dev.off()
 ```
 
 
-### Plot Heatmap IN_13 to SAN_CM & SAN_CM to IN_13 (Supp Fig. 4G)
+### Plot Heatmap IN_13 to SAN_CM & SAN_CM to IN_13 (Extended Fig. 4G)
 
 ```{r}
 merged_dataframe <- bind_rows(Aut_Neu_2_SAN, SAN_Aut_Neu_2)
@@ -3022,13 +3086,41 @@ p
 dev.off()
 ```
 
+
+
+
+
+#### CM from High Level dotplot from selected markers (Supp Fig. 2A)
+
 ```{r}
+values_to_keep <- c("19-2", "19-1", "12", "9", "14", "4-2", "4-1", "18", "8-2", "8-1", "8-3", "17", "6", "1", "10", "3", "7", "2", "5")
+data_CM <- CM[, CM$clusters_subset_split %in% values_to_keep]
 
+# reorder the cell types desired
+data_CM$cell.types <- factor(data_CM$cell.types, 
+                                              levels = c("SAN_CM", "AVN_CM", "Cond_aCM", "Left_aCM", "Right_aCM", "PF_CM", "TsPF_CM", "AVB-BB_CM", "vCM_1", "vCM_2", "vCM_3", "Prol_CM_1", "vCM_4", "vCM_5", "vCM_6", "Immat_CM_1", "Immat_CM_2", "Immat_CM_3", "Prol_CM_2"))
+
+#Find differential expressed genes based on groups defined by "clusters_subset_split".
+data_CM <- SetIdent(data_CM, value = "cell.types")
+
+# specific list of marker to project the dotplot on
+my_markers <- c("CACNA1C", "CACNB2", "RYR2", "ATP2A2", "SLC8A1", "JPH2", "NEXN", "PPARGC1A", "ESRRG", "OPA1", "HK1", "HK2", "PKM", "ALDOA", "ENO1", "NDUFA1", "NDUFB4", "UQCRH", "UQCRB", "COX7C", "COX5A", "ATP5F1A", "ATP5MD")
+
+
+pdf(paste0(myfolder, "cardiomyocytes/dotplot_markers_CM_spe_markers.pdf"), width = 7, height = 6)
+par(mfrow=c(1,1), mar=c(3,6,2,5))
+DotPlot(data_CM, features = my_markers) +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5)) +
+  scale_color_gradientn(colours = RColorBrewer::brewer.pal(n = 11, name = "RdBu") %>% rev()) +
+  scale_x_discrete(limits = rev) +
+  scale_y_discrete() +
+  #labs(x = "", y = "") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 0.5))
+dev.off()
+
+gc()
 ```
-
-
-
-
 
 
 

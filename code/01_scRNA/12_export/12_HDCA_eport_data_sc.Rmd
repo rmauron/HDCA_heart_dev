@@ -77,6 +77,32 @@ write.csv(mat, file = paste0(myfolder, "export_data/export_sc/", "coarse_grained
 ```
 
 
+### Export coarse-grained processed expression raw
+
+```{r}
+data <- readRDS(paste0(myfolder, "rds_objects/HDCA_heart_sc_full_extended.rds"))
+mat <-  t(GetAssayData(object = data, assay = "RNA", slot = "counts"))
+
+rm(data)
+gc()
+#write.csv(mat, file = paste0(myfolder, "export_data/export_sc/", "coarse_grained_gene_expr_raw", ".csv"))
+
+```
+
+```{r}
+write_chunked_csv <- function(mat, file, chunk_size = 1000) {
+  for (i in seq(1, nrow(mat), by = chunk_size)) {
+    chunk <- mat[i:min(i + chunk_size - 1, nrow(mat)), ]
+    write.table(chunk, file = file, sep = ",", col.names = (i == 1), 
+                append = (i != 1), row.names = TRUE, quote = FALSE)
+  }
+}
+
+write_chunked_csv(mat, paste0(myfolder, "export_data/export_sc/", "coarse_grained_gene_expr_raw", ".csv"))
+```
+
+
+
 ### Export fine-grained processed expression data
 
 ```{r}

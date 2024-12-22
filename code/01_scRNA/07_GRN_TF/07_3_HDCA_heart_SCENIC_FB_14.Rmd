@@ -377,7 +377,7 @@ unique(regulons$TF)
 ```
 
 
-### Plot Gene Regulatory Networks (Supp Fig. 6D)
+### Plot Gene Regulatory Networks (Extended Fig. 6D)
 
 ```{r}
 net <- igraph::graph_from_data_frame(regulons, directed=T)
