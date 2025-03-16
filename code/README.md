@@ -4,7 +4,7 @@ This repository contains the scripts used for the analysis of this study.
 Since several environments have been used along the project, below you will find a chart presenting the pipeline used with the corresponding scripts.
 
 ## Workflow chart
-On the diagram, find the workflow used for the analysis with each major step presented as the title of the box, the path were the corresponding script are located and the color representing the corresponding environment.
+On the diagram, find the workflow used for the analysis with each major step presented as the title of the box, the path where the corresponding script are located and the color representing the corresponding environment.
 
 - All the scripts are found in this [folder](.).
 - All the environments are found in the [environments folder](../environments).
