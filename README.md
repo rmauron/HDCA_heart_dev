@@ -24,7 +24,7 @@ On the diagram, find the workflow used for the analysis with each major step pre
 
 ## Data
 - The preprocessed data, some intermediate .Rds objects and metadata required to reproduce the analysis are found on Mendeley Data at these DOI: [Mendeley repo 1](https://data.mendeley.com/preview/fhtb99mdzd?a=27a510e3-60f7-40b9-968d-ecf1ca6b5ad1) and [Mendeley repo 2](https://data.mendeley.com/preview/w65jtfsvpr?a=2c7eb695-0a84-4bd7-98e8-e4be4e4ed831).
-- The raw sequencing data will be availbale at the European Genome-Phenome Archive (EGA) upon request at [EGAS50000001122](https://ega-archive.org/studies/EGAS50000001122) and [missing link](https://ega-archive.org/studies/EGAS50000001122).
+- The raw sequencing data are availbale at the European Genome-Phenome Archive (EGA) upon request at [EGAS50000001122](https://ega-archive.org/studies/EGAS50000001122) and [missing link](https://ega-archive.org/studies/EGAS50000001122).
 
 ## Resources
 The analyses presented in this repository were predominantly conducted on a MacBook Pro M2 Max chip (2023), 32 GB of memory, running Ventura 13.0; however, some computations were also executed on a private server for enhanced performance and scalability.
