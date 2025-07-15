@@ -23,7 +23,7 @@ On the diagram, find the workflow used for the analysis with each major step pre
 
 
 ## Data
-- The preprocessed data, some intermediate .Rds objects and metadata required to reproduce the analysis are found on Mendeley Data at [these DOI (part 1)]([doi: 10.17632/fhtb99mdzd.1](https://data.mendeley.com/preview/fhtb99mdzd?a=27a510e3-60f7-40b9-968d-ecf1ca6b5ad1)) and [(part 2)]([doi: 10.17632/w65jtfsvpr.1](https://data.mendeley.com/preview/w65jtfsvpr?a=2c7eb695-0a84-4bd7-98e8-e4be4e4ed831)).
+- The preprocessed data, some intermediate .Rds objects and metadata required to reproduce the analysis are found on Mendeley Data at these DOI: [Mendeley repo 1](https://data.mendeley.com/preview/fhtb99mdzd?a=27a510e3-60f7-40b9-968d-ecf1ca6b5ad1) and [Mendeley repo 2](https://data.mendeley.com/preview/w65jtfsvpr?a=2c7eb695-0a84-4bd7-98e8-e4be4e4ed831).
 - The raw sequencing data will be availbale at the European Genome-Phenome Archive (EGA) upon request at [EGAS50000001122](https://ega-archive.org/studies/EGAS50000001122) and [missing link](https://ega-archive.org/studies/EGAS50000001122).
 
 ## Resources
@@ -39,7 +39,8 @@ Find how to set up the docker container or the different environments in the [en
 - [Zenodo](https://zenodo.org/records/15912657)
 - [Mendeley repo 1](https://data.mendeley.com/preview/fhtb99mdzd?a=27a510e3-60f7-40b9-968d-ecf1ca6b5ad1) (Cellranger, Spaceranger, metadata)
 - [Mendeley repo 2](https://data.mendeley.com/preview/w65jtfsvpr?a=2c7eb695-0a84-4bd7-98e8-e4be4e4ed831) (R-objects)
-- [EGA Visium](https://ega-archive.org/studies/EGAS50000001122)
-- [EGA Single-cell](missing-link)
+- [EGA Visium](https://ega-archive.org/studies/EGAS50000001122) (raw sequencing data, available upon formal request)
+- [EGA Single-cell](missing-link) (raw sequencing data, available upon formal request)
 
 ## Citation
+TBA
