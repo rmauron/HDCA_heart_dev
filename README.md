@@ -32,11 +32,14 @@ The analyses presented in this repository were predominantly conducted on a MacB
 Although an extensive effort was attributed to reproducibility, some system dependencies might slightly affect the results. Support on it is out of the scope of that study.
 Find how to set up the docker container or the different environments in the [environments folder](./environments).
 
-## Citation
+## Useful links
 - [Nature Genetics](missing-link)
+- [Interactive viewer](https://hdcaheart.serve.scilifelab.se/web/index.html)
 - [biorXive](https://www.biorxiv.org/content/10.1101/2024.03.12.584577v3) (preprint)
 - [Zenodo](https://zenodo.org/records/15912657)
 - [Mendeley repo 1](https://data.mendeley.com/preview/fhtb99mdzd?a=27a510e3-60f7-40b9-968d-ecf1ca6b5ad1) (Cellranger, Spaceranger, metadata)
 - [Mendeley repo 2](https://data.mendeley.com/preview/w65jtfsvpr?a=2c7eb695-0a84-4bd7-98e8-e4be4e4ed831) (R-objects)
 - [EGA Visium](https://ega-archive.org/studies/EGAS50000001122)
 - [EGA Single-cell](missing-link)
+
+## Citation
