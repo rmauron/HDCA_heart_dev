@@ -40,7 +40,7 @@ Find how to set up the docker container or the different environments in the [en
 - [Mendeley repo 1](https://data.mendeley.com/datasets/fhtb99mdzd/1) (Cellranger, Spaceranger, metadata)
 - [Mendeley repo 2](https://data.mendeley.com/datasets/w65jtfsvpr/1) (R-objects)
 - [EGA Visium](https://ega-archive.org/studies/EGAS50000001122) (raw sequencing data, available upon formal request)
-- [EGA Single-cell]((https://ega-archive.org/studies/EGAS50000001029)) (raw sequencing data, available upon formal request)
+- [EGA Single-cell](https://ega-archive.org/studies/EGAS50000001029) (raw sequencing data, available upon formal request)
 
 ## Citation
 TBA
