@@ -24,7 +24,7 @@ On the diagram, find the workflow used for the analysis with each major step pre
 
 ## Data
 - The preprocessed data, some intermediate .Rds objects and metadata required to reproduce the analysis are found on Mendeley Data at these DOI: [Mendeley repo 1](https://data.mendeley.com/datasets/fhtb99mdzd/1) and [Mendeley repo 2](https://data.mendeley.com/datasets/w65jtfsvpr/1).
-- The raw sequencing data are availbale at the European Genome-Phenome Archive (EGA) upon request at [EGAS50000001122](https://ega-archive.org/studies/EGAS50000001122) and [missing link](https://ega-archive.org/studies/EGAS50000001122).
+- The raw sequencing data are availbale at the European Genome-Phenome Archive (EGA) upon request at [EGAS50000001122](https://ega-archive.org/studies/EGAS50000001122) and [EGAS50000001029](https://ega-archive.org/studies/EGAS50000001029).
 
 ## Resources
 The analyses presented in this repository were predominantly conducted on a MacBook Pro M2 Max chip (2023), 32 GB of memory, running Ventura 13.0; however, some computations were also executed on a private server for enhanced performance and scalability.
@@ -40,7 +40,7 @@ Find how to set up the docker container or the different environments in the [en
 - [Mendeley repo 1](https://data.mendeley.com/datasets/fhtb99mdzd/1) (Cellranger, Spaceranger, metadata)
 - [Mendeley repo 2](https://data.mendeley.com/datasets/w65jtfsvpr/1) (R-objects)
 - [EGA Visium](https://ega-archive.org/studies/EGAS50000001122) (raw sequencing data, available upon formal request)
-- [EGA Single-cell](missing-link) (raw sequencing data, available upon formal request)
+- [EGA Single-cell]((https://ega-archive.org/studies/EGAS50000001029)) (raw sequencing data, available upon formal request)
 
 ## Citation
 TBA
