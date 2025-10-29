@@ -43,4 +43,4 @@ Find how to set up the docker container or the different environments in the [en
 - [EGA Single-cell](https://ega-archive.org/studies/EGAS50000001029) (raw sequencing data, available upon formal request)
 
 ## Citation
-TBA
+Lázár E., Mauron R., Andrusivová Ž., Foyer J., He M., Larsson L., Shakari N., Salas S. M., Avenel C., Sariyar S., Hansen J. N., Vicari M., Czarnewski P., Braun E., Li X., Bergmann O., Sylvén C., Lundberg E., Linnarsson S., Nilsson M., Sundström E., Adameyko I., Lundeberg J.. Spatiotemporal gene expression and cellular dynamics of the developing human heart. Nature Genetics (2025). https://doi.org/10.1038/s41588-025-02352-6
